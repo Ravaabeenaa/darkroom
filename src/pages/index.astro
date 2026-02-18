@@ -1,9 +1,152 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Button from "../components/Button.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import ProductCard from "../components/ProductCard.astro";
+import Accordion from "../components/Accordion.astro";
+
+const featured = [
+  { image:"https://picsum.photos/800/1000?1", name:"Product Name", price:"$25.00" },
+  { image:"https://picsum.photos/800/1000?2", name:"Product Name", price:"$25.00" },
+  { image:"https://picsum.photos/800/1000?3", name:"Product Name", price:"$25.00" },
+  { image:"https://picsum.photos/800/1000?4", name:"Product Name", price:"$20.00", compareAt:"$25.00", badge:"SALE" },
+];
+
+const services = [
+  { title:"Basic Service", content:"Describe important details like price, value, length of service, and why it’s unique." },
+  { title:"Intermediate Service", content:"Add a second service tier with key inclusions and turnaround time." },
+  { title:"Advanced Service", content:"Add premium offering details, add-ons, and deliverables." },
+];
 ---
 <BaseLayout title="DARKROOM">
-  <h1 class="text-5xl md:text-7xl leading-[0.9] mt-10">Snap Your World with Us</h1>
-  <p class="mt-8 max-w-xl" style="color: var(--muted);">
-    Home page coming next: hero + featured products + services + about + social.
-  </p>
+  <!-- HERO -->
+  <section class="pt-10 md:pt-16">
+    <div class="grid gap-10 md:grid-cols-2 md:items-start">
+      <div>
+        <h1 class="text-[56px] leading-[0.88] md:text-[96px]">
+          Snap Your World with Us
+        </h1>
+
+        <p class="mt-10 max-w-md text-sm leading-6" style="color: var(--muted);">
+          Snap, smile, and let your personality shine with our vibrant photo services!
+          Whether it’s capturing the twinkle in your eye or the laughter echoing around,
+          we’re here to make every snapshot a spectacular journey.
+        </p>
+
+        <div class="mt-10">
+          <Button href="/about" size="lg">Learn more</Button>
+        </div>
+      </div>
+
+      <div class="md:pt-10">
+        <div class="bg-white/20 p-0">
+          <img
+            src="https://picsum.photos/1200/900?hero"
+            alt="Hero"
+            class="aspect-[4/3] w-full object-cover"
+            loading="eager"
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURED PRODUCTS -->
+  <section class="mt-20 md:mt-28">
+    <SectionHeader title="Featured Products" actionLabel="Shop all" actionHref="/shop" />
+
+    <div class="mt-10 grid gap-8 md:grid-cols-4">
+      {featured.map((p) => (
+        <ProductCard
+          href="/shop/product-demo"
+          image={p.image}
+          name={p.name}
+          price={p.price}
+          compareAt={p.compareAt}
+          badge={p.badge}
+        />
+      ))}
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="mt-24 md:mt-32">
+    <div class="grid gap-10 md:grid-cols-2 md:items-start">
+      <div>
+        <h2 class="text-5xl md:text-6xl leading-[0.95]">Explore our<br/>services</h2>
+        <p class="mt-6 max-w-md text-sm leading-6" style="color: var(--muted);">
+          Capture life’s joyful moments with our playful photo services that turn ordinary
+          snaps into extraordinary stories.
+        </p>
+
+        <div class="mt-10">
+          <Accordion items={services} />
+        </div>
+
+        <div class="mt-10">
+          <Button href="/services" size="lg">Learn more</Button>
+        </div>
+      </div>
+
+      <div class="md:pt-4">
+        <img
+          src="https://picsum.photos/1200/900?services"
+          alt="Services"
+          class="aspect-[4/3] w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- GET TO KNOW US -->
+  <section class="mt-24 md:mt-32">
+    <div class="grid gap-10 md:grid-cols-2 md:items-start">
+      <div>
+        <h2 class="text-5xl md:text-6xl leading-[0.95]">Get to<br/>know us</h2>
+        <p class="mt-6 max-w-md text-sm leading-6" style="color: var(--muted);">
+          Tell people about who you are, your origin, your process, or your inspirations.
+        </p>
+
+        <div class="mt-10">
+          <Button href="/about" size="lg">Learn more</Button>
+        </div>
+
+        <div class="mt-10">
+          <img
+            src="https://picsum.photos/1200/700?about1"
+            alt="About 1"
+            class="w-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      </div>
+
+      <div class="md:pt-10">
+        <img
+          src="https://picsum.photos/900/1200?about2"
+          alt="About 2"
+          class="w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </section>
+
+  <!-- FOLLOW US -->
+  <section class="mt-24 md:mt-32 pb-10">
+    <div class="flex items-start justify-between gap-8">
+      <h2 class="text-[64px] leading-[0.9] md:text-[120px]">• Follow Us</h2>
+      <div class="pt-6">
+        <Button href="#" size="lg">Social</Button>
+      </div>
+    </div>
+
+    <div class="mt-10 grid gap-6 md:grid-cols-4">
+      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g1" alt="g1" loading="lazy" />
+      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g2" alt="g2" loading="lazy" />
+      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g3" alt="g3" loading="lazy" />
+      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g4" alt="g4" loading="lazy" />
+    </div>
+  </section>
 </BaseLayout>

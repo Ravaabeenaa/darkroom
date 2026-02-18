@@ -1,0 +1,23 @@
+---
+const {
+  href,
+  variant = "filled", // filled | outline
+  size = "md",        // md | lg
+} = Astro.props;
+
+const Tag = href ? "a" : "button";
+
+const base =
+  "inline-flex items-center justify-center rounded-[var(--radius-pill)] px-8 transition border text-sm";
+const sizes = {
+  md: "h-12",
+  lg: "h-14 px-10 text-sm",
+};
+const variants = {
+  filled: "bg-[var(--btn)] text-[var(--btnText)] border-transparent hover:opacity-90",
+  outline: "bg-transparent text-[var(--text)] border-[var(--line)] hover:bg-black/5",
+};
+---
+<Tag href={href} class={`${base} ${sizes[size]} ${variants[variant]}`}>
+  <slot />
+</Tag>

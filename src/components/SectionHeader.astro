@@ -1,0 +1,18 @@
+---
+import Button from "./Button.astro";
+
+const {
+  title,
+  actionLabel,
+  actionHref = "#",
+} = Astro.props;
+---
+<div class="flex items-end justify-between gap-6">
+  <h2 class="text-4xl md:text-5xl leading-[0.95]">{title}</h2>
+
+  {actionLabel && (
+    <div class="shrink-0">
+      <Button href={actionHref} variant="outline" size="md">{actionLabel}</Button>
+    </div>
+  )}
+</div>
