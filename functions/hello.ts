@@ -1,1 +1,3 @@
-export const onRequestGet: PagesFunction = async () => new Response("hello");
+export function onRequest(context) {
+  return new Response("Hello, world!");
+}
