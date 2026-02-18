@@ -1,13 +1,13 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// node_modules/@astrojs/cloudflare/node_modules/wrangler/wrangler-dist/ProxyServerWorker.js
+// node_modules/wrangler/wrangler-dist/ProxyServerWorker.js
 import { EmailMessage } from "cloudflare:email";
 if (!Symbol.dispose) {
-  Symbol.dispose = Symbol.for("dispose");
+  Symbol.dispose = /* @__PURE__ */ Symbol.for("dispose");
 }
 if (!Symbol.asyncDispose) {
-  Symbol.asyncDispose = Symbol.for("asyncDispose");
+  Symbol.asyncDispose = /* @__PURE__ */ Symbol.for("asyncDispose");
 }
 var workersModuleName = true ? "cloudflare:workers" : null;
 var workersModule;
@@ -135,7 +135,7 @@ function withCallInterceptor(interceptor, callback) {
   }
 }
 __name(withCallInterceptor, "withCallInterceptor");
-var RAW_STUB = Symbol("realStub");
+var RAW_STUB = /* @__PURE__ */ Symbol("realStub");
 var PROXY_HANDLERS = {
   apply(target, thisArg, argumentsList) {
     let stub = target.raw;
@@ -2494,6 +2494,7 @@ async function newWorkersRpcResponse(request, localMain) {
   }
 }
 __name(newWorkersRpcResponse, "newWorkersRpcResponse");
+var AI_RPC_METHODS = ["aiSearch"];
 var BindingNotFoundError = class extends Error {
   static {
     __name(this, "BindingNotFoundError");
@@ -2534,10 +2535,29 @@ function getExposedJSRPCBinding(request, env) {
   if (targetBinding.constructor.name === "SendEmail") {
     return {
       async send(e) {
-        const message = new EmailMessage(e.from, e.to, e["EmailMessage::raw"]);
-        return targetBinding.send(message);
+        if ("EmailMessage::raw" in e) {
+          const message = new EmailMessage(
+            e.from,
+            e.to,
+            e["EmailMessage::raw"]
+          );
+          return targetBinding.send(message);
+        } else {
+          return targetBinding.send(e);
+        }
       }
     };
+  }
+  if (url.searchParams.get("MF-Binding-Type") === "ai") {
+    const wrapper = {};
+    for (const method of AI_RPC_METHODS) {
+      if (typeof targetBinding[method] === "function") {
+        wrapper[method] = (...args) => targetBinding[method](...args);
+      }
+    }
+    if (Object.keys(wrapper).length > 0) {
+      return wrapper;
+    }
   }
   if (url.searchParams.has("MF-Dispatch-Namespace-Options")) {
     const { name, args, options } = JSON.parse(
@@ -2614,7 +2634,7 @@ var ProxyServerWorker_default = {
   }
 };
 
-// node_modules/@astrojs/cloudflare/node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
+// node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
 var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
   try {
     return await middlewareCtx.next(request, env);
@@ -2632,13 +2652,13 @@ var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "drainBody");
 var middleware_ensure_req_body_drained_default = drainBody;
 
-// .wrangler/tmp/bundle-w4Kp1Z/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-kCKixB/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default
 ];
 var middleware_insertion_facade_default = ProxyServerWorker_default;
 
-// node_modules/@astrojs/cloudflare/node_modules/wrangler/templates/middleware/common.ts
+// node_modules/wrangler/templates/middleware/common.ts
 var __facade_middleware__ = [];
 function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
@@ -2663,7 +2683,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-w4Kp1Z/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-kCKixB/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
