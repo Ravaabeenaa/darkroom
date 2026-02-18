@@ -1,23 +1,44 @@
 ---
 const {
   href,
-  variant = "filled", // filled | outline
-  size = "md",        // md | lg
+  type = "button",
+  variant = "filled",   // "filled" | "outline"
+  size = "md",          // "md" | "lg"
+  class: className = "",
 } = Astro.props;
 
-const Tag = href ? "a" : "button";
+/* Only treat as link if href is a real non-empty string */
+const isLink =
+  typeof href === "string" && href.trim().length > 0;
 
 const base =
-  "inline-flex items-center justify-center rounded-[var(--radius-pill)] px-8 transition border text-sm";
+  "inline-flex items-center justify-center rounded-[999px] font-medium transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20";
+
 const sizes = {
-  md: "h-12",
-  lg: "h-14 px-10 text-sm",
+  md: "h-12 px-10 text-sm",
+  lg: "h-14 px-12 text-sm",
 };
+
 const variants = {
-  filled: "bg-[var(--btn)] text-[var(--btnText)] border-transparent hover:opacity-90",
-  outline: "bg-transparent text-[var(--text)] border-[var(--line)] hover:bg-black/5",
+  filled:
+    "bg-[var(--btn)] !text-white hover:brightness-110",
+  outline:
+    "bg-transparent text-[var(--text)] border border-[var(--line)] hover:bg-black/5",
 };
 ---
-<Tag href={href} class={`${base} ${sizes[size]} ${variants[variant]}`}>
-  <slot />
-</Tag>
+
+{isLink ? (
+  <a
+    href={href}
+    class={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
+  >
+    <slot />
+  </a>
+) : (
+  <button
+    type={type}
+    class={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
+  >
+    <slot />
+  </button>
+)}

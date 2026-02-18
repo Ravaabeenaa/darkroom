@@ -1,13 +1,14 @@
 ---
 const {
-  href = "#",
+  href = "/shop/sample",
   image = "https://picsum.photos/800/1000",
   name = "Product Name",
   price = "$25.00",
-  compareAt,         // "$25.00" (optional)
-  badge,             // "SALE" (optional)
+  compareAt, // "$25.00" (optional)
+  badge,     // "SALE" (optional)
 } = Astro.props;
 ---
+
 <a href={href} class="group block">
   <div class="relative overflow-hidden bg-white/20">
     <img
@@ -16,6 +17,7 @@ const {
       class="aspect-[4/5] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
       loading="lazy"
     />
+
     {badge && (
       <div class="absolute right-3 top-3 bg-black px-2 py-1 text-[11px] font-medium tracking-wide text-white">
         {badge}
@@ -27,6 +29,7 @@ const {
     <div class="font-medium" style="font-family: var(--font-serif); font-size: 20px;">
       {name}
     </div>
+
     <div class="mt-1 flex items-center gap-2" style="color: var(--muted);">
       <span class={compareAt ? "text-[var(--text)]" : ""}>{price}</span>
       {compareAt && <span class="line-through opacity-60">{compareAt}</span>}

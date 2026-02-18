@@ -10,7 +10,7 @@
 
   /* Typography (easy sitewide change) */
   --font-serif: ui-serif, Georgia, "Times New Roman", Times, serif;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
   /* Layout tokens */
   --radius-pill: 999px;
@@ -25,9 +25,15 @@ body{
   color: var(--text);
   font-family: var(--font-sans);
 }
+
 h1,h2,h3{
   font-family: var(--font-serif);
   font-weight: 500;
   letter-spacing: -0.02em;
 }
-a{ color: inherit; }
+
+a{ color: inherit; text-decoration: none; }
+
+/* Nice selection + focus */
+::selection{ background: rgba(0,0,0,.12); }
+:focus-visible{ outline: 2px solid rgba(0,0,0,.45); outline-offset: 3px; }
