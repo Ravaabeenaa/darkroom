@@ -1,17 +1,9 @@
 ---
-
+import BaseLayout from "../layouts/BaseLayout.astro";
 ---
-
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="DARKROOM">
+  <h1 class="text-5xl md:text-7xl leading-[0.9] mt-10">Snap Your World with Us</h1>
+  <p class="mt-8 max-w-xl" style="color: var(--muted);">
+    Home page coming next: hero + featured products + services + about + social.
+  </p>
+</BaseLayout>

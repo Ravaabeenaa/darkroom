@@ -1,0 +1,62 @@
+---
+const { title = "DARKROOM" } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div class="min-h-screen">
+      <header class="px-6 py-6">
+        <div class="mx-auto flex max-w-[var(--container)] items-center justify-between">
+          <a href="/" class="text-xl tracking-tight" style="font-family: var(--font-serif);">darkroom</a>
+
+          <nav class="hidden gap-8 text-sm md:flex">
+            <a href="/shop">Shop</a>
+            <a href="/about">About</a>
+            <a href="/cart">Cart</a>
+          </nav>
+
+          <a class="md:hidden text-sm" href="/menu">Menu</a>
+        </div>
+      </header>
+
+      <main class="px-6">
+        <div class="mx-auto max-w-[var(--container)]">
+          <slot />
+        </div>
+      </main>
+
+      <footer class="mt-24 px-6 pb-16 pt-12">
+        <div class="mx-auto max-w-[var(--container)] border-t" style="border-color: var(--line);">
+          <div class="grid gap-10 py-10 md:grid-cols-3">
+            <div>
+              <div class="text-2xl" style="font-family: var(--font-serif);">DARKROOM</div>
+            </div>
+
+            <div class="text-sm">
+              <div class="mb-3 font-medium">Explore</div>
+              <div class="grid gap-2">
+                <a href="/about">About us</a>
+                <a href="/about#contact">Contact</a>
+                <a href="/shop">Shop</a>
+                <a href="/services">Services</a>
+              </div>
+            </div>
+
+            <div class="text-sm">
+              <div class="mb-3 font-medium">Contact</div>
+              <div class="grid gap-2" style="color: var(--muted);">
+                <div>Email: hello@darkroom.mv</div>
+                <div>Phone: +960 000-0000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
