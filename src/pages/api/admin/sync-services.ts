@@ -7,17 +7,22 @@ type Env = {
   APPS_SCRIPT_TOKEN: string;
 };
 
+type AppsScriptResponse = {
+  ok: boolean;
+  data: ServiceRow[];
+};
+
 type ServiceRow = {
   id: string;
-  service_group?: string;
+  service_group: string;
   name: string;
-  description?: string;
+  description: string;
   price: number | string;
   active: boolean | string | number;
-  requires_group?: boolean | string | number;
-  requires_service_id?: string;
-  tags?: string;
-  notes?: string;
+  requires_group: string;
+  requires_service_id: string;
+  tags: string;
+  notes: string;
 };
 
 function toInt01(v: any): number {
@@ -25,13 +30,14 @@ function toInt01(v: any): number {
   if (typeof v === "number") return v ? 1 : 0;
   if (typeof v === "string") {
     const s = v.trim().toLowerCase();
-    return (s === "true" || s === "yes" || s === "1") ? 1 : 0;
+    return s === "true" || s === "yes" || s === "1" ? 1 : 0;
   }
   return 0;
 }
 
 function priceToCents(p: any): number {
-  const n = typeof p === "number" ? p : Number(String(p).replace(/[^\d.]/g, ""));
+  const n =
+    typeof p === "number" ? p : Number(String(p).replace(/[^\d.]/g, ""));
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100);
 }
@@ -47,44 +53,57 @@ function slugify(input: string) {
 
 export async function POST({
   request,
-  locals
+  locals,
 }: {
   request: Request;
   locals: { runtime: { env: Env } };
 }) {
   const env = locals.runtime.env;
 
-  // Admin auth
+  // Auth
   const token = request.headers.get("x-admin-token") ?? "";
   if (!env.ADMIN_SYNC_TOKEN || token !== env.ADMIN_SYNC_TOKEN) {
-    return new Response(
-      JSON.stringify({ ok: false, error: "unauthorized" }),
-      { status: 401 }
-    );
+    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
   }
 
-  // Fetch services from Apps Script
+  // Build Apps Script URL
   const url = new URL(env.APPS_SCRIPT_URL);
   url.searchParams.set("route", "services.list");
   url.searchParams.set("token", env.APPS_SCRIPT_TOKEN);
 
-  const r = await fetch(url.toString(), { method: "GET" });
+  // Fetch (redirects are fine; but we’ll be explicit)
+  const r = await fetch(url.toString(), {
+    method: "GET",
+    redirect: "follow",
+    headers: {
+      "accept": "application/json",
+    },
+  });
+
   if (!r.ok) {
     return new Response(
       JSON.stringify({ ok: false, error: `apps_script_http_${r.status}` }),
-      { status: 502 }
+      { status: 502, headers: { "content-type": "application/json" } }
     );
   }
 
-  const services: ServiceRow[] = await r.json();
+  const payload = (await r.json().catch(() => null)) as AppsScriptResponse | null;
 
-  if (!Array.isArray(services)) {
+  if (!payload || payload.ok !== true || !Array.isArray(payload.data)) {
     return new Response(
-      JSON.stringify({ ok: false, error: "bad_apps_script_payload" }),
-      { status: 502 }
+      JSON.stringify({
+        ok: false,
+        error: "bad_apps_script_payload",
+        got: payload,
+      }),
+      { status: 502, headers: { "content-type": "application/json" } }
     );
   }
 
+  const services = payload.data;
   const db = env.darkroom_db;
 
   const statements = services.map((s) => {
@@ -108,24 +127,23 @@ export async function POST({
         notes=excluded.notes,
         updated_at=datetime('now');
     `).bind(
-      s.id,
+      String(s.id ?? ""),
       slug,
-      s.service_group ?? null,
-      s.name,
-      s.description ?? null,
+      String(s.service_group ?? ""),
+      String(s.name ?? ""),
+      String(s.description ?? ""),
       priceToCents(s.price),
       toInt01(s.active),
-      toInt01(s.requires_group),
-      s.requires_service_id ?? null,
-      s.tags ?? null,
-      s.notes ?? null
+      String(s.requires_group ?? ""),
+      String(s.requires_service_id ?? ""),
+      String(s.tags ?? ""),
+      String(s.notes ?? "")
     );
   });
 
   await db.batch(statements);
 
-  return new Response(
-    JSON.stringify({ ok: true, upserted: services.length }),
-    { headers: { "content-type": "application/json" } }
-  );
+  return new Response(JSON.stringify({ ok: true, upserted: services.length }), {
+    headers: { "content-type": "application/json" },
+  });
 }
