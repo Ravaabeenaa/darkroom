@@ -1,38 +1,59 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
-import { listProducts, money } from "../lib/db";
 
 export const prerender = false;
 
-// Cloudflare runtime env (D1 binding lives here)
 const db = Astro.locals.runtime.env.darkroom_db as D1Database;
 
-// Optional edge caching for the HTML
+type ServiceRow = {
+  id: string;
+  slug: string | null;
+  service_group: string | null;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  active: number;
+  tags: string | null;
+};
+
 Astro.response.headers.set(
   "Cache-Control",
   "public, s-maxage=60, stale-while-revalidate=600"
 );
 
-const products = await listProducts(db);
+const res = await db
+  .prepare(
+    `
+    SELECT id, slug, service_group, name, description, price_cents, active, tags
+    FROM services
+    WHERE active = 1
+    ORDER BY service_group ASC, name ASC;
+  `
+  )
+  .all<ServiceRow>();
+
+const rows = (res.results ?? []) as ServiceRow[];
+
+function money(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 ---
 
 <BaseLayout title="Shop — DARKROOM">
   <section class="mt-12">
     <h1 class="text-5xl md:text-6xl" style="font-family: var(--font-serif);">Shop</h1>
     <p class="mt-3 max-w-2xl text-sm md:text-base" style="color: var(--muted);">
-      Film, services, and add-ons — curated for your next roll.
+      Film, cameras, and lab services.
     </p>
 
     <div class="mt-10 grid gap-10 md:grid-cols-2 lg:grid-cols-3">
-      {products.map((p) => (
+      {rows.map((s) => (
         <ProductCard
-          href={`/shop/${p.slug}`}
-          image={p.image ?? "https://picsum.photos/800/1000"}
-          name={p.title}
-          price={money(p.price_cents, p.currency)}
-          compareAt={p.compare_at_cents ? money(p.compare_at_cents, p.currency) : undefined}
-          badge={p.badge ?? undefined}
+          href={`/shop/${s.slug ?? s.id}`}
+          image={"https://picsum.photos/800/1000"} /* placeholder for now */
+          name={s.name}
+          price={money(s.price_cents)}
         />
       ))}
     </div>

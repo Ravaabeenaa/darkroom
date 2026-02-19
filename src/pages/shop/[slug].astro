@@ -1,64 +1,92 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Button from "../../components/Button.astro";
-import { getProductBySlug, money } from "../../lib/db";
 
 export const prerender = false;
 
 const db = Astro.locals.runtime.env.darkroom_db as D1Database;
-const slug = Astro.params.slug as string;
+const slugOrId = Astro.params.slug as string;
 
-// Optional edge caching for product pages
+type ServiceRow = {
+  id: string;
+  slug: string | null;
+  service_group: string | null;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  active: number;
+  tags: string | null;
+  requires_group: string | null;
+  requires_service_id: string | null;
+  notes: string | null;
+};
+
 Astro.response.headers.set(
   "Cache-Control",
   "public, s-maxage=120, stale-while-revalidate=1200"
 );
 
-const product = await getProductBySlug(db, slug);
+function money(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
-if (!product) {
-  return new Response("Not found", { status: 404 });
+// 1) Try by slug
+let service = await db.prepare(
+  `
+  SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes
+  FROM services
+  WHERE active=1 AND slug = ?
+  LIMIT 1;
+`
+).bind(slugOrId).first<ServiceRow>();
+
+if (!service) {
+  // 2) Try by id
+  const byId = await db.prepare(
+    `
+    SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes
+    FROM services
+    WHERE active=1 AND id = ?
+    LIMIT 1;
+  `
+  ).bind(slugOrId).first<ServiceRow>();
+
+  if (!byId) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  // Redirect /shop/dev001 -> /shop/<slug>
+  if (byId.slug) {
+    return Astro.redirect(`/shop/${byId.slug}`, 302);
+  }
+
+  service = byId;
 }
 ---
 
-<BaseLayout title={`${product.title} — DARKROOM`}>
+<BaseLayout title={`${service.name} — DARKROOM`}>
   <section class="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
-    <div class="overflow-hidden bg-white/20 rounded-3xl border border-[var(--line)]">
-      <img
-        src={product.image ?? "https://picsum.photos/1200/1200"}
-        alt={product.title}
-        class="aspect-[4/5] w-full object-cover"
-        loading="eager"
-      />
+    <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-10">
+      <div class="text-xs tracking-wide uppercase" style="color: var(--muted);">
+        {service.service_group ?? "service"}
+      </div>
+      <div class="mt-4 text-sm" style="color: var(--muted);">
+        Image support for services comes next (we’ll add a table for service images).
+      </div>
     </div>
 
     <div class="lg:pt-2">
-      <div class="flex items-start justify-between gap-4">
-        <h1 class="text-4xl md:text-5xl" style="font-family: var(--font-serif);">
-          {product.title}
-        </h1>
+      <h1 class="text-4xl md:text-5xl" style="font-family: var(--font-serif);">
+        {service.name}
+      </h1>
 
-        {product.badge && (
-          <span class="mt-2 inline-block bg-black px-3 py-1 text-[11px] font-medium tracking-wide text-white rounded-full">
-            {product.badge}
-          </span>
-        )}
+      <div class="mt-3 text-xl">
+        {money(service.price_cents)}
       </div>
 
-      <div class="mt-3 flex items-baseline gap-3 text-xl">
-        <span class={product.compare_at_cents ? "text-[var(--text)]" : ""}>
-          {money(product.price_cents, product.currency)}
-        </span>
-        {product.compare_at_cents && (
-          <span class="opacity-60 line-through">
-            {money(product.compare_at_cents, product.currency)}
-          </span>
-        )}
-      </div>
-
-      {product.short && (
+      {service.description && (
         <p class="mt-5 max-w-prose text-sm md:text-base" style="color: var(--muted);">
-          {product.short}
+          {service.description}
         </p>
       )}
 
@@ -67,34 +95,23 @@ if (!product) {
         <Button href="/shop" variant="outline">Back to shop</Button>
       </div>
 
-      <!-- Linsoul-style info density (we'll expand next) -->
       <div class="mt-10 grid gap-4">
         <details class="rounded-3xl border border-[var(--line)] bg-white/30 p-6" open>
-          <summary class="cursor-pointer list-none text-lg font-semibold">
-            Overview
-          </summary>
-          <p class="mt-3 text-sm leading-6" style="color: var(--muted);">
-            {product.description ?? "Add a longer description for this product."}
-          </p>
+          <summary class="cursor-pointer list-none text-lg font-semibold">Details</summary>
+          <div class="mt-3 text-sm leading-6" style="color: var(--muted);">
+            <div><b>ID:</b> {service.id}</div>
+            {service.tags && <div class="mt-2"><b>Tags:</b> {service.tags}</div>}
+            {service.requires_group && <div class="mt-2"><b>Requires group:</b> {service.requires_group}</div>}
+            {service.requires_service_id && <div class="mt-2"><b>Requires service:</b> {service.requires_service_id}</div>}
+          </div>
         </details>
 
-        <details class="rounded-3xl border border-[var(--line)] bg-white/30 p-6">
-          <summary class="cursor-pointer list-none text-lg font-semibold">
-            Shipping & Returns
-          </summary>
-          <p class="mt-3 text-sm leading-6" style="color: var(--muted);">
-            Add your policy here (turnaround times, delivery, returns).
-          </p>
-        </details>
-
-        <details class="rounded-3xl border border-[var(--line)] bg-white/30 p-6">
-          <summary class="cursor-pointer list-none text-lg font-semibold">
-            FAQs
-          </summary>
-          <p class="mt-3 text-sm leading-6" style="color: var(--muted);">
-            Add FAQs here (compatibility, processing, storage, etc.).
-          </p>
-        </details>
+        {service.notes && (
+          <details class="rounded-3xl border border-[var(--line)] bg-white/30 p-6">
+            <summary class="cursor-pointer list-none text-lg font-semibold">Notes</summary>
+            <p class="mt-3 text-sm leading-6" style="color: var(--muted);">{service.notes}</p>
+          </details>
+        )}
       </div>
     </div>
   </section>
