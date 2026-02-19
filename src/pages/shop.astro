@@ -1,35 +1,20 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import { listProducts, money } from "../lib/db";
 
-const products = [
-  {
-    slug: "kodak-portra-400",
-    name: "Kodak Portra 400",
-    price: "$25.00",
-    image: "https://images.unsplash.com/photo-1526948128573-703ee1aeb6fa?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    slug: "ilford-hp5",
-    name: "Ilford HP5 Plus",
-    price: "$25.00",
-    image: "https://images.unsplash.com/photo-1519183071298-a2962be96c3e?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    slug: "fuji-superia-400",
-    name: "Fujifilm Superia 400",
-    price: "$20.00",
-    compareAt: "$25.00",
-    badge: "SALE",
-    image: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=1200&q=80",
-  },
-  {
-    slug: "35mm-dev-scan",
-    name: "35mm Develop + Scan",
-    price: "$18.00",
-    image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=1200&q=80",
-  },
-];
+export const prerender = false;
+
+// Cloudflare runtime env (D1 binding lives here)
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+
+// Optional edge caching for the HTML
+Astro.response.headers.set(
+  "Cache-Control",
+  "public, s-maxage=60, stale-while-revalidate=600"
+);
+
+const products = await listProducts(db);
 ---
 
 <BaseLayout title="Shop — DARKROOM">
@@ -43,11 +28,11 @@ const products = [
       {products.map((p) => (
         <ProductCard
           href={`/shop/${p.slug}`}
-          image={p.image}
-          name={p.name}
-          price={p.price}
-          compareAt={p.compareAt}
-          badge={p.badge}
+          image={p.image ?? "https://picsum.photos/800/1000"}
+          name={p.title}
+          price={money(p.price_cents, p.currency)}
+          compareAt={p.compare_at_cents ? money(p.compare_at_cents, p.currency) : undefined}
+          badge={p.badge ?? undefined}
         />
       ))}
     </div>
