@@ -2,7 +2,7 @@ INSERT OR REPLACE INTO products
 (id, slug, title, short, description, price_cents, compare_at_cents, badge, currency, is_active)
 VALUES
 ('prod_portra400','kodak-portra-400','Kodak Portra 400',
-'Natural skin tones, fine grain, big dynamic range. 35mm colour negative film.',
+'Natural skin tones, fine grain, big dynamic range.',
 'Portra 400 is a flexible, forgiving film with soft contrast and beautiful colour reproduction.',
 2500, 3000, 'SALE', 'USD', 1);
 
