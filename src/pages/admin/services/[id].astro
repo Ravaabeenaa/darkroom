@@ -16,6 +16,7 @@ type ServiceRow = {
   tags: string | null;
   notes: string | null;
   primary_image_key: string | null;
+  featured: number;
 };
 
 type ImageRow = {
@@ -29,7 +30,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, tags, notes, primary_image_key
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key
   FROM services
   WHERE id = ?
   LIMIT 1;
@@ -198,6 +199,11 @@ function imgUrl(key: string) {
         <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
           <input type="checkbox" name="active" checked={service.active === 1} />
           Active (visible in shop)
+        </label>
+
+        <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
+          <input type="checkbox" name="featured" checked={service.featured === 1} />
+          Featured (show on home page)
         </label>
       </div>
 

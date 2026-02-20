@@ -25,7 +25,6 @@ function toInt01(v: any) {
 }
 
 function safeId(input: string) {
-  // allow ids like dev001, flm001, cam001, etc.
   return input.trim();
 }
 
@@ -42,7 +41,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const idRaw = String(form.get("id") ?? "").trim();
   const id = safeId(idRaw);
 
-  // NEW: ID required when creating new service
   if (isNew && !id) {
     return Response.redirect(
       new URL(`/admin/services/new?error=${encodeURIComponent("ID is required.")}`, request.url),
@@ -50,7 +48,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     );
   }
 
-  // NEW: ID must exist for edit as well (defensive)
   if (isEdit && !id) {
     return Response.redirect(
       new URL(`/admin/services?error=${encodeURIComponent("Missing service ID.")}`, request.url),
@@ -58,7 +55,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     );
   }
 
-  // NEW: unique check for new services
   if (isNew) {
     const existing = await db
       .prepare(`SELECT id FROM services WHERE id = ? LIMIT 1`)
@@ -67,7 +63,10 @@ export async function POST({ request, locals }: { request: Request; locals: any 
 
     if (existing) {
       return Response.redirect(
-        new URL(`/admin/services/new?error=${encodeURIComponent("That ID already exists. Choose a different ID.")}`, request.url),
+        new URL(
+          `/admin/services/new?error=${encodeURIComponent("That ID already exists. Choose a different ID.")}`,
+          request.url
+        ),
         302
       );
     }
@@ -78,10 +77,10 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const description = String(form.get("description") ?? "").trim() || null;
   const price_cents = priceToCents(String(form.get("price") ?? "0"));
   const active = toInt01(form.get("active"));
+  const featured = toInt01(form.get("featured")); // NEW
   const tags = String(form.get("tags") ?? "").trim() || null;
   const notes = String(form.get("notes") ?? "").trim() || null;
 
-  // Keep this field, but admin edit page will make it read-only (managed by upload endpoint)
   const primary_image_key = String(form.get("primary_image_key") ?? "").trim() || null;
 
   if (!name) {
@@ -91,13 +90,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     );
   }
 
-  // Slug rules:
-  // - base slug from name
-  // - if conflict, fall back to slug-name-id (stable)
   const baseSlug = slugify(name);
   let slug = baseSlug || slugify(id) || id;
 
-  // Check conflict: slug belongs to another service id
   const conflict = await db
     .prepare(`SELECT id FROM services WHERE slug = ? LIMIT 1`)
     .bind(slug)
@@ -107,14 +102,13 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     slug = `${slug}-${slugify(id)}`;
   }
 
-  // Upsert (edit or create)
   await db
     .prepare(
       `
       INSERT INTO services
-        (id, slug, service_group, name, description, price_cents, active, tags, notes, primary_image_key, updated_at)
+        (id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, updated_at)
       VALUES
-        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,    ?,     ?,               datetime('now'))
+        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,    ?,     ?,               datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         service_group=excluded.service_group,
@@ -122,13 +116,14 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         description=excluded.description,
         price_cents=excluded.price_cents,
         active=excluded.active,
+        featured=excluded.featured,
         tags=excluded.tags,
         notes=excluded.notes,
         primary_image_key=excluded.primary_image_key,
         updated_at=datetime('now');
     `
     )
-    .bind(id, slug, service_group, name, description, price_cents, active, tags, notes, primary_image_key)
+    .bind(id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key)
     .run();
 
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);
