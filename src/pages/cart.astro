@@ -130,12 +130,21 @@ function imgUrl(key: string | null) {
     const checkoutBtn = document.getElementById("checkoutBtn");
     const checkoutStatus = document.getElementById("checkoutStatus");
 
+    function digitsOnlyStr(s) {
+      return String(s || "").replace(/\D+/g, "");
+    }
+
     function onlyDigits(s) { return /^[0-9]+$/.test(s); }
 
+    function getCart() {
+      return window.DarkroomCart.load();
+    }
+
     function getCartItems() {
-      const cart = window.DarkroomCart.load();
-      const items = Object.entries(cart).map(([id, qty]) => ({ id, qty: Number(qty) || 0 })).filter(x => x.qty > 0);
-      return items;
+      const cart = getCart();
+      return Object.entries(cart)
+        .map(([id, qty]) => ({ id, qty: Number(qty) || 0 }))
+        .filter(x => x.qty > 0);
     }
 
     function calcTotal(items) {
@@ -219,9 +228,6 @@ function imgUrl(key: string | null) {
 
       const total = calcTotal(items);
       cartTotalEl.textContent = window.DarkroomCart.formatMVR(total);
-
-      // sync qty badges
-      window.DarkroomCart.syncQtyBadges();
     }
 
     function validate() {
@@ -231,7 +237,6 @@ function imgUrl(key: string | null) {
       const method = methodEl.value.trim();
 
       let ok = true;
-
       if (!name) ok = false;
       if (!phone || !onlyDigits(phone)) ok = false;
       if (!method) ok = false;
@@ -242,7 +247,8 @@ function imgUrl(key: string | null) {
     }
 
     async function drawInvoicePng(payload) {
-      const { order, items } = payload;
+      const order = payload.order ?? payload.data?.order ?? payload;
+      const items = payload.items ?? payload.data?.items ?? [];
 
       const W = 1000;
       const rowH = 44;
@@ -255,25 +261,22 @@ function imgUrl(key: string | null) {
       canvas.height = H;
       const ctx = canvas.getContext("2d");
 
-      // background
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, W, H);
 
-      // header
       ctx.fillStyle = "#111111";
       ctx.font = "bold 44px sans-serif";
       ctx.fillText("DARKROOM", 60, 80);
 
       ctx.font = "20px sans-serif";
       ctx.fillStyle = "#333333";
-      ctx.fillText(`Invoice: ${order.order_ref}`, 60, 120);
-      ctx.fillText(`Date: ${new Date(order.created_at).toLocaleString()}`, 60, 150);
+      ctx.fillText(`Invoice: ${order.order_ref ?? payload.order_ref ?? ""}`, 60, 120);
+      ctx.fillText(`Date: ${order.created_at ? new Date(order.created_at).toLocaleString() : new Date().toLocaleString()}`, 60, 150);
 
-      ctx.fillText(`Name: ${order.customer_name}`, 60, 185);
-      ctx.fillText(`Phone: ${order.customer_phone}`, 60, 210);
-      ctx.fillText(`Contact: ${order.contact_method}`, 60, 235);
+      ctx.fillText(`Name: ${order.customer_name ?? ""}`, 60, 185);
+      ctx.fillText(`Phone: ${order.customer_phone ?? ""}`, 60, 210);
+      ctx.fillText(`Contact: ${order.contact_method ?? ""}`, 60, 235);
 
-      // table header
       let y = headerH;
       ctx.strokeStyle = "#dddddd";
       ctx.beginPath();
@@ -295,19 +298,17 @@ function imgUrl(key: string | null) {
       ctx.lineTo(W - 60, y);
       ctx.stroke();
 
-      // rows
       ctx.font = "18px sans-serif";
       ctx.fillStyle = "#222222";
 
       y += 36;
       for (const it of items) {
-        ctx.fillText(String(it.service_name).slice(0, 42), 60, y);
-        ctx.fillText(String(it.quantity), 665, y);
-        ctx.fillText(window.DarkroomCart.formatMVR(it.line_total_cents), 820, y);
+        ctx.fillText(String(it.service_name || it.name || "").slice(0, 42), 60, y);
+        ctx.fillText(String(it.quantity || it.qty || 0), 665, y);
+        ctx.fillText(window.DarkroomCart.formatMVR(it.line_total_cents ?? it.line_total ?? 0), 820, y);
         y += rowH;
       }
 
-      // total
       y += 10;
       ctx.strokeStyle = "#dddddd";
       ctx.beginPath();
@@ -319,25 +320,27 @@ function imgUrl(key: string | null) {
       ctx.font = "bold 22px sans-serif";
       ctx.fillStyle = "#111111";
       ctx.fillText("Grand total", 650, y);
-      ctx.fillText(window.DarkroomCart.formatMVR(order.total_price_cents), 820, y);
+      ctx.fillText(window.DarkroomCart.formatMVR(order.total_price_cents ?? 0), 820, y);
 
       return canvas.toDataURL("image/png");
     }
 
     async function checkout() {
+      validate();
+      if (checkoutBtn.disabled) return;
+
       checkoutBtn.disabled = true;
       checkoutStatus.textContent = "Placing order…";
 
-      const items = getCartItems();
+      const cart = getCart();
+
       const payload = {
-        customer: {
-          name: nameEl.value.trim(),
-          phone: phoneEl.value.trim(),
-          contact_method: methodEl.value.trim(),
-          email: emailEl.value.trim(),
-          notes: notesEl.value.trim(),
-        },
-        items,
+        customer_name: nameEl.value.trim(),
+        customer_phone: phoneEl.value.trim(),
+        contact_method: methodEl.value.trim(),
+        customer_email: emailEl.value.trim() || null,
+        customer_notes: notesEl.value.trim() || null,
+        cart,
       };
 
       const res = await fetch("/api/orders/create", {
@@ -353,19 +356,23 @@ function imgUrl(key: string | null) {
         return;
       }
 
-      // Clear cart
       window.DarkroomCart.save({});
       window.DarkroomCart.toast("Order placed");
 
-      checkoutStatus.textContent = `Order placed: ${data.order.order_ref}`;
+      const orderRef = data.order?.order_ref ?? data.order_ref ?? "(order)";
+      checkoutStatus.textContent = `Order placed: ${orderRef}`;
 
       // invoice
       const png = await drawInvoicePng(data);
-      document.getElementById("invoiceWrap").style.display = "block";
-      document.getElementById("invoiceImg").src = png;
+      const wrap = document.getElementById("invoiceWrap");
+      const img = document.getElementById("invoiceImg");
       const dl = document.getElementById("downloadInvoice");
-      dl.href = png;
-      dl.download = `${data.order.order_ref}.png`;
+      if (wrap && img && dl) {
+        wrap.style.display = "block";
+        img.src = png;
+        dl.href = png;
+        dl.download = `${orderRef}.png`;
+      }
     }
 
     // initial
@@ -378,8 +385,14 @@ function imgUrl(key: string | null) {
       validate();
     });
 
-    // validation events
-    [nameEl, phoneEl, methodEl, emailEl, notesEl].forEach((el) => el.addEventListener("input", validate));
+    // enforce digits-only phone
+    phoneEl.addEventListener("input", () => {
+      const d = digitsOnlyStr(phoneEl.value);
+      if (phoneEl.value !== d) phoneEl.value = d;
+      validate();
+    });
+
+    [nameEl, methodEl, emailEl, notesEl].forEach((el) => el.addEventListener("input", validate));
     methodEl.addEventListener("change", validate);
 
     checkoutBtn.addEventListener("click", checkout);

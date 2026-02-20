@@ -34,32 +34,47 @@ function imgUrl(key: string) {
   return base ? `${base}/${key}` : `/${key}`;
 }
 
-let service = await db.prepare(`
+let service = await db
+  .prepare(
+    `
   SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
-`).bind(slugOrId).first<ServiceRow>();
+`
+  )
+  .bind(slugOrId)
+  .first<ServiceRow>();
 
 if (!service) {
-  const byId = await db.prepare(`
+  const byId = await db
+    .prepare(
+      `
     SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
-  `).bind(slugOrId).first<ServiceRow>();
+  `
+    )
+    .bind(slugOrId)
+    .first<ServiceRow>();
 
   if (!byId) return new Response("Not found", { status: 404 });
   if (byId.slug) return Astro.redirect(`/shop/${byId.slug}`, 302);
   service = byId;
 }
 
-const gallery = await db.prepare(`
+const gallery = await db
+  .prepare(
+    `
   SELECT image_key, alt, sort_order
   FROM service_images
   WHERE service_id = ? AND kind = 'gallery'
   ORDER BY sort_order ASC, created_at DESC;
-`).bind(service.id).all<ImgRow>();
+`
+  )
+  .bind(service.id)
+  .all<ImgRow>();
 
 const galleryRows = gallery.results ?? [];
 ---
@@ -80,7 +95,10 @@ const galleryRows = gallery.results ?? [];
             loading="lazy"
           />
         ) : (
-          <div class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-[var(--line)] bg-white/20 text-sm" style="color: var(--muted);">
+          <div
+            class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-[var(--line)] bg-white/20 text-sm"
+            style="color: var(--muted);"
+          >
             No image
           </div>
         )}
@@ -150,19 +168,39 @@ const galleryRows = gallery.results ?? [];
   </section>
 
   <script define:vars={{ serviceId: service.id, priceCents: service.price_cents }}>
-    const priceEl = document.getElementById("priceMvr");
-    priceEl.textContent = window.DarkroomCart.formatMVR(priceCents);
+    (function () {
+      const priceEl = document.getElementById("priceMvr");
+      if (priceEl && window.DarkroomCart) {
+        priceEl.textContent = window.DarkroomCart.formatMVR(priceCents);
+      }
 
-    document.getElementById("incBtn").addEventListener("click", () => {
-      window.DarkroomCart.inc(serviceId);
-      window.DarkroomCart.toast("Added to cart");
-    });
+      const qtyEl = document.querySelector(`[data-dr-cart-qty="${serviceId}"]`);
+      const incBtn = document.getElementById("incBtn");
+      const decBtn = document.getElementById("decBtn");
 
-    document.getElementById("decBtn").addEventListener("click", () => {
-      const before = window.DarkroomCart.getQty(serviceId);
-      window.DarkroomCart.dec(serviceId);
-      const after = window.DarkroomCart.getQty(serviceId);
-      if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
-    });
+      function renderQty() {
+        if (!window.DarkroomCart || !qtyEl) return;
+        qtyEl.textContent = String(window.DarkroomCart.getQty(serviceId));
+      }
+
+      incBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.DarkroomCart.inc(serviceId);
+        window.DarkroomCart.toast("Added to cart");
+        renderQty();
+      });
+
+      decBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        const before = window.DarkroomCart.getQty(serviceId);
+        window.DarkroomCart.dec(serviceId);
+        const after = window.DarkroomCart.getQty(serviceId);
+        if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
+        renderQty();
+      });
+
+      window.addEventListener("dr-cart-changed", renderQty);
+      renderQty();
+    })();
   </script>
 </BaseLayout>
