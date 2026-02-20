@@ -91,7 +91,7 @@ function imgUrl(key: string | null) {
         <button
           id="checkoutBtn"
           type="button"
-          class="mt-4 w-full rounded-[999px] bg-black px-6 py-3 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          class="mt-4 w-full rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           disabled
         >
           Checkout
@@ -129,7 +129,32 @@ function imgUrl(key: string | null) {
     const phoneErr = document.getElementById("phoneErr");
     const checkoutBtn = document.getElementById("checkoutBtn");
     const checkoutStatus = document.getElementById("checkoutStatus");
+    const CUSTOMER_KEY = "dr_customer_v1";
 
+    
+
+    function loadCustomer() {
+      try {
+        return JSON.parse(localStorage.getItem(CUSTOMER_KEY) || "{}") || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveCustomer(partial) {
+      const cur = loadCustomer();
+      const next = { ...cur, ...partial };
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(next));
+    }
+
+    // autofill customer details
+    const saved = loadCustomer();
+    if (saved.name) nameEl.value = saved.name;
+    if (saved.phone) phoneEl.value = saved.phone;
+    if (saved.method) methodEl.value = saved.method;
+    if (saved.email) emailEl.value = saved.email;
+    if (saved.notes) notesEl.value = saved.notes;
+    
     function digitsOnlyStr(s) {
       return String(s || "").replace(/\D+/g, "");
     }
@@ -407,14 +432,34 @@ function imgUrl(key: string | null) {
     });
 
     // enforce digits-only phone
-    phoneEl.addEventListener("input", () => {
-      const d = digitsOnlyStr(phoneEl.value);
-      if (phoneEl.value !== d) phoneEl.value = d;
+    nameEl.addEventListener("input", () => {
+      saveCustomer({ name: nameEl.value });
       validate();
     });
 
-    [nameEl, methodEl, emailEl, notesEl].forEach((el) => el.addEventListener("input", validate));
-    methodEl.addEventListener("change", validate);
+    phoneEl.addEventListener("input", () => {
+      // keep your digit-only enforcement if you already have it
+      const d = String(phoneEl.value || "").replace(/\D+/g, "");
+      if (phoneEl.value !== d) phoneEl.value = d;
+
+      saveCustomer({ phone: phoneEl.value });
+      validate();
+    });
+
+    methodEl.addEventListener("change", () => {
+      saveCustomer({ method: methodEl.value });
+      validate();
+    });
+
+    emailEl.addEventListener("input", () => {
+      saveCustomer({ email: emailEl.value });
+      validate();
+    });
+
+    notesEl.addEventListener("input", () => {
+      saveCustomer({ notes: notesEl.value });
+      validate();
+    });
 
     checkoutBtn.addEventListener("click", checkout);
   </script>

@@ -12,7 +12,7 @@ const isLink =
   typeof href === "string" && href.trim().length > 0;
 
 const base =
-  "inline-flex items-center justify-center rounded-[999px] font-medium transition duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20";
+  "inline-flex items-center justify-center rounded-[999px] font-medium transition duration-200 ease-out focus:outline-none";
 
 const sizes = {
   md: "h-12 px-10 text-sm",
@@ -21,9 +21,9 @@ const sizes = {
 
 const variants = {
   filled:
-    "bg-[var(--btn)] !text-white hover:brightness-110",
+    "bg-[var(--btn)] text-[var(--btnText)] hover:brightness-110",
   outline:
-    "bg-transparent text-[var(--text)] border border-[var(--line)] hover:bg-black/5",
+    "bg-transparent text-[var(--text)] border border-[var(--line)] hover:bg-white/10",
 };
 ---
 

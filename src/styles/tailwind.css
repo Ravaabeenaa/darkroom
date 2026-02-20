@@ -2,19 +2,28 @@
 
 /* EASY SITEWIDE THEME (edit these later) */
 :root{
-    --bg:#efeeec;
-    --panel:#f6f5f3;
-    --text:#201d1b;
-    --muted:#5a524c;
-    --line:rgba(0,0,0,.18);
+  /* Brand palette */
+  --primary: #99080D; /* maroon red */
+  --accent: #FFB700;  /* Kodak yellow */
+  --accent2: #0048FF; /* blue */
 
-    --btn:#2a2522;
-    --btnText:#ffffff;
+  /* Theme */
+  --bg:#000000;
+  --panel: rgba(255,255,255,0.06);
+  --panel2: rgba(255,255,255,0.10);
+  --text:#ffffff;
+  --muted: rgba(255,255,255,0.72);
+  --line: rgba(255,255,255,0.14);
 
-    --radius-pill:999px;
-    --font-serif: "Playfair Display", serif;
-    --font-sans: "Inter", sans-serif;
+  /* Buttons */
+  --btn: var(--primary);
+  --btnText:#ffffff;
 
+  /* Layout + fonts */
+  --radius-pill:999px;
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+  --container: 1200px;
 }
 
 html, body{
@@ -38,3 +47,6 @@ a:not([class]) {
 a[class] {
   text-decoration: none;
 }
+
+::selection{ background: rgba(255,183,0,.25); }
+:focus-visible{ outline: 2px solid rgba(255,183,0,.6); outline-offset: 3px; }
