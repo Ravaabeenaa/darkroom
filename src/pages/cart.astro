@@ -261,6 +261,27 @@ function imgUrl(key: string | null) {
       canvas.height = H;
       const ctx = canvas.getContext("2d");
 
+      function splitMvr(cents) {
+        const n = Number(cents || 0) / 100;
+        const amt = n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return { cur: "MVR", amt };
+      }
+
+      function drawMoney(cents, xCur, xAmtRight, y) {
+        const { cur, amt } = splitMvr(cents);
+
+        // currency left
+        ctx.textAlign = "left";
+        ctx.fillText(cur, xCur, y);
+
+        // amount right (decimal aligned naturally because same font + right edge fixed)
+        ctx.textAlign = "right";
+        ctx.fillText(amt, xAmtRight, y);
+
+        // restore default if you want (optional)
+        ctx.textAlign = "left";
+      }
+
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, W, H);
 
@@ -305,7 +326,7 @@ function imgUrl(key: string | null) {
       for (const it of items) {
         ctx.fillText(String(it.service_name || it.name || "").slice(0, 42), 60, y);
         ctx.fillText(String(it.quantity || it.qty || 0), 665, y);
-        ctx.fillText(window.DarkroomCart.formatMVR(it.line_total_cents ?? it.line_total ?? 0), 820, y);
+        drawMoney(it.line_total_cents, 820, W - 60, y);
         y += rowH;
       }
 
@@ -320,7 +341,7 @@ function imgUrl(key: string | null) {
       ctx.font = "bold 22px sans-serif";
       ctx.fillStyle = "#111111";
       ctx.fillText("Grand total", 650, y);
-      ctx.fillText(window.DarkroomCart.formatMVR(order.total_price_cents ?? 0), 820, y);
+      drawMoney(order.total_price_cents, 820, W - 60, y);
 
       return canvas.toDataURL("image/png");
     }
