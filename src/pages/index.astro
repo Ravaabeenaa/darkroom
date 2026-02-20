@@ -5,12 +5,41 @@ import SectionHeader from "../components/SectionHeader.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Accordion from "../components/Accordion.astro";
 
-const featured = [
-  { image:"https://picsum.photos/800/1000?1", name:"Product Name", price:"$25.00" },
-  { image:"https://picsum.photos/800/1000?2", name:"Product Name", price:"$25.00" },
-  { image:"https://picsum.photos/800/1000?3", name:"Product Name", price:"$25.00" },
-  { image:"https://picsum.photos/800/1000?4", name:"Product Name", price:"$20.00", compareAt:"$25.00", badge:"SALE" },
-];
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+const r2Base = String(Astro.locals.runtime.env.PUBLIC_R2_BASE_URL ?? "").replace(/\/+$/, "");
+
+type FeaturedRow = {
+  id: string;
+  slug: string | null;
+  name: string;
+  price_cents: number;
+  primary_image_key: string | null;
+};
+
+function money(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function imgUrl(key: string | null) {
+  if (!key) return null;
+  return r2Base ? `${r2Base}/${key}` : `/${key}`;
+}
+
+function hrefFor(p: FeaturedRow) {
+  return `/shop/${p.slug ?? p.id}`;
+}
+
+const featuredRes = await db.prepare(`
+  SELECT id, slug, name, price_cents, primary_image_key
+  FROM services
+  WHERE active = 1 AND featured = 1
+  ORDER BY updated_at DESC
+  LIMIT 4;
+`).all();
+
+const featured = (featuredRes.results ?? []) as FeaturedRow[];
 
 const services = [
   { title:"Basic Service", content:"Describe important details like price, value, length of service, and why it’s unique." },
@@ -58,12 +87,10 @@ const services = [
     <div class="mt-10 grid gap-8 md:grid-cols-4">
       {featured.map((p) => (
         <ProductCard
-          href="/shop/product-demo"
-          image={p.image}
+          href={hrefFor(p)}
+          image={imgUrl(p.primary_image_key) ?? undefined}
           name={p.name}
-          price={p.price}
-          compareAt={p.compareAt}
-          badge={p.badge}
+          price={money(p.price_cents)}
         />
       ))}
     </div>
