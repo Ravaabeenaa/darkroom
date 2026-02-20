@@ -1,8 +1,6 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 
-export const prerender = false;
-
 const db = Astro.locals.runtime.env.darkroom_db as D1Database;
 const id = Astro.params.id as string;
 
