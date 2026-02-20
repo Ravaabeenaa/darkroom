@@ -19,11 +19,8 @@ type ServiceRow = {
   primary_image_key: string | null;
 };
 
-Astro.response.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=600");
-
 const res = await db.prepare(`
-  SELECT
-    id, slug, service_group, name, description, price_cents, active, tags, primary_image_key
+  SELECT id, slug, service_group, name, description, price_cents, active, tags, primary_image_key
   FROM services
   WHERE active = 1
   ORDER BY service_group ASC, name ASC;
@@ -31,12 +28,8 @@ const res = await db.prepare(`
 
 const rows = (res.results ?? []) as ServiceRow[];
 
-function money(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
 function imgUrl(key: string | null) {
-  if (!key) return null;
+  if (!key) return undefined;
   return base ? `${base}/${key}` : `/${key}`;
 }
 
@@ -46,17 +39,20 @@ function hrefFor(s: ServiceRow) {
 ---
 
 <BaseLayout title="Shop — DARKROOM">
-  <section class="mx-auto mt-10 max-w-6xl px-6">
-    <h1 class="text-4xl" style="font-family: var(--font-serif);">Shop</h1>
-    <p class="mt-2 text-sm" style="color: var(--muted);">Film, cameras, and lab services.</p>
+  <section class="mt-10">
+    <h1 class="text-4xl md:text-5xl">Shop</h1>
+    <p class="mt-3 text-sm" style="color: var(--muted);">
+      Film, cameras, and lab services.
+    </p>
 
-    <div class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="mt-10 grid gap-8 md:grid-cols-3">
       {rows.map((s) => (
         <ProductCard
+          id={s.id}
           href={hrefFor(s)}
-          image={imgUrl(s.primary_image_key) ?? undefined}
+          image={imgUrl(s.primary_image_key)}
           name={s.name}
-          price={money(s.price_cents)}
+          priceCents={s.price_cents}
         />
       ))}
     </div>

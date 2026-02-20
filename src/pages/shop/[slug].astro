@@ -1,6 +1,5 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import Button from "../../components/Button.astro";
 
 export const prerender = false;
 
@@ -29,58 +28,38 @@ type ImgRow = {
   sort_order: number;
 };
 
-Astro.response.headers.set(
-  "Cache-Control",
-  "public, s-maxage=120, stale-while-revalidate=1200"
-);
+Astro.response.headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=1200");
 
-function money(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 function imgUrl(key: string) {
   return base ? `${base}/${key}` : `/${key}`;
 }
 
-// 1) Try by slug
-let service = await db.prepare(
-  `
+let service = await db.prepare(`
   SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
-`
-).bind(slugOrId).first<ServiceRow>();
+`).bind(slugOrId).first<ServiceRow>();
 
 if (!service) {
-  // 2) Try by id
-  const byId = await db.prepare(
-    `
+  const byId = await db.prepare(`
     SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
-  `
-  ).bind(slugOrId).first<ServiceRow>();
+  `).bind(slugOrId).first<ServiceRow>();
 
-  if (!byId) {
-    return new Response("Not found", { status: 404 });
-  }
-
-  if (byId.slug) {
-    return Astro.redirect(`/shop/${byId.slug}`, 302);
-  }
-
+  if (!byId) return new Response("Not found", { status: 404 });
+  if (byId.slug) return Astro.redirect(`/shop/${byId.slug}`, 302);
   service = byId;
 }
 
-const gallery = await db.prepare(
-  `
+const gallery = await db.prepare(`
   SELECT image_key, alt, sort_order
   FROM service_images
   WHERE service_id = ? AND kind = 'gallery'
   ORDER BY sort_order ASC, created_at DESC;
-`
-).bind(service.id).all<ImgRow>();
+`).bind(service.id).all<ImgRow>();
 
 const galleryRows = gallery.results ?? [];
 ---
@@ -124,13 +103,9 @@ const galleryRows = gallery.results ?? [];
     </div>
 
     <div class="lg:pt-2">
-      <h1 class="text-4xl md:text-5xl" style="font-family: var(--font-serif);">
-        {service.name}
-      </h1>
+      <h1 class="text-4xl md:text-5xl">{service.name}</h1>
 
-      <div class="mt-3 text-xl">
-        {money(service.price_cents)}
-      </div>
+      <div class="mt-3 text-xl font-medium" id="priceMvr"></div>
 
       {service.description && (
         <p class="mt-5 max-w-prose text-sm md:text-base" style="color: var(--muted);">
@@ -138,9 +113,19 @@ const galleryRows = gallery.results ?? [];
         </p>
       )}
 
-      <div class="mt-8 flex flex-wrap items-center gap-3">
-        <Button href="/cart" variant="filled">Add to cart</Button>
-        <Button href="/shop" variant="outline">Back to shop</Button>
+      <!-- Cart controls (NO redirect to /cart) -->
+      <div class="mt-8 flex flex-wrap items-center gap-4">
+        <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
+          <button type="button" class="h-9 w-9 rounded-full hover:bg-white/70" id="decBtn">−</button>
+          <span class="w-10 text-center text-base tabular-nums" data-dr-cart-qty={service.id}>0</span>
+          <button type="button" class="h-9 w-9 rounded-full hover:bg-white/70" id="incBtn">+</button>
+        </div>
+
+        <span class="text-sm" style="color: var(--muted);">🛒 Add to cart</span>
+
+        <a class="rounded-[999px] border border-[var(--line)] bg-white/40 px-5 py-2 text-sm hover:bg-white/70" href="/shop">
+          Back to shop
+        </a>
       </div>
 
       <div class="mt-10 grid gap-4">
@@ -163,4 +148,21 @@ const galleryRows = gallery.results ?? [];
       </div>
     </div>
   </section>
+
+  <script define:vars={{ serviceId: service.id, priceCents: service.price_cents }}>
+    const priceEl = document.getElementById("priceMvr");
+    priceEl.textContent = window.DarkroomCart.formatMVR(priceCents);
+
+    document.getElementById("incBtn").addEventListener("click", () => {
+      window.DarkroomCart.inc(serviceId);
+      window.DarkroomCart.toast("Added to cart");
+    });
+
+    document.getElementById("decBtn").addEventListener("click", () => {
+      const before = window.DarkroomCart.getQty(serviceId);
+      window.DarkroomCart.dec(serviceId);
+      const after = window.DarkroomCart.getQty(serviceId);
+      if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
+    });
+  </script>
 </BaseLayout>

@@ -1,38 +1,101 @@
 ---
 const {
+  id, // REQUIRED for cart controls
   href = "/shop/sample",
-  image = "https://picsum.photos/800/1000",
+  image,
   name = "Product Name",
-  price = "$25.00",
-  compareAt, // "$25.00" (optional)
-  badge,     // "SALE" (optional)
+  priceCents, // number (cents)
+  compareAtCents, // optional
+  badge, // optional "SALE"
 } = Astro.props;
+
+if (!id) {
+  throw new Error("ProductCard requires prop: id");
+}
 ---
 
-<a href={href} class="group block">
-  <div class="relative overflow-hidden bg-white/20">
-    <img
-      src={image}
-      alt={name}
-      class="aspect-[4/5] w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-      loading="lazy"
-    />
-
-    {badge && (
-      <div class="absolute right-3 top-3 bg-black px-2 py-1 text-[11px] font-medium tracking-wide text-white">
-        {badge}
+<article class="rounded-3xl border border-[var(--line)] bg-white/20 p-4">
+  <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-white/20">
+    {image ? (
+      <img src={image} alt={name} class="aspect-[4/3] w-full object-cover" loading="lazy" />
+    ) : (
+      <div class="flex aspect-[4/3] w-full items-center justify-center text-xs" style="color: var(--muted);">
+        No image
       </div>
     )}
-  </div>
+  </a>
 
-  <div class="mt-4 text-sm">
-    <div class="font-medium" style="font-family: var(--font-serif); font-size: 20px;">
-      {name}
+  <div class="mt-4 flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2">
+        {badge && (
+          <span class="rounded-full bg-black px-2 py-0.5 text-[11px] text-white">{badge}</span>
+        )}
+        <a href={href} class="truncate text-sm font-semibold hover:opacity-70">{name}</a>
+      </div>
+
+      <div class="mt-2 text-sm">
+        <span class="font-medium" data-price-cents={priceCents}>{/* filled by JS below */}</span>
+        {compareAtCents && (
+          <span class="ml-2 text-xs line-through" style="color: var(--muted);" data-compare-cents={compareAtCents}></span>
+        )}
+      </div>
     </div>
 
-    <div class="mt-1 flex items-center gap-2" style="color: var(--muted);">
-      <span class={compareAt ? "text-[var(--text)]" : ""}>{price}</span>
-      {compareAt && <span class="line-through opacity-60">{compareAt}</span>}
+    <!-- Quantity controls -->
+    <div class="shrink-0">
+      <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
+        <button type="button" class="h-7 w-7 rounded-full hover:bg-white/70" data-dr-dec={id} aria-label="Decrease">
+          −
+        </button>
+
+        <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={id}>0</span>
+
+        <button type="button" class="h-7 w-7 rounded-full hover:bg-white/70" data-dr-inc={id} aria-label="Increase">
+          +
+        </button>
+      </div>
+      <div class="mt-1 text-center text-[11px]" style="color: var(--muted);">
+        🛒 Add to cart
+      </div>
     </div>
   </div>
-</a>
+</article>
+
+<script is:inline>
+  (function () {
+    const root = document.currentScript?.previousElementSibling;
+    // formatting
+    const priceEl = root?.querySelector("[data-price-cents]");
+    if (priceEl && window.DarkroomCart) {
+      const cents = Number(priceEl.getAttribute("data-price-cents") || "0");
+      priceEl.textContent = window.DarkroomCart.formatMVR(cents);
+    }
+    const compareEl = root?.querySelector("[data-compare-cents]");
+    if (compareEl && window.DarkroomCart) {
+      const cents = Number(compareEl.getAttribute("data-compare-cents") || "0");
+      compareEl.textContent = window.DarkroomCart.formatMVR(cents);
+    }
+
+    // bind +/-
+    document.querySelectorAll("[data-dr-inc]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-dr-inc");
+        window.DarkroomCart?.inc(id);
+        window.DarkroomCart?.toast("Added to cart");
+      });
+    });
+
+    document.querySelectorAll("[data-dr-dec]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-dr-dec");
+        const before = window.DarkroomCart?.getQty(id) || 0;
+        window.DarkroomCart?.dec(id);
+        const after = window.DarkroomCart?.getQty(id) || 0;
+        if (before > 0 && after < before) window.DarkroomCart?.toast("Removed from cart");
+      });
+    });
+
+    // initial sync already handled in BaseLayout
+  })();
+</script>

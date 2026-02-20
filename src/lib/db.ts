@@ -10,9 +10,9 @@ export type ProductRow = {
   image: string | null;
 };
 
-export function money(cents: number, currency = "USD") {
+export function money(cents: number, currency = "MVR") {
   const amount = (cents / 100).toFixed(2);
-  return currency === "USD" ? `$${amount}` : `${amount} ${currency}`;
+  return currency === "MVR" ? `MVR ${amount}` : `${amount} ${currency}`;
 }
 
 export async function listProducts(db: D1Database): Promise<ProductRow[]> {
