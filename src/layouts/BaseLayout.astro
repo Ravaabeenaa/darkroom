@@ -6,177 +6,62 @@ const { title = "DARKROOM" } = Astro.props;
 <!doctype html>
 <html lang="en">
   <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
   </head>
   <body>
-    <header class="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-      <a href="/" class="text-lg font-semibold tracking-wide">DARKROOM</a>
+    <div class="min-h-screen">
+      <header class="px-6 py-6">
+        <div class="mx-auto flex max-w-[var(--container)] items-center justify-between">
+          <a href="/" class="text-xl tracking-tight" style="font-family: var(--font-serif);">darkroom</a>
 
-      <nav class="flex items-center gap-6 text-sm">
-        <a href="/shop" class="hover:opacity-70">Shop</a>
-        <a href="/about" class="hover:opacity-70">About</a>
+          <nav class="hidden gap-8 text-sm md:flex">
+            <a href="/shop">Shop</a>
+            <a href="/about">About</a>
+            <a href="/cart">Cart</a>
+          </nav>
 
-        <a href="/cart" class="relative inline-flex items-center gap-2 hover:opacity-70">
-          <span>Cart</span>
-          <span
-            id="drCartCount"
-            class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white"
-            style="display:none"
-          ></span>
-        </a>
-      </nav>
-    </header>
+          <a class="md:hidden text-sm" href="/menu">Menu</a>
+        </div>
+      </header>
 
-    <main class="mx-auto max-w-6xl px-6">
-      <slot />
-    </main>
+      <main class="px-6">
+        <div class="mx-auto max-w-[var(--container)]">
+          <slot />
+        </div>
+      </main>
 
-    <!-- Toast -->
-    <div
-      id="drToast"
-      class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-[var(--line)] bg-white/90 px-4 py-3 text-sm shadow"
-      style="display:none"
-    ></div>
+      <footer class="mt-24 px-6 pb-16 pt-12">
+        <div class="mx-auto max-w-[var(--container)] border-t" style="border-color: var(--line);">
+          <div class="grid gap-10 py-10 md:grid-cols-3">
+            <div>
+              <div class="text-2xl" style="font-family: var(--font-serif);">DARKROOM</div>
+            </div>
 
-    <footer class="mx-auto mt-24 max-w-6xl px-6 pb-10">
-      <div class="grid gap-10 border-t border-[var(--line)] pt-10 md:grid-cols-3">
-        <div>
-          <div class="text-sm font-semibold">DARKROOM</div>
-          <div class="mt-2 text-sm" style="color: var(--muted);">
-            Email: hello@darkroom.mv<br />
-            Phone: +960 000-0000
+            <div class="text-sm">
+              <div class="mb-3 font-medium">Explore</div>
+              <div class="grid gap-2">
+                <a href="/about">About us</a>
+                <a href="/about#contact">Contact</a>
+                <a href="/shop">Shop</a>
+                <a href="/services">Services</a>
+              </div>
+            </div>
+
+            <div class="text-sm">
+              <div class="mb-3 font-medium">Contact</div>
+              <div class="grid gap-2" style="color: var(--muted);">
+                <div>Email: hello@darkroom.mv</div>
+                <div>Phone: +960 000-0000</div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div>
-          <div class="text-sm font-semibold">Explore</div>
-          <div class="mt-2 space-y-2 text-sm" style="color: var(--muted);">
-            <div><a class="hover:opacity-70" href="/about">About us</a></div>
-            <div><a class="hover:opacity-70" href="/shop">Shop</a></div>
-            <div><a class="hover:opacity-70" href="/services">Services</a></div>
-          </div>
-        </div>
-
-        <div>
-          <div class="text-sm font-semibold">Contact</div>
-          <div class="mt-2 text-sm" style="color: var(--muted);">
-            We’ll confirm your order via your preferred contact method.
-          </div>
-        </div>
-      </div>
-    </footer>
-
-    <script is:inline>
-      (function () {
-        const CART_KEY = "dr_cart_v1";
-
-        function load() {
-          try {
-            const raw = localStorage.getItem(CART_KEY);
-            if (!raw) return {};
-            const obj = JSON.parse(raw);
-            return obj && typeof obj === "object" ? obj : {};
-          } catch {
-            return {};
-          }
-        }
-
-        function save(cart) {
-          localStorage.setItem(CART_KEY, JSON.stringify(cart));
-          window.dispatchEvent(new CustomEvent("dr-cart-changed", { detail: cart }));
-        }
-
-        function getQty(id) {
-          const cart = load();
-          return Math.max(0, Number(cart[id] || 0));
-        }
-
-        function setQty(id, qty) {
-          const cart = load();
-          const q = Math.max(0, Number(qty || 0));
-          if (q <= 0) delete cart[id];
-          else cart[id] = q;
-          save(cart);
-        }
-
-        function inc(id) {
-          setQty(id, getQty(id) + 1);
-        }
-
-        function dec(id) {
-          setQty(id, getQty(id) - 1);
-        }
-
-        function countItems() {
-          const cart = load();
-          let n = 0;
-          for (const k in cart) n += Math.max(0, Number(cart[k] || 0));
-          return n;
-        }
-
-        function formatMVR(cents) {
-          const n = Number(cents || 0) / 100;
-          // Keep it simple and stable
-          return `MVR ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
-
-        function toast(msg) {
-          const el = document.getElementById("drToast");
-          if (!el) return;
-          el.textContent = msg;
-          el.style.display = "block";
-          clearTimeout(el.__t);
-          el.__t = setTimeout(() => {
-            el.style.display = "none";
-          }, 1600);
-        }
-
-        function syncHeaderCount() {
-          const el = document.getElementById("drCartCount");
-          if (!el) return;
-          const n = countItems();
-          if (n > 0) {
-            el.textContent = String(n);
-            el.style.display = "inline-flex";
-          } else {
-            el.textContent = "";
-            el.style.display = "none";
-          }
-        }
-
-        function syncQtyBadges() {
-          document.querySelectorAll("[data-dr-cart-qty]").forEach((node) => {
-            const id = node.getAttribute("data-dr-cart-qty");
-            if (!id) return;
-            node.textContent = String(getQty(id));
-          });
-        }
-
-        window.DarkroomCart = {
-          load,
-          save,
-          getQty,
-          setQty,
-          inc,
-          dec,
-          countItems,
-          formatMVR,
-          toast,
-          syncHeaderCount,
-          syncQtyBadges,
-        };
-
-        // initial sync
-        syncHeaderCount();
-        syncQtyBadges();
-
-        window.addEventListener("dr-cart-changed", () => {
-          syncHeaderCount();
-          syncQtyBadges();
-        });
-      })();
-    </script>
+      </footer>
+    </div>
   </body>
 </html>
