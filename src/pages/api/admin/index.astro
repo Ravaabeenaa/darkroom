@@ -1,0 +1,36 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+---
+
+<BaseLayout title="Admin — DARKROOM">
+  <section class="mx-auto mt-12 max-w-5xl px-6">
+    <h1 class="text-5xl" style="font-family: var(--font-serif);">Admin</h1>
+    <p class="mt-2 text-sm" style="color: var(--muted);">
+      Manage services, photos, and orders.
+    </p>
+
+    <div class="mt-10 grid gap-6 md:grid-cols-2">
+      <a
+        href="/admin/services"
+        class="rounded-3xl border border-[var(--line)] bg-white/40 p-6 hover:bg-white/60 transition"
+      >
+        <div class="text-lg font-semibold">Services</div>
+        <div class="mt-2 text-sm" style="color: var(--muted);">
+          Add/edit services, pricing, tags, and primary images.
+        </div>
+      </a>
+
+      <a
+        href="/admin/orders"
+        class="rounded-3xl border border-[var(--line)] bg-white/40 p-6 hover:bg-white/60 transition"
+      >
+        <div class="text-lg font-semibold">Orders</div>
+        <div class="mt-2 text-sm" style="color: var(--muted);">
+          View orders and update order status.
+        </div>
+      </a>
+    </div>
+  </section>
+</BaseLayout>

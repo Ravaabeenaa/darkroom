@@ -1,0 +1,41 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const error = Astro.url.searchParams.get("error");
+---
+
+<BaseLayout title="Admin Login — DARKROOM">
+  <section class="mx-auto mt-16 max-w-md px-6">
+    <h1 class="text-4xl" style="font-family: var(--font-serif);">Admin</h1>
+    <p class="mt-2 text-sm" style="color: var(--muted);">
+      Sign in to manage services, images, and orders.
+    </p>
+
+    {error && (
+      <div class="mt-6 rounded-2xl border border-[var(--line)] bg-white/40 p-4 text-sm">
+        <b>Login failed.</b> Try again.
+      </div>
+    )}
+
+    <form method="post" action="/api/admin/login" class="mt-8 space-y-4">
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Password</span>
+        <input
+          name="password"
+          type="password"
+          required
+          class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 outline-none"
+        />
+      </label>
+
+      <button
+        type="submit"
+        class="w-full rounded-[999px] bg-black px-6 py-3 text-sm font-medium text-white hover:opacity-90"
+      >
+        Sign in
+      </button>
+    </form>
+  </section>
+</BaseLayout>
