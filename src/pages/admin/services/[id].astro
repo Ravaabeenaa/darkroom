@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+const id = Astro.params.id as string;
+
+type ServiceRow = {
+  id: string;
+  slug: string;
+  service_group: string | null;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  active: number;
+  tags: string | null;
+  notes: string | null;
+  primary_image_key: string | null;
+};
+
+const service = await db.prepare(`
+  SELECT id, slug, service_group, name, description, price_cents, active, tags, notes, primary_image_key
+  FROM services
+  WHERE id = ?
+  LIMIT 1;
+`).bind(id).first<ServiceRow>();
+
+if (!service) {
+  return new Response("Not found", { status: 404 });
+}
+
+const saved = Astro.url.searchParams.get("saved") === "1";
+
+function moneyToInput(cents: number) {
+  return (cents / 100).toFixed(2).replace(/\.00$/, "");
+}
+---
+
+<BaseLayout title={`Edit — ${service.name}`}>
+  <section class="mx-auto mt-12 max-w-3xl px-6">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-4xl" style="font-family: var(--font-serif);">Edit service</h1>
+        <p class="mt-2 text-sm" style="color: var(--muted);">
+          ID: <span class="font-mono">{service.id}</span> • slug: <span class="font-mono">{service.slug}</span>
+        </p>
+      </div>
+      <a class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-3 text-sm hover:bg-white/80" href="/admin/services">
+        Back
+      </a>
+    </div>
+
+    {saved && (
+      <div class="mt-6 rounded-2xl border border-[var(--line)] bg-white/40 p-4 text-sm">
+        ✔️ Saved
+      </div>
+    )}
+
+    <form method="post" action="/api/admin/services/save" class="mt-8 space-y-4">
+      <input type="hidden" name="mode" value="edit" />
+      <input type="hidden" name="id" value={service.id} />
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Group</span>
+          <input name="service_group" value={service.service_group ?? ""} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+
+        <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
+          <input type="checkbox" name="active" checked={service.active === 1} />
+          Active (visible in shop)
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Name *</span>
+        <input name="name" required value={service.name} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+      </label>
+
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Description</span>
+        <textarea name="description" rows="5" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{service.description ?? ""}</textarea>
+      </label>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Price (USD)</span>
+          <input name="price" inputmode="decimal" value={moneyToInput(service.price_cents)} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Tags</span>
+          <input name="tags" value={service.tags ?? ""} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+      </div>
+
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Notes (internal)</span>
+        <textarea name="notes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{service.notes ?? ""}</textarea>
+      </label>
+
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Primary image key (R2)</span>
+        <input name="primary_image_key" value={service.primary_image_key ?? ""} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="services/dev001/main.jpg" />
+      </label>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        <button class="rounded-[999px] bg-black px-6 py-3 text-sm font-medium text-white hover:opacity-90" type="submit">
+          Save
+        </button>
+
+        <a class="rounded-[999px] border border-[var(--line)] bg-white/60 px-6 py-3 text-sm hover:bg-white/80" href={`/shop/${service.slug}`}>
+          View on site
+        </a>
+      </div>
+    </form>
+
+    <form method="post" action="/api/admin/services/delete" class="mt-10">
+      <input type="hidden" name="id" value={service.id} />
+      <button class="rounded-[999px] border border-red-400/40 bg-white/60 px-6 py-3 text-sm hover:bg-white/80" type="submit">
+        Disable service
+      </button>
+      <p class="mt-2 text-xs" style="color: var(--muted);">
+        This sets active=0 (soft delete).
+      </p>
+    </form>
+  </section>
+</BaseLayout>

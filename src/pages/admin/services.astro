@@ -1,12 +1,122 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+
 export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+
+type ServiceRow = {
+  id: string;
+  slug: string;
+  service_group: string | null;
+  name: string;
+  price_cents: number;
+  active: number;
+  tags: string | null;
+  primary_image_key: string | null;
+};
+
+const q = Astro.url.searchParams.get("q")?.trim() ?? "";
+const showInactive = Astro.url.searchParams.get("inactive") === "1";
+
+const sql = `
+  SELECT id, slug, service_group, name, price_cents, active, tags, primary_image_key
+  FROM services
+  WHERE (${showInactive ? "1=1" : "active=1"})
+    AND (? = '' OR name LIKE '%' || ? || '%' OR id LIKE '%' || ? || '%' OR tags LIKE '%' || ? || '%')
+  ORDER BY active DESC, service_group ASC, name ASC;
+`;
+
+const res = await db.prepare(sql).bind(q, q, q, q).all<ServiceRow>();
+const rows = res.results ?? [];
+
+function money(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 ---
+
 <BaseLayout title="Services — Admin">
-  <section class="mx-auto mt-12 max-w-5xl px-6">
-    <h1 class="text-4xl" style="font-family: var(--font-serif);">Services</h1>
-    <p class="mt-2 text-sm" style="color: var(--muted);">
-      Next: table view + add/edit form + image upload.
-    </p>
+  <section class="mx-auto mt-12 max-w-6xl px-6">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-4xl" style="font-family: var(--font-serif);">Services</h1>
+        <p class="mt-2 text-sm" style="color: var(--muted);">
+          Add/edit services and manage what shows in the shop.
+        </p>
+      </div>
+
+      <a
+        href="/admin/services/new"
+        class="rounded-[999px] bg-black px-5 py-3 text-sm font-medium text-white hover:opacity-90"
+      >
+        + New service
+      </a>
+    </div>
+
+    <form class="mt-8 flex flex-wrap gap-3" method="get">
+      <input
+        type="text"
+        name="q"
+        value={q}
+        placeholder="Search (name, id, tags)"
+        class="w-full max-w-md rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
+      />
+      <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
+        <input type="checkbox" name="inactive" value="1" checked={showInactive} />
+        Show inactive
+      </label>
+      <button
+        class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-3 text-sm hover:bg-white/80"
+        type="submit"
+      >
+        Filter
+      </button>
+    </form>
+
+    <div class="mt-8 overflow-hidden rounded-3xl border border-[var(--line)] bg-white/40">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-white/40">
+          <tr>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Group</th>
+            <th class="px-4 py-3">Price</th>
+            <th class="px-4 py-3">Active</th>
+            <th class="px-4 py-3">ID</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((s) => (
+            <tr class="border-t border-[var(--line)]">
+              <td class="px-4 py-3">
+                <div class="font-medium">{s.name}</div>
+                <div class="mt-1 text-xs" style="color: var(--muted);">
+                  slug: {s.slug}
+                </div>
+              </td>
+              <td class="px-4 py-3">{s.service_group ?? "—"}</td>
+              <td class="px-4 py-3">{money(s.price_cents)}</td>
+              <td class="px-4 py-3">{s.active ? "✔️" : "❌"}</td>
+              <td class="px-4 py-3 font-mono text-xs">{s.id}</td>
+              <td class="px-4 py-3 text-right">
+                <a
+                  href={`/admin/services/${encodeURIComponent(s.id)}`}
+                  class="rounded-[999px] border border-[var(--line)] bg-white/60 px-3 py-2 text-xs hover:bg-white/80"
+                >
+                  Edit
+                </a>
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td class="px-4 py-10 text-sm" colSpan="6" style="color: var(--muted);">
+                No services found.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   </section>
 </BaseLayout>
