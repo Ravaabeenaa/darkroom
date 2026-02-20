@@ -18,8 +18,8 @@ type FeaturedRow = {
   primary_image_key: string | null;
 };
 
-function money(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+function moneyMVR(cents: number) {
+  return `MVR ${(cents / 100).toFixed(2)}`;
 }
 
 function imgUrl(key: string | null) {
@@ -31,22 +31,25 @@ function hrefFor(p: FeaturedRow) {
   return `/shop/${p.slug ?? p.id}`;
 }
 
-const featuredRes = await db.prepare(`
-  SELECT id, slug, name, price_cents, primary_image_key
-  FROM services
-  WHERE active = 1 AND featured = 1
-  ORDER BY updated_at DESC
-  LIMIT 4;
-`).all();
+const featuredRes = await db
+  .prepare(`
+    SELECT id, slug, name, price_cents, primary_image_key
+    FROM services
+    WHERE active = 1 AND featured = 1
+    ORDER BY updated_at DESC
+    LIMIT 4;
+  `)
+  .all();
 
 const featured = (featuredRes.results ?? []) as FeaturedRow[];
 
 const services = [
-  { title:"Basic Service", content:"Describe important details like price, value, length of service, and why it’s unique." },
-  { title:"Intermediate Service", content:"Add a second service tier with key inclusions and turnaround time." },
-  { title:"Advanced Service", content:"Add premium offering details, add-ons, and deliverables." },
+  { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it’s unique." },
+  { title: "Intermediate Service", content: "Add a second service tier with key inclusions and turnaround time." },
+  { title: "Advanced Service", content: "Add premium offering details, add-ons, and deliverables." },
 ];
 ---
+
 <BaseLayout title="DARKROOM">
   <!-- HERO -->
   <section class="pt-10 md:pt-16">
@@ -70,7 +73,7 @@ const services = [
       <div class="md:pt-10">
         <div class="bg-white/20 p-0">
           <img
-            src=`${r2Base}/home/Ektar100_029.dng.png`
+            src={`${r2Base}/home/Ektar100_029.dng.png`}
             alt="Hero"
             class="aspect-[4/3] w-full object-cover"
             loading="eager"
@@ -85,14 +88,21 @@ const services = [
     <SectionHeader title="Featured Products" actionLabel="Shop all" actionHref="/shop" />
 
     <div class="mt-10 grid gap-8 md:grid-cols-4">
-      {featured.map((p) => (
-        <ProductCard
-          href={hrefFor(p)}
-          image={imgUrl(p.primary_image_key) ?? undefined}
-          name={p.name}
-          price={money(p.price_cents)}
-        />
-      ))}
+      {featured.length === 0 ? (
+        <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 text-sm" style="color: var(--muted);">
+          No featured products yet.
+        </div>
+      ) : (
+        featured.map((p) => (
+          <ProductCard
+            id={p.id}
+            href={hrefFor(p)}
+            image={imgUrl(p.primary_image_key) ?? undefined}
+            name={p.name}
+            priceCents={p.price_cents}
+          />
+        ))
+      )}
     </div>
   </section>
 
@@ -117,7 +127,7 @@ const services = [
 
       <div class="md:pt-4">
         <img
-          src=`${r2Base}/services/inspecting.jpg`
+          src={`${r2Base}/services/inspecting.jpg`}
           alt="Services"
           class="aspect-[4/3] w-full object-cover"
           loading="lazy"
@@ -141,7 +151,7 @@ const services = [
 
         <div class="mt-10">
           <img
-            src=`${r2Base}/home/Gold200_025.dng.png`
+            src={`${r2Base}/home/Gold200_025.dng.png`}
             alt="About 1"
             class="w-full object-cover"
             loading="lazy"
@@ -151,7 +161,7 @@ const services = [
 
       <div class="md:pt-10">
         <img
-          src=`${r2Base}/home/Ektar100_028.dng.png`
+          src={`${r2Base}/home/Ektar100_028.dng.png`}
           alt="About 2"
           class="w-full object-cover"
           loading="lazy"
