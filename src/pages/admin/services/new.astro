@@ -2,27 +2,40 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 
 export const prerender = false;
+
+const error = Astro.url.searchParams.get("error") || "";
+const msg = Astro.url.searchParams.get("msg") || "";
 ---
 
 <BaseLayout title="New Service — Admin">
   <section class="mx-auto mt-12 max-w-3xl px-6">
     <h1 class="text-4xl" style="font-family: var(--font-serif);">New service</h1>
     <p class="mt-2 text-sm" style="color: var(--muted);">
-      Create a new service/product. Images will be added next.
+      Create a new service/product. Images can be added after creation.
     </p>
+
+    {(error || msg) && (
+      <div class="mt-6 rounded-2xl border border-[var(--line)] bg-white/40 p-4 text-sm">
+        {error ? <span>❌ {error}</span> : <span>✔️ {msg}</span>}
+      </div>
+    )}
 
     <form method="post" action="/api/admin/services/save" class="mt-8 space-y-4">
       <input type="hidden" name="mode" value="new" />
 
       <div class="grid gap-4 md:grid-cols-2">
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">ID (optional)</span>
-          <input name="id" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="dev001 / flm001 / cam001" />
+          <span class="text-sm" style="color: var(--muted);">ID *</span>
+          <input id="serviceId" name="id" required class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="dev001 / flm001 / cam001" />
+          <p class="mt-2 text-xs" style="color: var(--muted);">
+            First 3 letters auto-suggest the group.
+          </p>
         </label>
 
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Group</span>
-          <input name="service_group" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="film_roll / camera / developing" />
+          <span class="text-sm" style="color: var(--muted);">Group *</span>
+          <input id="serviceGroup" name="service_group" required class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="film_roll / camera / developing" />
+          <p id="groupHelp" class="mt-2 text-xs" style="color: var(--muted);"></p>
         </label>
       </div>
 
@@ -58,10 +71,8 @@ export const prerender = false;
         <textarea name="notes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"></textarea>
       </label>
 
-      <label class="block">
-        <span class="text-sm" style="color: var(--muted);">Primary image key (optional, later)</span>
-        <input name="primary_image_key" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="services/dev001/main.jpg" />
-      </label>
+      <!-- Do not set primary_image_key here anymore -->
+      <input type="hidden" name="primary_image_key" value="" />
 
       <div class="mt-8 flex flex-wrap gap-3">
         <button class="rounded-[999px] bg-black px-6 py-3 text-sm font-medium text-white hover:opacity-90" type="submit">
@@ -73,4 +84,48 @@ export const prerender = false;
       </div>
     </form>
   </section>
+
+  <script>
+    const idEl = document.getElementById("serviceId");
+    const groupEl = document.getElementById("serviceGroup");
+    const groupHelp = document.getElementById("groupHelp");
+
+    // Seed mapping (your provided list)
+    let prefixToGroup = {
+      cam: "camera",
+      dev: "developing",
+      flm: "film_roll",
+      pro: "processing",
+      tim: "time",
+    };
+
+    async function refreshMapping() {
+      try {
+        const res = await fetch("/api/admin/services/groups.json");
+        const data = await res.json();
+        if (data?.ok && data?.prefixToGroup) prefixToGroup = data.prefixToGroup;
+      } catch {}
+    }
+
+    function applySuggestion() {
+      const id = (idEl.value || "").trim().toLowerCase();
+      const prefix = id.slice(0, 3);
+      const suggested = prefixToGroup[prefix];
+
+      if (suggested) {
+        groupEl.value = suggested;
+        groupHelp.textContent = `Suggested from prefix "${prefix}".`;
+      } else if (prefix.length === 3) {
+        groupHelp.textContent = `No existing group for prefix "${prefix}" — you are creating a new group.`;
+      } else {
+        groupHelp.textContent = "";
+      }
+    }
+
+    (async () => {
+      await refreshMapping();
+      applySuggestion();
+      idEl.addEventListener("input", applySuggestion);
+    })();
+  </script>
 </BaseLayout>

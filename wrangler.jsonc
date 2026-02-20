@@ -20,5 +20,14 @@
 			"database_id": "561aaf60-2524-431b-b144-8a8831788a61",
 			"remote": true
 		}
-	]
+	],
+	"r2_buckets": [
+    {
+      "binding": "darkroom_media",
+      "bucket_name": "darkroom-media"
+      // Optional for dev if you want to hit real R2:
+      // "preview_bucket_name": "darkroom-media"
+    }
+  ]
+
 }

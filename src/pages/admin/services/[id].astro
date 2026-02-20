@@ -2,6 +2,7 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 
 const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+const base = String(Astro.locals.runtime.env.PUBLIC_R2_BASE_URL ?? "").replace(/\/+$/, "");
 const id = Astro.params.id as string;
 
 type ServiceRow = {
@@ -17,6 +18,16 @@ type ServiceRow = {
   primary_image_key: string | null;
 };
 
+type ImageRow = {
+  id: string;
+  service_id: string;
+  image_key: string;
+  kind: "primary" | "gallery" | "sample";
+  sort_order: number;
+  alt: string | null;
+  created_at: string | null;
+};
+
 const service = await db.prepare(`
   SELECT id, slug, service_group, name, description, price_cents, active, tags, notes, primary_image_key
   FROM services
@@ -28,10 +39,27 @@ if (!service) {
   return new Response("Not found", { status: 404 });
 }
 
+const imgs = await db.prepare(`
+  SELECT id, service_id, image_key, kind, sort_order, alt, created_at
+  FROM service_images
+  WHERE service_id = ?
+  ORDER BY
+    CASE kind WHEN 'primary' THEN 0 WHEN 'gallery' THEN 1 ELSE 2 END,
+    sort_order ASC,
+    created_at DESC;
+`).bind(id).all<ImageRow>();
+
+const imageRows = imgs.results ?? [];
+const primary = imageRows.find((r) => r.kind === "primary") ?? null;
+const gallery = imageRows.filter((r) => r.kind === "gallery");
+
 const saved = Astro.url.searchParams.get("saved") === "1";
 
 function moneyToInput(cents: number) {
   return (cents / 100).toFixed(2).replace(/\.00$/, "");
+}
+function imgUrl(key: string) {
+  return base ? `${base}/${key}` : `/${key}`;
 }
 ---
 
@@ -55,6 +83,108 @@ function moneyToInput(cents: number) {
       </div>
     )}
 
+    <!-- Images -->
+    <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold">Images</h2>
+          <p class="mt-1 text-xs" style="color: var(--muted);">
+            Uploads go to R2 and are recorded in <span class="font-mono">service_images</span>.
+          </p>
+        </div>
+        <div class="text-xs font-mono" style="color: var(--muted);">
+          {base || "PUBLIC_R2_BASE_URL missing"}
+        </div>
+      </div>
+
+      <!-- Primary -->
+      <div class="mt-6">
+        <h3 class="text-sm font-semibold">Primary</h3>
+
+        <div class="mt-3 grid gap-4 md:grid-cols-[180px_1fr] md:items-start">
+          {primary ? (
+            <img
+              src={imgUrl(primary.image_key)}
+              alt={primary.alt ?? service.name}
+              class="h-[180px] w-[180px] rounded-2xl border border-[var(--line)] object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div class="flex h-[180px] w-[180px] items-center justify-center rounded-2xl border border-[var(--line)] bg-white/20 text-xs" style="color: var(--muted);">
+              No primary image
+            </div>
+          )}
+
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <input id="primaryFile" type="file" accept="image/*" class="text-sm" />
+              <button id="uploadPrimary" type="button" class="rounded-[999px] bg-black px-5 py-2 text-sm font-medium text-white hover:opacity-90">
+                Upload primary
+              </button>
+              {primary && (
+                <button
+                  id="deletePrimary"
+                  type="button"
+                  class="rounded-[999px] border border-red-400/40 bg-white/50 px-5 py-2 text-sm hover:bg-white/80"
+                  data-image-id={primary.id}
+                >
+                  Delete primary
+                </button>
+              )}
+              <span id="primaryStatus" class="text-xs" style="color: var(--muted);"></span>
+            </div>
+
+            <div class="text-xs" style="color: var(--muted);">
+              <div><b>Key:</b> <span class="font-mono break-all">{primary?.image_key ?? "—"}</span></div>
+              <div class="mt-1">
+                Primary key in <span class="font-mono">services.primary_image_key</span> updates automatically.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gallery -->
+      <div class="mt-8">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold">Gallery</h3>
+          <span class="text-xs" style="color: var(--muted);">{gallery.length} image(s)</span>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <input id="galleryFiles" type="file" accept="image/*" multiple class="text-sm" />
+          <button id="uploadGallery" type="button" class="rounded-[999px] bg-black px-5 py-2 text-sm font-medium text-white hover:opacity-90">
+            Upload gallery
+          </button>
+          <span id="galleryStatus" class="text-xs" style="color: var(--muted);"></span>
+        </div>
+
+        <p class="mt-3 text-xs" style="color: var(--muted);">
+          Drag thumbnails to reorder. Reorder is saved immediately.
+        </p>
+
+        <div id="galleryGrid" class="mt-4 grid grid-cols-3 gap-3 md:grid-cols-4">
+          {gallery.map((img) => (
+            <div
+              class="group relative overflow-hidden rounded-2xl border border-[var(--line)] bg-white/20"
+              draggable="true"
+              data-image-id={img.id}
+            >
+              <img src={imgUrl(img.image_key)} alt={img.alt ?? service.name} class="aspect-square w-full object-cover" loading="lazy" />
+              <button
+                type="button"
+                class="absolute right-2 top-2 hidden rounded-[999px] border border-red-400/40 bg-white/70 px-3 py-1 text-xs hover:bg-white group-hover:block"
+                data-delete-image-id={img.id}
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- Existing edit form -->
     <form method="post" action="/api/admin/services/save" class="mt-8 space-y-4">
       <input type="hidden" name="mode" value="edit" />
       <input type="hidden" name="id" value={service.id} />
@@ -100,7 +230,7 @@ function moneyToInput(cents: number) {
 
       <label class="block">
         <span class="text-sm" style="color: var(--muted);">Primary image key (R2)</span>
-        <input name="primary_image_key" value={service.primary_image_key ?? ""} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" placeholder="services/dev001/main.jpg" />
+        <input readonly name="primary_image_key" value={service.primary_image_key ?? ""} class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/50 px-4 py-3 text-sm outline-none" />
       </label>
 
       <div class="mt-8 flex flex-wrap gap-3">
@@ -124,4 +254,184 @@ function moneyToInput(cents: number) {
       </p>
     </form>
   </section>
+
+  <script define:vars={{ serviceId: service.id }}>
+    // Client-side compression to WEBP (automatic)
+    async function compressToWebp(file, { maxDim = 2000, quality = 0.82 } = {}) {
+      const img = document.createElement("img");
+      const url = URL.createObjectURL(file);
+
+      try {
+        await new Promise((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = reject;
+          img.src = url;
+        });
+
+        const { width, height } = img;
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        const w = Math.round(width * scale);
+        const h = Math.round(height * scale);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const blob = await new Promise((resolve) =>
+          canvas.toBlob((b) => resolve(b), "image/webp", quality)
+        );
+
+        if (!blob) return file;
+        return new File([blob], file.name.replace(/\.\w+$/, "") + ".webp", { type: "image/webp" });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    async function uploadOne(file, kind) {
+      const compressed = await compressToWebp(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      fd.append("service_id", serviceId);
+      fd.append("kind", kind);
+
+      const res = await fetch("/api/admin/r2/upload", { method: "POST", body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+    }
+
+    async function deleteImage(imageId) {
+      const res = await fetch("/api/admin/r2/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ image_id: imageId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || `Delete failed (${res.status})`);
+    }
+
+    async function saveReorder(orderedIds) {
+      const res = await fetch("/api/admin/r2/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ service_id: serviceId, kind: "gallery", ordered_image_ids: orderedIds }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.error || `Reorder failed (${res.status})`);
+    }
+
+    // Primary upload/delete
+    const primaryFile = document.getElementById("primaryFile");
+    const uploadPrimary = document.getElementById("uploadPrimary");
+    const primaryStatus = document.getElementById("primaryStatus");
+    const deletePrimary = document.getElementById("deletePrimary");
+
+    uploadPrimary?.addEventListener("click", async () => {
+      try {
+        const file = primaryFile?.files?.[0];
+        if (!file) return (primaryStatus.textContent = "Choose a file first.");
+        primaryStatus.textContent = "Uploading…";
+        await uploadOne(file, "primary");
+        primaryStatus.textContent = "Done. Reloading…";
+        location.reload();
+      } catch (e) {
+        primaryStatus.textContent = e?.message || "Upload failed.";
+      }
+    });
+
+    deletePrimary?.addEventListener("click", async () => {
+      const imageId = deletePrimary.getAttribute("data-image-id");
+      if (!imageId) return;
+      if (!confirm("Delete primary image? This removes the file from R2 and the DB.")) return;
+      try {
+        primaryStatus.textContent = "Deleting…";
+        await deleteImage(imageId);
+        primaryStatus.textContent = "Deleted. Reloading…";
+        location.reload();
+      } catch (e) {
+        primaryStatus.textContent = e?.message || "Delete failed.";
+      }
+    });
+
+    // Gallery upload
+    const galleryFiles = document.getElementById("galleryFiles");
+    const uploadGallery = document.getElementById("uploadGallery");
+    const galleryStatus = document.getElementById("galleryStatus");
+
+    uploadGallery?.addEventListener("click", async () => {
+      try {
+        const files = Array.from(galleryFiles?.files || []);
+        if (!files.length) return (galleryStatus.textContent = "Choose files first.");
+        galleryStatus.textContent = `Uploading ${files.length}…`;
+        for (let i = 0; i < files.length; i++) {
+          await uploadOne(files[i], "gallery");
+          galleryStatus.textContent = `Uploaded ${i + 1}/${files.length}…`;
+        }
+        galleryStatus.textContent = "Done. Reloading…";
+        location.reload();
+      } catch (e) {
+        galleryStatus.textContent = e?.message || "Upload failed.";
+      }
+    });
+
+    // Gallery delete
+    document.querySelectorAll("[data-delete-image-id]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-delete-image-id");
+        if (!id) return;
+        if (!confirm("Delete this image? This removes it from R2 and the DB.")) return;
+        try {
+          galleryStatus.textContent = "Deleting…";
+          await deleteImage(id);
+          galleryStatus.textContent = "Deleted. Reloading…";
+          location.reload();
+        } catch (e) {
+          galleryStatus.textContent = e?.message || "Delete failed.";
+        }
+      });
+    });
+
+    // Drag reorder
+    const grid = document.getElementById("galleryGrid");
+    if (grid) {
+      let dragged = null;
+
+      grid.querySelectorAll("[draggable=true]").forEach((el) => {
+        el.addEventListener("dragstart", () => {
+          dragged = el;
+          el.style.opacity = "0.6";
+        });
+        el.addEventListener("dragend", () => {
+          el.style.opacity = "";
+          dragged = null;
+        });
+        el.addEventListener("dragover", (e) => e.preventDefault());
+
+        el.addEventListener("drop", async (e) => {
+          e.preventDefault();
+          if (!dragged || dragged === el) return;
+
+          const rect = el.getBoundingClientRect();
+          const before = (e.clientX - rect.left) < rect.width / 2;
+          if (before) grid.insertBefore(dragged, el);
+          else grid.insertBefore(dragged, el.nextSibling);
+
+          const orderedIds = Array.from(grid.querySelectorAll("[draggable=true]"))
+            .map((x) => x.getAttribute("data-image-id"))
+            .filter(Boolean);
+
+          try {
+            galleryStatus.textContent = "Saving order…";
+            await saveReorder(orderedIds);
+            galleryStatus.textContent = "Order saved.";
+          } catch (err) {
+            galleryStatus.textContent = err?.message || "Failed to save order.";
+          }
+        });
+      });
+    }
+  </script>
 </BaseLayout>

@@ -35,10 +35,44 @@ export async function POST({ request, locals }: { request: Request; locals: any 
 
   const form = await request.formData();
 
-  const idRaw = String(form.get("id") ?? "").trim();
-  const isEdit = String(form.get("mode") ?? "") === "edit";
+  const mode = String(form.get("mode") ?? "").trim();
+  const isEdit = mode === "edit";
+  const isNew = mode === "new";
 
-  const id = safeId(idRaw || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`));
+  const idRaw = String(form.get("id") ?? "").trim();
+  const id = safeId(idRaw);
+
+  // NEW: ID required when creating new service
+  if (isNew && !id) {
+    return Response.redirect(
+      new URL(`/admin/services/new?error=${encodeURIComponent("ID is required.")}`, request.url),
+      302
+    );
+  }
+
+  // NEW: ID must exist for edit as well (defensive)
+  if (isEdit && !id) {
+    return Response.redirect(
+      new URL(`/admin/services?error=${encodeURIComponent("Missing service ID.")}`, request.url),
+      302
+    );
+  }
+
+  // NEW: unique check for new services
+  if (isNew) {
+    const existing = await db
+      .prepare(`SELECT id FROM services WHERE id = ? LIMIT 1`)
+      .bind(id)
+      .first<{ id: string }>();
+
+    if (existing) {
+      return Response.redirect(
+        new URL(`/admin/services/new?error=${encodeURIComponent("That ID already exists. Choose a different ID.")}`, request.url),
+        302
+      );
+    }
+  }
+
   const service_group = String(form.get("service_group") ?? "").trim() || null;
   const name = String(form.get("name") ?? "").trim();
   const description = String(form.get("description") ?? "").trim() || null;
@@ -46,10 +80,15 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const active = toInt01(form.get("active"));
   const tags = String(form.get("tags") ?? "").trim() || null;
   const notes = String(form.get("notes") ?? "").trim() || null;
+
+  // Keep this field, but admin edit page will make it read-only (managed by upload endpoint)
   const primary_image_key = String(form.get("primary_image_key") ?? "").trim() || null;
 
   if (!name) {
-    return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?error=missing_name`, request.url), 302);
+    return Response.redirect(
+      new URL(`/admin/services/${encodeURIComponent(id)}?error=missing_name`, request.url),
+      302
+    );
   }
 
   // Slug rules:
@@ -58,7 +97,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const baseSlug = slugify(name);
   let slug = baseSlug || slugify(id) || id;
 
-  // If editing, keep existing slug unless name changed and slug field not locked? For now, always recompute.
   // Check conflict: slug belongs to another service id
   const conflict = await db
     .prepare(`SELECT id FROM services WHERE slug = ? LIMIT 1`)
@@ -69,7 +107,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     slug = `${slug}-${slugify(id)}`;
   }
 
-  // Upsert
+  // Upsert (edit or create)
   await db
     .prepare(
       `
@@ -90,20 +128,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         updated_at=datetime('now');
     `
     )
-    .bind(
-      id,
-      slug,
-      service_group,
-      name,
-      description,
-      price_cents,
-      active,
-      tags,
-      notes,
-      primary_image_key
-    )
+    .bind(id, slug, service_group, name, description, price_cents, active, tags, notes, primary_image_key)
     .run();
 
-  // Redirect to edit page (canonical slug URL is frontend; admin uses id)
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);
 }

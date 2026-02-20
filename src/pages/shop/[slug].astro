@@ -5,6 +5,7 @@ import Button from "../../components/Button.astro";
 export const prerender = false;
 
 const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+const base = String(Astro.locals.runtime.env.PUBLIC_R2_BASE_URL ?? "").replace(/\/+$/, "");
 const slugOrId = Astro.params.slug as string;
 
 type ServiceRow = {
@@ -19,6 +20,13 @@ type ServiceRow = {
   requires_group: string | null;
   requires_service_id: string | null;
   notes: string | null;
+  primary_image_key: string | null;
+};
+
+type ImgRow = {
+  image_key: string;
+  alt: string | null;
+  sort_order: number;
 };
 
 Astro.response.headers.set(
@@ -29,11 +37,14 @@ Astro.response.headers.set(
 function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
+function imgUrl(key: string) {
+  return base ? `${base}/${key}` : `/${key}`;
+}
 
 // 1) Try by slug
 let service = await db.prepare(
   `
-  SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes
+  SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
@@ -44,7 +55,7 @@ if (!service) {
   // 2) Try by id
   const byId = await db.prepare(
     `
-    SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes
+    SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
@@ -55,13 +66,23 @@ if (!service) {
     return new Response("Not found", { status: 404 });
   }
 
-  // Redirect /shop/dev001 -> /shop/<slug>
   if (byId.slug) {
     return Astro.redirect(`/shop/${byId.slug}`, 302);
   }
 
   service = byId;
 }
+
+const gallery = await db.prepare(
+  `
+  SELECT image_key, alt, sort_order
+  FROM service_images
+  WHERE service_id = ? AND kind = 'gallery'
+  ORDER BY sort_order ASC, created_at DESC;
+`
+).bind(service.id).all<ImgRow>();
+
+const galleryRows = gallery.results ?? [];
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -70,9 +91,36 @@ if (!service) {
       <div class="text-xs tracking-wide uppercase" style="color: var(--muted);">
         {service.service_group ?? "service"}
       </div>
-      <div class="mt-4 text-sm" style="color: var(--muted);">
-        Image support for services comes next (we’ll add a table for service images).
+
+      <div class="mt-5">
+        {service.primary_image_key ? (
+          <img
+            src={imgUrl(service.primary_image_key)}
+            alt={service.name}
+            class="w-full rounded-2xl border border-[var(--line)] object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-[var(--line)] bg-white/20 text-sm" style="color: var(--muted);">
+            No image
+          </div>
+        )}
       </div>
+
+      {galleryRows.length > 0 && (
+        <div class="mt-4 grid grid-cols-4 gap-2">
+          {galleryRows.slice(0, 8).map((img) => (
+            <a href={imgUrl(img.image_key)} target="_blank" class="block">
+              <img
+                src={imgUrl(img.image_key)}
+                alt={img.alt ?? service.name}
+                class="aspect-square w-full rounded-xl border border-[var(--line)] object-cover"
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
+      )}
     </div>
 
     <div class="lg:pt-2">
