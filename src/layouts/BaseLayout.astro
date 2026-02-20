@@ -12,6 +12,72 @@ const { title = "DARKROOM" } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
+    <script is:inline>
+      (function () {
+        const CART_KEY = "dr_cart_v1";
+
+        function load() {
+          try { return JSON.parse(localStorage.getItem(CART_KEY) || "{}") || {}; }
+          catch { return {}; }
+        }
+
+        function save(cart) {
+          localStorage.setItem(CART_KEY, JSON.stringify(cart));
+          window.dispatchEvent(new CustomEvent("dr-cart-changed", { detail: cart }));
+        }
+
+        function getQty(id) {
+          const cart = load();
+          return Math.max(0, Number(cart[id] || 0));
+        }
+
+        function setQty(id, qty) {
+          const cart = load();
+          const q = Math.max(0, Number(qty || 0));
+          if (q <= 0) delete cart[id];
+          else cart[id] = q;
+          save(cart);
+        }
+
+        function inc(id) { setQty(id, getQty(id) + 1); }
+        function dec(id) { setQty(id, getQty(id) - 1); }
+
+        function countItems() {
+          const cart = load();
+          let n = 0;
+          for (const k in cart) n += Math.max(0, Number(cart[k] || 0));
+          return n;
+        }
+
+        function formatMVR(cents) {
+          const n = Number(cents || 0) / 100;
+          return `MVR ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        function toast(msg) {
+          const el = document.getElementById("drToast");
+          if (!el) return;
+          el.textContent = msg;
+          el.style.display = "block";
+          clearTimeout(el.__t);
+          el.__t = setTimeout(() => (el.style.display = "none"), 1600);
+        }
+
+        window.DarkroomCart = { load, save, getQty, setQty, inc, dec, countItems, formatMVR, toast };
+
+        // also update header cart count when cart changes
+        function syncHeaderCount() {
+          const el = document.getElementById("drCartCount");
+          if (!el) return;
+          const n = countItems();
+          el.style.display = n > 0 ? "inline-flex" : "none";
+          el.textContent = n > 0 ? String(n) : "";
+        }
+
+        window.addEventListener("dr-cart-changed", syncHeaderCount);
+        window.addEventListener("DOMContentLoaded", syncHeaderCount);
+      })();
+    </script>
   </head>
   <body>
     <div class="min-h-screen">
@@ -22,7 +88,10 @@ const { title = "DARKROOM" } = Astro.props;
           <nav class="hidden gap-8 text-sm md:flex">
             <a href="/shop">Shop</a>
             <a href="/about">About</a>
-            <a href="/cart">Cart</a>
+            <a href="/cart" class="relative">
+              Cart
+              <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
+            </a>
           </nav>
 
           <a class="md:hidden text-sm" href="/menu">Menu</a>
@@ -63,5 +132,6 @@ const { title = "DARKROOM" } = Astro.props;
         </div>
       </footer>
     </div>
+    <div id="drToast" class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-[var(--line)] bg-white/90 px-4 py-3 text-sm shadow" style="display:none"></div>
   </body>
 </html>

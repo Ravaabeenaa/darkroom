@@ -14,7 +14,7 @@ if (!id) {
 }
 ---
 
-<article class="rounded-3xl border border-[var(--line)] bg-white/20 p-4">
+<article data-dr-product-card data-id={id} class="rounded-3xl border border-[var(--line)] bg-white/20 p-4">
   <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-white/20">
     {image ? (
       <img src={image} alt={name} class="aspect-[4/3] w-full object-cover" loading="lazy" />
@@ -35,67 +35,72 @@ if (!id) {
       </div>
 
       <div class="mt-2 text-sm">
-        <span class="font-medium" data-price-cents={priceCents}>{/* filled by JS below */}</span>
+        <span class="font-medium" data-price-cents={priceCents}></span>
         {compareAtCents && (
           <span class="ml-2 text-xs line-through" style="color: var(--muted);" data-compare-cents={compareAtCents}></span>
         )}
       </div>
     </div>
 
-    <!-- Quantity controls -->
     <div class="shrink-0">
       <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
-        <button type="button" class="h-7 w-7 rounded-full hover:bg-white/70" data-dr-dec={id} aria-label="Decrease">
-          −
-        </button>
-
+        <button type="button" class="h-7 w-7 rounded-full hover:bg-white/70" data-dec aria-label="Decrease">−</button>
         <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={id}>0</span>
-
-        <button type="button" class="h-7 w-7 rounded-full hover:bg-white/70" data-dr-inc={id} aria-label="Increase">
-          +
-        </button>
+        <button type="button" class="h-7 w-7 rounded-full hover:bg-white/70" data-inc aria-label="Increase">+</button>
       </div>
-      <div class="mt-1 text-center text-[11px]" style="color: var(--muted);">
-        🛒 Add to cart
-      </div>
+      <div class="mt-1 text-center text-[11px]" style="color: var(--muted);">🛒 Add to cart</div>
     </div>
   </div>
 </article>
 
 <script is:inline>
   (function () {
-    const root = document.currentScript?.previousElementSibling;
-    // formatting
-    const priceEl = root?.querySelector("[data-price-cents]");
+    const card = document.currentScript?.previousElementSibling;
+    if (!card) return;
+
+    const id = card.getAttribute("data-id");
+    if (!id) return;
+
+    const incBtn = card.querySelector("[data-inc]");
+    const decBtn = card.querySelector("[data-dec]");
+    const qtyEl = card.querySelector(`[data-dr-cart-qty="${id}"]`);
+
+    // Price formatting
+    const priceEl = card.querySelector("[data-price-cents]");
     if (priceEl && window.DarkroomCart) {
       const cents = Number(priceEl.getAttribute("data-price-cents") || "0");
       priceEl.textContent = window.DarkroomCart.formatMVR(cents);
     }
-    const compareEl = root?.querySelector("[data-compare-cents]");
+    const compareEl = card.querySelector("[data-compare-cents]");
     if (compareEl && window.DarkroomCart) {
       const cents = Number(compareEl.getAttribute("data-compare-cents") || "0");
       compareEl.textContent = window.DarkroomCart.formatMVR(cents);
     }
 
-    // bind +/-
-    document.querySelectorAll("[data-dr-inc]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-dr-inc");
-        window.DarkroomCart?.inc(id);
-        window.DarkroomCart?.toast("Added to cart");
-      });
+    function render() {
+      if (!window.DarkroomCart || !qtyEl) return;
+      qtyEl.textContent = String(window.DarkroomCart.getQty(id));
+    }
+
+    incBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.DarkroomCart?.inc(id);
+      window.DarkroomCart?.toast("Added to cart");
+      render();
     });
 
-    document.querySelectorAll("[data-dr-dec]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-dr-dec");
-        const before = window.DarkroomCart?.getQty(id) || 0;
-        window.DarkroomCart?.dec(id);
-        const after = window.DarkroomCart?.getQty(id) || 0;
-        if (before > 0 && after < before) window.DarkroomCart?.toast("Removed from cart");
-      });
+    decBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const before = window.DarkroomCart?.getQty(id) || 0;
+      window.DarkroomCart?.dec(id);
+      const after = window.DarkroomCart?.getQty(id) || 0;
+      if (before > 0 && after < before) window.DarkroomCart?.toast("Removed from cart");
+      render();
     });
 
-    // initial sync already handled in BaseLayout
+    window.addEventListener("dr-cart-changed", render);
+    render();
   })();
 </script>
