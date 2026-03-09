@@ -134,9 +134,9 @@ const galleryRows = gallery.results ?? [];
       <!-- Cart controls (NO redirect to /cart) -->
       <div class="mt-8 flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
-          <button type="button" class="h-9 w-9 rounded-full hover:bg-white/70" id="decBtn">−</button>
+          <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70" id="decBtn">−</button>
           <span class="w-10 text-center text-base tabular-nums" data-dr-cart-qty={service.id}>0</span>
-          <button type="button" class="h-9 w-9 rounded-full hover:bg-white/70" id="incBtn">+</button>
+          <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70" id="incBtn">+</button>
         </div>
 
         <span class="text-sm" style="color: var(--muted);">🛒 Add to cart</span>

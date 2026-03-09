@@ -24,16 +24,22 @@
   --font-serif: "Playfair Display", serif;
   --font-sans: "Inter", sans-serif;
   --container: 1200px;
+  --gap: 24px;
 }
 
 html, body{
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  height: 100%;
+}
+body{
+  margin:0;
 }
 
 h1,h2,h3{
   font-family: var(--font-serif);
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 

@@ -142,9 +142,12 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       `
     INSERT INTO orders
       (id, order_ref, customer_name, customer_phone, services_summary, total_price_cents, status,
-       customer_notes, internal_notes, created_at, updated_at, contact_method, customer_email)
+       customer_notes, internal_notes, created_at, updated_at, contact_method, customer_email,
+       original_id, original_order_ref, original_customer_name, original_customer_phone, original_services_summary, original_total_price_cents, original_status,
+       original_customer_notes, original_internal_notes, original_created_at, original_updated_at, original_contact_method, original_customer_email
+       )
     VALUES
-      (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?);
+      (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?);
   `
     )
     .bind(
@@ -158,32 +161,50 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       now,
       now,
       contact_method,
-      customer_email || null
+      customer_email || null,
+
+      order_id,
+      order_ref,
+      customer_name,
+      customer_phone,
+      services_summary,
+      total,
+      customer_notes || null,
+      now,
+      now,
+      contact_method,
+      customer_email || null,
     )
     .run();
 
   // Insert order items
   for (const oi of orderItems) {
-    await db
-      .prepare(
-        `
-      INSERT INTO order_items
-        (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group)
+    const idOrig = crypto.randomUUID();
+    const idCur = crypto.randomUUID();
+
+    await db.prepare(`
+      INSERT INTO order_items_original
+        (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
       VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?);
-    `
-      )
-      .bind(
-        crypto.randomUUID(),
-        order_id,
-        oi.service_id,
-        oi.service_name,
-        oi.unit_price_cents,
-        oi.quantity,
-        oi.line_total_cents,
-        oi.service_group
-      )
-      .run();
+        (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `).bind(
+      idOrig, order_id,
+      oi.service_id, oi.service_name,
+      oi.unit_price_cents, oi.quantity, oi.line_total_cents,
+      oi.service_group, now
+    ).run();
+
+    await db.prepare(`
+      INSERT INTO order_items_current
+        (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
+      VALUES
+        (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `).bind(
+      idCur, order_id,
+      oi.service_id, oi.service_name,
+      oi.unit_price_cents, oi.quantity, oi.line_total_cents,
+      oi.service_group, now
+    ).run();
   }
 
   return new Response(

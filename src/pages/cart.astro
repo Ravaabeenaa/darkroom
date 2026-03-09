@@ -212,9 +212,9 @@ function imgUrl(key: string | null) {
             <div class="mt-1 text-xs" style="color: var(--muted);">${window.DarkroomCart.formatMVR(s.price_cents)} each</div>
 
             <div class="mt-3 flex items-center gap-2">
-              <button class="h-8 w-8 rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-dec="${s.id}">−</button>
+              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-dec="${s.id}">−</button>
               <span class="w-10 text-center text-sm tabular-nums" data-dr-cart-qty="${s.id}">${window.DarkroomCart.getQty(s.id)}</span>
-              <button class="h-8 w-8 rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-inc="${s.id}">+</button>
+              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-inc="${s.id}">+</button>
             </div>
           </div>
 
