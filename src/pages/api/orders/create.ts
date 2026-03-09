@@ -21,78 +21,47 @@ export async function POST({ request, locals }: { request: Request; locals: any 
 
   const body = await request.json().catch(() => null);
 
-  // ✅ public endpoint expects flat fields + cart map
+  // cart.astro sends flat fields + a cart map { [service_id]: qty }
   const customer_name = String(body?.customer_name ?? "").trim();
   const customer_phone = String(body?.customer_phone ?? "").trim();
-  const contact_method = String(body?.contact_method ?? "").trim(); // Telegram/Viber/WhatsApp
+  const contact_method = String(body?.contact_method ?? "").trim();
   const customer_email = String(body?.customer_email ?? "").trim();
   const customer_notes = String(body?.customer_notes ?? "").trim();
-
   const cart = body?.cart && typeof body.cart === "object" ? body.cart : null;
 
-  if (!customer_name) {
-    return new Response(JSON.stringify({ ok: false, error: "Name is required" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  if (!customer_name)
+    return new Response(JSON.stringify({ ok: false, error: "Name is required" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  if (!customer_phone || !onlyDigits(customer_phone)) {
-    return new Response(JSON.stringify({ ok: false, error: "Phone must be digits only" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  if (!customer_phone || !onlyDigits(customer_phone))
+    return new Response(JSON.stringify({ ok: false, error: "Phone must be digits only" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  if (!["Telegram", "Viber", "WhatsApp"].includes(contact_method)) {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid contact method" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  if (!["Telegram", "Viber", "WhatsApp"].includes(contact_method))
+    return new Response(JSON.stringify({ ok: false, error: "Invalid contact method" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  if (!cart) {
-    return new Response(JSON.stringify({ ok: false, error: "Cart is empty" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  if (!cart)
+    return new Response(JSON.stringify({ ok: false, error: "Cart is empty" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  // Normalize cart -> items array
+  // Normalise cart map → items array
   const norm = Object.entries(cart)
-    .map(([id, qty]) => ({ id: String(id ?? "").trim(), qty: Math.max(0, Math.floor(Number(qty ?? 0))) }))
+    .map(([id, qty]) => ({ id: String(id).trim(), qty: Math.max(0, Math.floor(Number(qty ?? 0))) }))
     .filter((it) => it.id && it.qty > 0);
 
-  if (!norm.length) {
-    return new Response(JSON.stringify({ ok: false, error: "Cart is empty" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
-  }
+  if (!norm.length)
+    return new Response(JSON.stringify({ ok: false, error: "Cart is empty" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  // Fetch services to compute totals (secure)
+  // Fetch services server-side to compute totals
   const ids = norm.map((x) => x.id);
   const placeholders = ids.map(() => "?").join(",");
 
   const svcRes = await db
-    .prepare(
-      `
-    SELECT id, name, price_cents, service_group
-    FROM services
-    WHERE active = 1 AND id IN (${placeholders});
-  `
-    )
+    .prepare(`SELECT id, name, price_cents, service_group FROM services WHERE active = 1 AND id IN (${placeholders});`)
     .bind(...ids)
     .all<{ id: string; name: string; price_cents: number; service_group: string | null }>();
 
   const svcs = new Map((svcRes.results ?? []).map((s) => [s.id, s]));
   const missing = norm.filter((x) => !svcs.has(x.id));
-  if (missing.length) {
-    return new Response(
-      JSON.stringify({ ok: false, error: "Some items are unavailable", missing: missing.map((m) => m.id) }),
-      { status: 400, headers: { "content-type": "application/json" } }
-    );
-  }
+  if (missing.length)
+    return new Response(JSON.stringify({ ok: false, error: "Some items are unavailable", missing: missing.map((m) => m.id) }), { status: 400, headers: { "content-type": "application/json" } });
 
   let total = 0;
   const orderItems: any[] = [];
@@ -112,99 +81,64 @@ export async function POST({ request, locals }: { request: Request; locals: any 
 
   const services_summary = orderItems.map((x) => `${x.service_name} x${x.quantity}`).join(", ");
 
-  // Order ref
+  // Generate order ref
   const d = new Date();
   const yy = String(d.getFullYear()).slice(-2);
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const prefix = `DR-${yy}${mm}-`;
 
   const lastRow = await db
-    .prepare(
-      `
-    SELECT order_ref
-    FROM orders
-    WHERE order_ref LIKE ?
-    ORDER BY order_ref DESC
-    LIMIT 1;
-  `
-    )
+    .prepare(`SELECT order_ref FROM orders WHERE order_ref LIKE ? ORDER BY order_ref DESC LIMIT 1;`)
     .bind(prefix + "%")
     .first<{ order_ref: string }>();
 
   const order_ref = makeOrderRef(lastRow?.order_ref ?? null, yy, mm);
-
   const order_id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  // Insert order
+  // Insert order — set original_* snapshot columns at creation time
   await db
-    .prepare(
-      `
-    INSERT INTO orders
-      (id, order_ref, customer_name, customer_phone, services_summary, total_price_cents, status,
-       customer_notes, internal_notes, created_at, updated_at, contact_method, customer_email,
-       original_id, original_order_ref, original_customer_name, original_customer_phone, original_services_summary, original_total_price_cents, original_status,
-       original_customer_notes, original_internal_notes, original_created_at, original_updated_at, original_contact_method, original_customer_email
-       )
-    VALUES
-      (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?);
-  `
-    )
+    .prepare(`
+      INSERT INTO orders
+        (id, order_ref, customer_name, customer_phone, services_summary,
+         total_price_cents, status, customer_notes, internal_notes,
+         created_at, updated_at, contact_method, customer_email,
+         original_services_summary, original_total_price_cents)
+      VALUES
+        (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?);
+    `)
     .bind(
-      order_id,
-      order_ref,
-      customer_name,
-      customer_phone,
-      services_summary,
+      order_id, order_ref,
+      customer_name, customer_phone, services_summary,
       total,
       customer_notes || null,
-      now,
-      now,
+      now, now,
       contact_method,
       customer_email || null,
-
-      order_id,
-      order_ref,
-      customer_name,
-      customer_phone,
-      services_summary,
-      total,
-      customer_notes || null,
-      now,
-      now,
-      contact_method,
-      customer_email || null,
+      services_summary,  // original snapshot
+      total              // original snapshot
     )
     .run();
 
-  // Insert order items
+  // Insert into both order_items (current/mutable) and order_items_original (immutable)
   for (const oi of orderItems) {
-    const idOrig = crypto.randomUUID();
-    const idCur = crypto.randomUUID();
+    await db
+      .prepare(`
+        INSERT INTO order_items
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      `)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group)
+      .run();
 
-    await db.prepare(`
-      INSERT INTO order_items_original
-        (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
-      VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `).bind(
-      idOrig, order_id,
-      oi.service_id, oi.service_name,
-      oi.unit_price_cents, oi.quantity, oi.line_total_cents,
-      oi.service_group, now
-    ).run();
-
-    await db.prepare(`
-      INSERT INTO order_items_current
-        (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
-      VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `).bind(
-      idCur, order_id,
-      oi.service_id, oi.service_name,
-      oi.unit_price_cents, oi.quantity, oi.line_total_cents,
-      oi.service_group, now
-    ).run();
+    await db
+      .prepare(`
+        INSERT INTO order_items_original
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+      `)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, now)
+      .run();
   }
 
   return new Response(

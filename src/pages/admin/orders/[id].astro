@@ -14,7 +14,9 @@ type OrderRow = {
   customer_email: string | null;
   contact_method: string | null;
   services_summary: string | null;
+  original_services_summary: string | null;
   total_price_cents: number;
+  original_total_price_cents: number | null;
   status: string;
   customer_notes: string | null;
   internal_notes: string | null;
@@ -33,18 +35,31 @@ type ItemRow = {
 };
 
 const order = await db
-  .prepare(`SELECT id, order_ref, customer_name, customer_phone, customer_email, contact_method, services_summary, total_price_cents, status, customer_notes, internal_notes, created_at, updated_at FROM orders WHERE id = ? LIMIT 1;`)
+  .prepare(`
+    SELECT id, order_ref, customer_name, customer_phone, customer_email, contact_method,
+           services_summary, original_services_summary,
+           total_price_cents, original_total_price_cents,
+           status, customer_notes, internal_notes, created_at, updated_at
+    FROM orders WHERE id = ? LIMIT 1;
+  `)
   .bind(id)
   .first<OrderRow>();
 
 if (!order) return new Response("Order not found", { status: 404 });
 
-const itemsRes = await db
-  .prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group FROM order_items_current WHERE order_id = ? ORDER BY service_group ASC, service_name ASC;`)
-  .bind(id)
-  .all<ItemRow>();
+const [currentRes, originalRes] = await Promise.all([
+  db.prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group FROM order_items WHERE order_id = ? ORDER BY service_group ASC, service_name ASC;`).bind(id).all<ItemRow>(),
+  db.prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group FROM order_items_original WHERE order_id = ? ORDER BY service_group ASC, service_name ASC;`).bind(id).all<ItemRow>(),
+]);
 
-const items = itemsRes.results ?? [];
+const items = currentRes.results ?? [];
+const originalItems = originalRes.results ?? [];
+
+// Detect if the order has been modified from the original
+const isModified =
+  originalItems.length > 0 &&
+  (order.total_price_cents !== (order.original_total_price_cents ?? order.total_price_cents) ||
+   order.services_summary !== (order.original_services_summary ?? order.services_summary));
 
 function money(cents: number) {
   return `MVR ${(cents / 100).toFixed(2)}`;
@@ -66,11 +81,16 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
 <BaseLayout title={`${order.order_ref} — Orders`}>
   <section class="mx-auto mt-10 max-w-3xl">
     <div class="flex flex-wrap items-center gap-4">
-      <a href="/admin/orders" class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-sm hover:bg-white/80">
+      <a href="/admin/orders" class="cursor-pointer rounded-[999px] border border-[var(--line)] bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
         ← Orders
       </a>
       <h1 class="font-mono text-2xl font-semibold">{order.order_ref}</h1>
       <span class={`rounded-full px-3 py-1 text-xs font-medium ${badgeCls}`}>{order.status}</span>
+      {isModified && (
+        <span class="rounded-full border border-yellow-400/40 px-3 py-1 text-xs text-yellow-300">
+          ✎ Modified from original
+        </span>
+      )}
     </div>
 
     <p class="mt-2 text-xs" style="color: var(--muted);">
@@ -79,7 +99,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
     </p>
 
     <!-- Customer details -->
-    <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
+    <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/5 p-6">
       <h2 class="text-lg font-semibold">Customer</h2>
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
@@ -107,21 +127,21 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       </dl>
     </div>
 
-    <!-- Order items -->
-    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
-      <h2 class="text-lg font-semibold">Items</h2>
+    <!-- Current order items -->
+    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/5 p-6">
+      <h2 class="text-lg font-semibold">Current order</h2>
 
       {items.length === 0 ? (
         <p class="mt-4 text-sm" style="color: var(--muted);">No items recorded.</p>
       ) : (
         <div class="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
           <table class="w-full text-left text-sm">
-            <thead class="bg-white/40">
+            <thead class="bg-white/5">
               <tr>
                 <th class="px-4 py-3">Service</th>
-                <th class="px-4 py-3 text-right">Unit price</th>
+                <th class="px-4 py-3 text-right">Unit</th>
                 <th class="px-4 py-3 text-right">Qty</th>
-                <th class="px-4 py-3 text-right">Line total</th>
+                <th class="px-4 py-3 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -139,7 +159,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
                 </tr>
               ))}
             </tbody>
-            <tfoot class="border-t border-[var(--line)] bg-white/20">
+            <tfoot class="border-t border-[var(--line)] bg-white/5">
               <tr>
                 <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold">Total</td>
                 <td class="px-4 py-3 text-right tabular-nums font-semibold">{money(order.total_price_cents)}</td>
@@ -150,14 +170,67 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       )}
     </div>
 
+    <!-- Original order (collapsible) -->
+    {originalItems.length > 0 && (
+      <details class="mt-4 rounded-3xl border border-[var(--line)] bg-white/5">
+        <summary class="cursor-pointer list-none px-6 py-4 text-sm font-medium" style="color: var(--muted);">
+          <span class="select-none">▸ Show original order</span>
+          {isModified && (
+            <span class="ml-3 text-xs text-yellow-300">differs from current</span>
+          )}
+        </summary>
+
+        <div class="px-6 pb-6">
+          <p class="mb-4 text-xs" style="color: var(--muted);">
+            Immutable snapshot taken at the time the order was placed. Never changes.
+          </p>
+          <div class="overflow-hidden rounded-2xl border border-[var(--line)]">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-white/5">
+                <tr>
+                  <th class="px-4 py-3">Service</th>
+                  <th class="px-4 py-3 text-right">Unit</th>
+                  <th class="px-4 py-3 text-right">Qty</th>
+                  <th class="px-4 py-3 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {originalItems.map((it) => (
+                  <tr class="border-t border-[var(--line)]">
+                    <td class="px-4 py-3">
+                      <div class="font-medium">{it.service_name}</div>
+                      {it.service_group && (
+                        <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
+                      )}
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums">{money(it.unit_price_cents)}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{it.quantity}</td>
+                    <td class="px-4 py-3 text-right tabular-nums font-medium">{money(it.line_total_cents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot class="border-t border-[var(--line)] bg-white/5">
+                <tr>
+                  <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold">Total</td>
+                  <td class="px-4 py-3 text-right tabular-nums font-semibold">
+                    {money(order.original_total_price_cents ?? order.total_price_cents)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </details>
+    )}
+
     <!-- Status + internal notes -->
-    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
+    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/5 p-6">
       <h2 class="text-lg font-semibold">Update order</h2>
 
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="text-xs" style="color: var(--muted);">Status</span>
-          <select id="statusSel" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">
+          <select id="statusSel" class="mt-2 w-full cursor-pointer rounded-2xl border border-[var(--line)] bg-white/10 px-4 py-3 text-sm outline-none">
             {STATUS_OPTIONS.map((s) => (
               <option value={s} selected={order.status === s}>{s}</option>
             ))}
@@ -166,12 +239,12 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
 
         <label class="block sm:col-span-2">
           <span class="text-xs" style="color: var(--muted);">Internal notes</span>
-          <textarea id="internalNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{order.internal_notes ?? ""}</textarea>
+          <textarea id="internalNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/10 px-4 py-3 text-sm outline-none">{order.internal_notes ?? ""}</textarea>
         </label>
       </div>
 
       <div class="mt-4 flex items-center gap-4">
-        <button id="saveBtn" class="rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90">
+        <button id="saveBtn" class="cursor-pointer rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90">
           Save
         </button>
         <span id="saveStatus" class="text-sm" style="color: var(--muted);"></span>

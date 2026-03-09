@@ -95,44 +95,38 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const order_id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  // Insert order
+  // Insert order — set original_* snapshot columns at creation time
   await db.prepare(`
     INSERT INTO orders
       (id, order_ref, customer_name, customer_phone, services_summary, total_price_cents, status,
-       customer_notes, internal_notes, created_at, updated_at, contact_method, customer_email)
+       customer_notes, internal_notes, created_at, updated_at, contact_method, customer_email,
+       original_services_summary, original_total_price_cents)
     VALUES
-      (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?);
+      (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?);
   `).bind(
-    order_id,
-    order_ref,
-    customer_name,
-    customer_phone,
-    services_summary,
-    total,
+    order_id, order_ref,
+    customer_name, customer_phone, services_summary, total,
     customer_notes || null,
-    now,
-    now,
+    now, now,
     contact_method,
-    customer_email || null
+    customer_email || null,
+    services_summary,  // original snapshot
+    total              // original snapshot
   ).run();
 
-  // Insert order items
+  // Insert into both order_items (current/mutable) and order_items_original (immutable)
   for (const oi of orderItems) {
     await db.prepare(`
       INSERT INTO order_items
         (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group)
-      VALUES
-        (?, ?, ?, ?, ?, ?, ?, ?);
-    `).bind(
-      crypto.randomUUID(),
-      order_id,
-      oi.service_id,
-      oi.service_name,
-      oi.unit_price_cents,
-      oi.quantity,
-      oi.line_total_cents,
-      oi.service_group
-    ).run();
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+    `).bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group).run();
+
+    await db.prepare(`
+      INSERT INTO order_items_original
+        (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `).bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, now).run();
   }
 
   return new Response(JSON.stringify({
