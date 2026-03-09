@@ -6,9 +6,6 @@ const { title = "DARKROOM" } = Astro.props;
 <!doctype html>
 <html lang="en">
   <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
@@ -83,14 +80,16 @@ const { title = "DARKROOM" } = Astro.props;
     <div class="min-h-screen">
       <header class="px-6 py-6">
         <div class="mx-auto flex max-w-[var(--container)] items-center justify-between">
-          <a href="/" class="text-xl tracking-tight" style="font-family: var(--font-serif);">darkroom</a>
+          <a href="/" class="block" aria-label="Darkroom home">
+            <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="h-8 w-auto" />
+          </a>
 
           <nav class="hidden gap-8 text-sm md:flex">
             <a href="/shop">Shop</a>
             <a href="/about">About</a>
             <a href="/cart" class="relative">
               Cart
-              <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
+              <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black" style="display:none"></span>
             </a>
           </nav>
 
@@ -112,7 +111,7 @@ const { title = "DARKROOM" } = Astro.props;
         <div class="mx-auto max-w-[var(--container)] border-t" style="border-color: var(--line);">
           <div class="grid gap-10 py-10 md:grid-cols-3">
             <div>
-              <div class="text-2xl" style="font-family: var(--font-serif);">DARKROOM</div>
+              <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="h-7 w-auto" />
             </div>
 
             <div class="text-sm">
@@ -142,7 +141,9 @@ const { title = "DARKROOM" } = Astro.props;
     <div id="drMenuOverlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" style="display:none" aria-hidden="true"></div>
     <nav id="drMenuDrawer" class="fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-[var(--bg)] px-8 py-8 shadow-2xl" style="display:none" aria-label="Mobile navigation">
       <div class="flex items-center justify-between">
-        <a href="/" class="text-xl tracking-tight" style="font-family: var(--font-serif);">darkroom</a>
+        <a href="/" aria-label="Darkroom home">
+          <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="h-7 w-auto" />
+        </a>
         <button id="drMenuClose" class="flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none" aria-label="Close menu">×</button>
       </div>
       <div class="mt-12 flex flex-col gap-6 text-xl">
@@ -150,7 +151,7 @@ const { title = "DARKROOM" } = Astro.props;
         <a href="/about" class="hover:opacity-70">About</a>
         <a href="/cart" class="relative flex items-center gap-3 hover:opacity-70">
           Cart
-          <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
+          <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black" style="display:none"></span>
         </a>
       </div>
     </nav>

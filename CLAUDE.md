@@ -49,8 +49,22 @@ All prices are stored as **cents** (integers). The helper `money()` in `src/lib/
 ### Styling
 
 - Tailwind CSS v4 (via `@tailwindcss/vite`)
-- CSS custom properties defined in `src/styles/theme.css` (`--bg`, `--text`, `--muted`, `--line`, `--btn`, `--btnText`, `--font-serif`, `--font-sans`, `--container`)
-- Use CSS variables for all color and font references; avoid hardcoded hex values in components
+- **Only `src/styles/tailwind.css` is active** — it is the sole import in `BaseLayout.astro`. `theme.css` and `global.css` are orphaned and unused.
+- CSS custom properties defined in `src/styles/tailwind.css`. Key tokens:
+  - `--red: #ED1C24` — brand red (buttons, badges, accents)
+  - `--cream: #EEE4D2` — brand cream (maps to `--text`)
+  - `--bg: #000000` — black background
+  - `--btn / --btnText` — red bg, black text
+  - `--font-display / --font-serif` — League Gothic (headings)
+  - `--font-sans` — JetBrains Mono (body)
+- **Never use `bg-black` for buttons** — invisible on dark background. Use `bg-[var(--btn)]` instead.
+- Fonts are self-hosted in `public/fonts/` (variable TTF files). No Google Fonts.
+
+### Static assets
+
+- `public/fonts/` — League Gothic variable TTF, JetBrains Mono variable TTF (regular + italic)
+- `public/images/logos/` — logo variants: `logo-light.png` (cream, for dark bg), `logo-dark.png` (black), `logo-red.png` (red). Use `logo-light.png` in the header.
+- Source files from client are in `fromClient/` — do not serve from there directly.
 
 ### R2 Image Upload
 

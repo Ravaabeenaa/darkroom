@@ -1,58 +1,97 @@
 @import "tailwindcss";
 
-/* EASY SITEWIDE THEME (edit these later) */
-:root{
-  /* Brand palette */
-  --primary: #99080D; /* maroon red */
-  --accent: #FFB700;  /* Kodak yellow */
-  --accent2: #0048FF; /* blue */
-
-  /* Theme */
-  --bg:#000000;
-  --panel: rgba(255,255,255,0.06);
-  --panel2: rgba(255,255,255,0.10);
-  --text:#ffffff;
-  --muted: rgba(255,255,255,0.72);
-  --line: rgba(255,255,255,0.14);
-
-  /* Buttons */
-  --btn: var(--primary);
-  --btnText:#ffffff;
-
-  /* Layout + fonts */
-  --radius-pill:999px;
-  --font-serif: "Playfair Display", serif;
-  --font-sans: "Inter", sans-serif;
-  --container: 1200px;
-  --gap: 24px;
+/* ─── Self-hosted fonts ──────────────────────────────────────── */
+@font-face {
+  font-family: 'League Gothic';
+  src: url('/fonts/LeagueGothic-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
 
-html, body{
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Italic-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ─── Brand tokens ───────────────────────────────────────────── */
+:root {
+  /* Brand palette */
+  --red:    #ED1C24;
+  --cream:  #EEE4D2;
+  --black:  #000000;
+
+  /* Semantic theme */
+  --bg:     #000000;
+  --panel:  rgba(255, 255, 255, 0.05);
+  --panel2: rgba(255, 255, 255, 0.09);
+  --text:   #EEE4D2;
+  --muted:  rgba(238, 228, 210, 0.55);
+  --line:   rgba(238, 228, 210, 0.15);
+
+  /* Buttons */
+  --btn:     #ED1C24;
+  --btnText: #000000;
+
+  /* Layout */
+  --radius-pill: 999px;
+  --container:   1200px;
+  --gap:         24px;
+
+  /* Fonts */
+  --font-display: 'League Gothic', 'Arial Narrow', sans-serif;
+  --font-serif:   'League Gothic', 'Arial Narrow', sans-serif;
+  --font-sans:    'JetBrains Mono', monospace;
+}
+
+/* ─── Base ───────────────────────────────────────────────────── */
+html, body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
   height: 100%;
 }
-body{
-  margin:0;
+
+body { margin: 0; }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.95;
 }
 
-h1,h2,h3{
-  font-family: var(--font-serif);
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-
-/* Only “unstyled” links inherit color */
 a:not([class]) {
   color: inherit;
   text-decoration: none;
 }
 
-/* If a link has classes (like Tailwind utilities), let the classes win */
 a[class] {
   text-decoration: none;
 }
 
-::selection{ background: rgba(255,183,0,.25); }
-:focus-visible{ outline: 2px solid rgba(255,183,0,.6); outline-offset: 3px; }
+/* ─── Form elements on dark bg ───────────────────────────────── */
+input, textarea, select {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--line);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--muted);
+}
+
+/* ─── Misc ───────────────────────────────────────────────────── */
+::selection { background: rgba(237, 28, 36, 0.35); }
+:focus-visible { outline: 2px solid rgba(237, 28, 36, 0.7); outline-offset: 3px; }

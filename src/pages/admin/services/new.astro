@@ -75,7 +75,7 @@ const msg = Astro.url.searchParams.get("msg") || "";
       <input type="hidden" name="primary_image_key" value="" />
 
       <div class="mt-8 flex flex-wrap gap-3">
-        <button class="rounded-[999px] bg-black px-6 py-3 text-sm font-medium text-white hover:opacity-90" type="submit">
+        <button class="rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90" type="submit">
           Create
         </button>
         <a class="rounded-[999px] border border-[var(--line)] bg-white/60 px-6 py-3 text-sm hover:bg-white/80" href="/admin/services">
