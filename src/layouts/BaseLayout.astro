@@ -94,7 +94,11 @@ const { title = "DARKROOM" } = Astro.props;
             </a>
           </nav>
 
-          <a class="md:hidden text-sm" href="/menu">Menu</a>
+          <button id="drMenuBtn" class="md:hidden flex flex-col justify-center items-center gap-[5px] w-10 h-10 rounded-xl" aria-label="Open menu">
+            <span class="block h-[2px] w-6 bg-current"></span>
+            <span class="block h-[2px] w-6 bg-current"></span>
+            <span class="block h-[2px] w-6 bg-current"></span>
+          </button>
         </div>
       </header>
 
@@ -133,5 +137,57 @@ const { title = "DARKROOM" } = Astro.props;
       </footer>
     </div>
     <div id="drToast" class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-[var(--line)] bg-white/90 px-4 py-3 text-sm shadow" style="display:none"></div>
+
+    <!-- Mobile menu drawer -->
+    <div id="drMenuOverlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" style="display:none" aria-hidden="true"></div>
+    <nav id="drMenuDrawer" class="fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-[var(--bg)] px-8 py-8 shadow-2xl" style="display:none" aria-label="Mobile navigation">
+      <div class="flex items-center justify-between">
+        <a href="/" class="text-xl tracking-tight" style="font-family: var(--font-serif);">darkroom</a>
+        <button id="drMenuClose" class="flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none" aria-label="Close menu">×</button>
+      </div>
+      <div class="mt-12 flex flex-col gap-6 text-xl">
+        <a href="/shop" class="hover:opacity-70">Shop</a>
+        <a href="/about" class="hover:opacity-70">About</a>
+        <a href="/cart" class="relative flex items-center gap-3 hover:opacity-70">
+          Cart
+          <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
+        </a>
+      </div>
+    </nav>
+
+    <script is:inline>
+      (function () {
+        const btn = document.getElementById("drMenuBtn");
+        const overlay = document.getElementById("drMenuOverlay");
+        const drawer = document.getElementById("drMenuDrawer");
+        const closeBtn = document.getElementById("drMenuClose");
+
+        function open() {
+          overlay.style.display = "block";
+          drawer.style.display = "flex";
+          document.body.style.overflow = "hidden";
+        }
+        function close() {
+          overlay.style.display = "none";
+          drawer.style.display = "none";
+          document.body.style.overflow = "";
+        }
+
+        btn?.addEventListener("click", open);
+        closeBtn?.addEventListener("click", close);
+        overlay?.addEventListener("click", close);
+
+        // Keep mobile cart count in sync
+        function syncMobileCount() {
+          const n = window.DarkroomCart?.countItems() ?? 0;
+          const el = document.getElementById("drCartCountMobile");
+          if (!el) return;
+          el.style.display = n > 0 ? "inline-flex" : "none";
+          el.textContent = n > 0 ? String(n) : "";
+        }
+        window.addEventListener("dr-cart-changed", syncMobileCount);
+        window.addEventListener("DOMContentLoaded", syncMobileCount);
+      })();
+    </script>
   </body>
 </html>

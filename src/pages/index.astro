@@ -55,7 +55,7 @@ const services = [
   <section class="pt-10 md:pt-16">
     <div class="grid gap-10 md:grid-cols-2 md:items-start">
       <div>
-        <h1 class="text-[56px] leading-[0.88] md:text-[96px]">
+        <h1 class="text-[42px] leading-[0.9] sm:text-[56px] md:text-[96px]">
           Snap Your World with Us
         </h1>
 
@@ -87,7 +87,7 @@ const services = [
   <section class="mt-20 md:mt-28">
     <SectionHeader title="Featured Products" actionLabel="Shop all" actionHref="/shop" />
 
-    <div class="mt-10 grid gap-8 md:grid-cols-4">
+    <div class="mt-10 grid grid-cols-2 gap-4 md:gap-8 md:grid-cols-4">
       {featured.length === 0 ? (
         <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 text-sm" style="color: var(--muted);">
           No featured products yet.
@@ -179,7 +179,7 @@ const services = [
       </div>
     </div>
 
-    <div class="mt-10 grid gap-6 md:grid-cols-4">
+    <div class="mt-10 grid grid-cols-2 gap-4 md:gap-6 md:grid-cols-4">
       <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g1" alt="g1" loading="lazy" />
       <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g2" alt="g2" loading="lazy" />
       <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g3" alt="g3" loading="lazy" />

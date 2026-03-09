@@ -1,0 +1,216 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+const id = Astro.params.id as string;
+
+type OrderRow = {
+  id: string;
+  order_ref: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string | null;
+  contact_method: string | null;
+  services_summary: string | null;
+  total_price_cents: number;
+  status: string;
+  customer_notes: string | null;
+  internal_notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type ItemRow = {
+  id: string;
+  service_id: string | null;
+  service_name: string;
+  unit_price_cents: number;
+  quantity: number;
+  line_total_cents: number;
+  service_group: string | null;
+};
+
+const order = await db
+  .prepare(`SELECT id, order_ref, customer_name, customer_phone, customer_email, contact_method, services_summary, total_price_cents, status, customer_notes, internal_notes, created_at, updated_at FROM orders WHERE id = ? LIMIT 1;`)
+  .bind(id)
+  .first<OrderRow>();
+
+if (!order) return new Response("Order not found", { status: 404 });
+
+const itemsRes = await db
+  .prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group FROM order_items_current WHERE order_id = ? ORDER BY service_group ASC, service_name ASC;`)
+  .bind(id)
+  .all<ItemRow>();
+
+const items = itemsRes.results ?? [];
+
+function money(cents: number) {
+  return `MVR ${(cents / 100).toFixed(2)}`;
+}
+
+const STATUS_OPTIONS = ["NEW", "IN_PROGRESS", "READY", "COMPLETED", "CANCELLED"];
+
+const statusColour: Record<string, string> = {
+  NEW: "bg-blue-100 text-blue-800",
+  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
+  READY: "bg-green-100 text-green-800",
+  COMPLETED: "bg-gray-100 text-gray-600",
+  CANCELLED: "bg-red-100 text-red-700",
+};
+
+const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
+---
+
+<BaseLayout title={`${order.order_ref} — Orders`}>
+  <section class="mx-auto mt-10 max-w-3xl">
+    <div class="flex flex-wrap items-center gap-4">
+      <a href="/admin/orders" class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-sm hover:bg-white/80">
+        ← Orders
+      </a>
+      <h1 class="font-mono text-2xl font-semibold">{order.order_ref}</h1>
+      <span class={`rounded-full px-3 py-1 text-xs font-medium ${badgeCls}`}>{order.status}</span>
+    </div>
+
+    <p class="mt-2 text-xs" style="color: var(--muted);">
+      Placed {order.created_at ? new Date(order.created_at).toLocaleString() : "—"}
+      {order.updated_at && order.updated_at !== order.created_at && ` · Updated ${new Date(order.updated_at).toLocaleString()}`}
+    </p>
+
+    <!-- Customer details -->
+    <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
+      <h2 class="text-lg font-semibold">Customer</h2>
+      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        <div>
+          <dt class="text-xs" style="color: var(--muted);">Name</dt>
+          <dd class="mt-1 font-medium">{order.customer_name}</dd>
+        </div>
+        <div>
+          <dt class="text-xs" style="color: var(--muted);">Phone</dt>
+          <dd class="mt-1">{order.customer_phone}</dd>
+        </div>
+        <div>
+          <dt class="text-xs" style="color: var(--muted);">Contact via</dt>
+          <dd class="mt-1">{order.contact_method ?? "—"}</dd>
+        </div>
+        <div>
+          <dt class="text-xs" style="color: var(--muted);">Email</dt>
+          <dd class="mt-1">{order.customer_email ?? "—"}</dd>
+        </div>
+        {order.customer_notes && (
+          <div class="sm:col-span-2">
+            <dt class="text-xs" style="color: var(--muted);">Customer notes</dt>
+            <dd class="mt-1 whitespace-pre-wrap">{order.customer_notes}</dd>
+          </div>
+        )}
+      </dl>
+    </div>
+
+    <!-- Order items -->
+    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
+      <h2 class="text-lg font-semibold">Items</h2>
+
+      {items.length === 0 ? (
+        <p class="mt-4 text-sm" style="color: var(--muted);">No items recorded.</p>
+      ) : (
+        <div class="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-white/40">
+              <tr>
+                <th class="px-4 py-3">Service</th>
+                <th class="px-4 py-3 text-right">Unit price</th>
+                <th class="px-4 py-3 text-right">Qty</th>
+                <th class="px-4 py-3 text-right">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it) => (
+                <tr class="border-t border-[var(--line)]">
+                  <td class="px-4 py-3">
+                    <div class="font-medium">{it.service_name}</div>
+                    {it.service_group && (
+                      <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
+                    )}
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums">{money(it.unit_price_cents)}</td>
+                  <td class="px-4 py-3 text-right tabular-nums">{it.quantity}</td>
+                  <td class="px-4 py-3 text-right tabular-nums font-medium">{money(it.line_total_cents)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot class="border-t border-[var(--line)] bg-white/20">
+              <tr>
+                <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold">Total</td>
+                <td class="px-4 py-3 text-right tabular-nums font-semibold">{money(order.total_price_cents)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+
+    <!-- Status + internal notes -->
+    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/20 p-6">
+      <h2 class="text-lg font-semibold">Update order</h2>
+
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-xs" style="color: var(--muted);">Status</span>
+          <select id="statusSel" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">
+            {STATUS_OPTIONS.map((s) => (
+              <option value={s} selected={order.status === s}>{s}</option>
+            ))}
+          </select>
+        </label>
+
+        <label class="block sm:col-span-2">
+          <span class="text-xs" style="color: var(--muted);">Internal notes</span>
+          <textarea id="internalNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{order.internal_notes ?? ""}</textarea>
+        </label>
+      </div>
+
+      <div class="mt-4 flex items-center gap-4">
+        <button id="saveBtn" class="rounded-[999px] bg-black px-6 py-3 text-sm font-medium text-white hover:opacity-90">
+          Save
+        </button>
+        <span id="saveStatus" class="text-sm" style="color: var(--muted);"></span>
+      </div>
+    </div>
+  </section>
+
+  <script define:vars={{ orderId: order.id }}>
+    const saveBtn = document.getElementById("saveBtn");
+    const statusSel = document.getElementById("statusSel");
+    const notesEl = document.getElementById("internalNotes");
+    const saveStatus = document.getElementById("saveStatus");
+
+    saveBtn?.addEventListener("click", async () => {
+      saveBtn.textContent = "Saving…";
+      saveBtn.disabled = true;
+
+      const res = await fetch("/api/admin/orders/update-status", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId,
+          status: statusSel?.value,
+          internal_notes: notesEl?.value ?? "",
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      saveBtn.textContent = "Save";
+      saveBtn.disabled = false;
+
+      if (!res.ok || !data?.ok) {
+        saveStatus.textContent = data?.error || "Failed to save";
+        return;
+      }
+
+      saveStatus.textContent = "Saved";
+      window.DarkroomCart?.toast("Order updated");
+      setTimeout(() => (saveStatus.textContent = ""), 3000);
+    });
+  </script>
+</BaseLayout>

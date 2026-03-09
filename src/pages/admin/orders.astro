@@ -47,8 +47,10 @@ const orders = res.results ?? [];
         </thead>
         <tbody>
           {orders.map((o) => (
-            <tr class="border-b border-[var(--line)]">
-              <td class="px-4 py-3 font-mono">{o.order_ref}</td>
+            <tr class="border-b border-[var(--line)] hover:bg-white/20 cursor-pointer" onclick={`location.href='/admin/orders/${o.id}'`}>
+              <td class="px-4 py-3 font-mono">
+                <a href={`/admin/orders/${o.id}`} class="hover:underline">{o.order_ref}</a>
+              </td>
               <td class="px-4 py-3">
                 <div class="font-medium">{o.customer_name}</div>
                 <div class="text-xs" style="color: var(--muted);">{o.customer_phone}</div>
@@ -56,18 +58,12 @@ const orders = res.results ?? [];
               <td class="px-4 py-3">{o.contact_method ?? "—"}</td>
               <td class="px-4 py-3" data-total-cents={o.total_price_cents}></td>
               <td class="px-4 py-3">
-                <select class="rounded-xl border border-[var(--line)] bg-white/60 px-3 py-2 text-sm outline-none" data-status={o.id}>
-                  <option value="NEW" selected={o.status === "NEW"}>NEW</option>
-                  <option value="IN_PROGRESS" selected={o.status === "IN_PROGRESS"}>IN_PROGRESS</option>
-                  <option value="READY" selected={o.status === "READY"}>READY</option>
-                  <option value="COMPLETED" selected={o.status === "COMPLETED"}>COMPLETED</option>
-                  <option value="CANCELLED" selected={o.status === "CANCELLED"}>CANCELLED</option>
-                </select>
+                <span class="rounded-full border border-[var(--line)] bg-white/40 px-3 py-1 text-xs font-medium">{o.status}</span>
               </td>
-              <td class="px-4 py-3">
-                <button class="rounded-[999px] bg-black px-4 py-2 text-xs text-white hover:opacity-90" data-save={o.id}>
-                  Save
-                </button>
+              <td class="px-4 py-3" onclick="event.stopPropagation()">
+                <a href={`/admin/orders/${o.id}`} class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-xs hover:bg-white/80">
+                  View
+                </a>
               </td>
             </tr>
           ))}
@@ -83,37 +79,9 @@ const orders = res.results ?? [];
   </section>
 
   <script is:inline>
-    // totals in MVR
     document.querySelectorAll("[data-total-cents]").forEach((td) => {
       const cents = Number(td.getAttribute("data-total-cents") || "0");
       td.textContent = window.DarkroomCart?.formatMVR(cents) ?? `MVR ${(cents/100).toFixed(2)}`;
-    });
-
-    document.querySelectorAll("[data-save]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const orderId = btn.getAttribute("data-save");
-        const sel = document.querySelector(`[data-status="${orderId}"]`);
-        const status = sel?.value;
-
-        btn.textContent = "Saving…";
-        const res = await fetch("/api/admin/orders/update-status", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ order_id: orderId, status }),
-        });
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok || !data?.ok) {
-          btn.textContent = "Error";
-          window.DarkroomCart?.toast(data?.error || "Failed");
-          setTimeout(() => (btn.textContent = "Save"), 1000);
-          return;
-        }
-
-        btn.textContent = "Saved";
-        window.DarkroomCart?.toast("Status updated");
-        setTimeout(() => (btn.textContent = "Save"), 1000);
-      });
     });
   </script>
 </BaseLayout>
