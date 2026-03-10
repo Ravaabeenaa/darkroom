@@ -11,6 +11,13 @@ const { title = "DARKROOM" } = Astro.props;
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{title}</title>
     <script is:inline>
+      /* Apply saved theme before paint to avoid flash */
+      (function () {
+        const t = localStorage.getItem("dr_theme_v1") || "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      })();
+    </script>
+    <script is:inline>
       (function () {
         const CART_KEY = "dr_cart_v1";
 
@@ -85,13 +92,25 @@ const { title = "DARKROOM" } = Astro.props;
             <img src="/images/logos/logo-dark.png" alt="darkroom by smolbo1" class="h-8 w-auto" />
           </a>
 
-          <nav class="hidden gap-8 text-sm font-medium text-black md:flex">
+          <nav class="hidden gap-8 text-sm font-medium text-black md:flex items-center">
             <a href="/shop" class="hover:opacity-70">Shop</a>
             <a href="/about" class="hover:opacity-70">About</a>
             <a href="/cart" class="relative flex items-center hover:opacity-70">
               Cart
               <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
             </a>
+
+            <!-- Theme switcher (desktop) -->
+            <div id="drThemeWrapper" class="relative">
+              <button id="drThemeBtn" class="flex cursor-pointer items-center gap-1 rounded-xl border border-black/20 px-3 py-1.5 text-xs font-medium text-black hover:bg-black/10" aria-label="Switch theme">
+                <span id="drThemeLabel">Dark</span>
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" class="opacity-60"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div id="drThemeMenu" class="absolute right-0 top-full z-50 mt-1 hidden min-w-[100px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg)] text-[var(--text)] shadow-lg">
+                <button data-theme-opt="dark" class="w-full cursor-pointer px-4 py-2.5 text-left text-xs hover:bg-[var(--panel)]">Dark</button>
+                <button data-theme-opt="light" class="w-full cursor-pointer px-4 py-2.5 text-left text-xs hover:bg-[var(--panel)]">Light</button>
+              </div>
+            </div>
           </nav>
 
           <button id="drMenuBtn" class="md:hidden flex flex-col justify-center items-center gap-[5px] w-10 h-10 rounded-xl text-black" aria-label="Open menu">
@@ -112,7 +131,8 @@ const { title = "DARKROOM" } = Astro.props;
         <div class="mx-auto max-w-[var(--container)] border-t" style="border-color: var(--line);">
           <div class="grid gap-10 py-10 md:grid-cols-3">
             <div>
-              <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="h-7 w-auto" />
+              <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="logo-for-dark h-7 w-auto" />
+              <img src="/images/logos/logo-dark.png" alt="darkroom by smolbo1" class="logo-for-light h-7 w-auto" />
             </div>
 
             <div class="text-sm">
@@ -136,7 +156,7 @@ const { title = "DARKROOM" } = Astro.props;
         </div>
       </footer>
     </div>
-    <div id="drToast" class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl border border-[var(--line)] bg-white/90 px-4 py-3 text-sm shadow" style="display:none"></div>
+    <div id="drToast" class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg" style="display:none;background:var(--text);color:var(--bg);"></div>
 
     <!-- Mobile menu drawer -->
     <div id="drMenuOverlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" style="display:none" aria-hidden="true"></div>
@@ -155,7 +175,53 @@ const { title = "DARKROOM" } = Astro.props;
           <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black" style="display:none"></span>
         </a>
       </div>
+
+      <!-- Mobile theme switcher -->
+      <div class="mt-auto pt-8 border-t border-[var(--line)]">
+        <div class="text-xs mb-3" style="color:var(--muted);">Theme</div>
+        <div class="flex gap-2">
+          <button data-theme-opt="dark" class="cursor-pointer flex-1 rounded-xl border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--panel)]">Dark</button>
+          <button data-theme-opt="light" class="cursor-pointer flex-1 rounded-xl border border-[var(--line)] px-3 py-2 text-sm hover:bg-[var(--panel)]">Light</button>
+        </div>
+      </div>
     </nav>
+
+    <script is:inline>
+      /* Theme switcher */
+      (function () {
+        const THEME_KEY = "dr_theme_v1";
+        const LABELS = { dark: "Dark", light: "Light" };
+
+        function applyTheme(t) {
+          document.documentElement.setAttribute("data-theme", t);
+          localStorage.setItem(THEME_KEY, t);
+          const lbl = document.getElementById("drThemeLabel");
+          if (lbl) lbl.textContent = LABELS[t] || t;
+        }
+
+        // Init label from current theme
+        const current = document.documentElement.getAttribute("data-theme") || "dark";
+        const lbl = document.getElementById("drThemeLabel");
+        if (lbl) lbl.textContent = LABELS[current] || current;
+
+        // Desktop dropdown toggle
+        const themeBtn = document.getElementById("drThemeBtn");
+        const themeMenu = document.getElementById("drThemeMenu");
+        themeBtn?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          themeMenu?.classList.toggle("hidden");
+        });
+        document.addEventListener("click", () => themeMenu?.classList.add("hidden"));
+
+        // All theme option buttons (desktop + mobile)
+        document.querySelectorAll("[data-theme-opt]").forEach((el) => {
+          el.addEventListener("click", () => {
+            applyTheme(el.getAttribute("data-theme-opt"));
+            themeMenu?.classList.add("hidden");
+          });
+        });
+      })();
+    </script>
 
     <script is:inline>
       (function () {

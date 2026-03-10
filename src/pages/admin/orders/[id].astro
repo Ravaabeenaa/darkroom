@@ -127,45 +127,75 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       </dl>
     </div>
 
-    <!-- Current order items -->
+    <!-- Current order items (editable) -->
     <div class="mt-6 rounded-3xl border border-[var(--line)] bg-white/5 p-6">
       <h2 class="text-lg font-semibold">Current order</h2>
+      <p class="mt-1 text-xs" style="color: var(--muted);">Edit quantities and prices below, then save. Original order is unaffected.</p>
 
       {items.length === 0 ? (
         <p class="mt-4 text-sm" style="color: var(--muted);">No items recorded.</p>
       ) : (
         <div class="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
-          <table class="w-full text-left text-sm">
+          <table class="w-full text-left text-sm" id="itemsTable">
             <thead class="bg-white/5">
               <tr>
                 <th class="px-4 py-3">Service</th>
-                <th class="px-4 py-3 text-right">Unit</th>
+                <th class="px-4 py-3 text-right">Unit (MVR)</th>
                 <th class="px-4 py-3 text-right">Qty</th>
                 <th class="px-4 py-3 text-right">Total</th>
               </tr>
             </thead>
             <tbody>
               {items.map((it) => (
-                <tr class="border-t border-[var(--line)]">
+                <tr class="border-t border-[var(--line)]" data-item-id={it.id}>
                   <td class="px-4 py-3">
                     <div class="font-medium">{it.service_name}</div>
                     {it.service_group && (
                       <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
                     )}
                   </td>
-                  <td class="px-4 py-3 text-right tabular-nums">{money(it.unit_price_cents)}</td>
-                  <td class="px-4 py-3 text-right tabular-nums">{it.quantity}</td>
-                  <td class="px-4 py-3 text-right tabular-nums font-medium">{money(it.line_total_cents)}</td>
+                  <td class="px-4 py-2 text-right">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      name="unit"
+                      value={(it.unit_price_cents / 100).toFixed(2)}
+                      class="w-24 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-[var(--red)]"
+                    />
+                  </td>
+                  <td class="px-4 py-2 text-right">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      name="qty"
+                      value={it.quantity}
+                      class="w-16 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-[var(--red)]"
+                    />
+                  </td>
+                  <td class="px-4 py-3 text-right tabular-nums font-medium item-line-total">
+                    {money(it.line_total_cents)}
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot class="border-t border-[var(--line)] bg-white/5">
               <tr>
                 <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold">Total</td>
-                <td class="px-4 py-3 text-right tabular-nums font-semibold">{money(order.total_price_cents)}</td>
+                <td id="itemsTotal" class="px-4 py-3 text-right tabular-nums font-semibold">{money(order.total_price_cents)}</td>
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <div class="mt-4 flex items-center gap-4">
+          <button id="saveItemsBtn" class="cursor-pointer rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90">
+            Save items
+          </button>
+          <span id="saveItemsStatus" class="text-sm" style="color: var(--muted);"></span>
         </div>
       )}
     </div>
@@ -230,7 +260,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <label class="block">
           <span class="text-xs" style="color: var(--muted);">Status</span>
-          <select id="statusSel" class="mt-2 w-full cursor-pointer rounded-2xl border border-[var(--line)] bg-white/10 px-4 py-3 text-sm outline-none">
+          <select id="statusSel" class="mt-2 w-full cursor-pointer rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
             {STATUS_OPTIONS.map((s) => (
               <option value={s} selected={order.status === s}>{s}</option>
             ))}
@@ -239,7 +269,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
 
         <label class="block sm:col-span-2">
           <span class="text-xs" style="color: var(--muted);">Internal notes</span>
-          <textarea id="internalNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/10 px-4 py-3 text-sm outline-none">{order.internal_notes ?? ""}</textarea>
+          <textarea id="internalNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">{order.internal_notes ?? ""}</textarea>
         </label>
       </div>
 
@@ -253,6 +283,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
   </section>
 
   <script define:vars={{ orderId: order.id }}>
+    // ── Status / notes save ──────────────────────────────────────
     const saveBtn = document.getElementById("saveBtn");
     const statusSel = document.getElementById("statusSel");
     const notesEl = document.getElementById("internalNotes");
@@ -284,6 +315,76 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       saveStatus.textContent = "Saved";
       window.DarkroomCart?.toast("Order updated");
       setTimeout(() => (saveStatus.textContent = ""), 3000);
+    });
+
+    // ── Item editing ─────────────────────────────────────────────
+    const table = document.getElementById("itemsTable");
+    const saveItemsBtn = document.getElementById("saveItemsBtn");
+    const saveItemsStatus = document.getElementById("saveItemsStatus");
+
+    function formatMVR(cents) {
+      return "MVR " + (cents / 100).toFixed(2);
+    }
+
+    // Live-update row totals as user types
+    table?.querySelectorAll("tr[data-item-id]").forEach((row) => {
+      const unitInput = row.querySelector("input[name='unit']");
+      const qtyInput = row.querySelector("input[name='qty']");
+      const totalCell = row.querySelector(".item-line-total");
+
+      function recalcRow() {
+        const unit = Math.round(parseFloat(unitInput.value || "0") * 100);
+        const qty = Math.max(0, parseInt(qtyInput.value || "0", 10));
+        totalCell.textContent = formatMVR(unit * qty);
+        recalcOrderTotal();
+      }
+
+      unitInput?.addEventListener("input", recalcRow);
+      qtyInput?.addEventListener("input", recalcRow);
+    });
+
+    function recalcOrderTotal() {
+      let sum = 0;
+      table?.querySelectorAll("tr[data-item-id]").forEach((row) => {
+        const unit = Math.round(parseFloat(row.querySelector("input[name='unit']")?.value || "0") * 100);
+        const qty = Math.max(0, parseInt(row.querySelector("input[name='qty']")?.value || "0", 10));
+        sum += unit * qty;
+      });
+      const totalEl = document.getElementById("itemsTotal");
+      if (totalEl) totalEl.textContent = formatMVR(sum);
+    }
+
+    saveItemsBtn?.addEventListener("click", async () => {
+      const rows = table?.querySelectorAll("tr[data-item-id]");
+      if (!rows || rows.length === 0) return;
+
+      const items = Array.from(rows).map((row) => ({
+        id: row.getAttribute("data-item-id"),
+        unit_price_cents: Math.round(parseFloat(row.querySelector("input[name='unit']")?.value || "0") * 100),
+        qty: Math.max(0, parseInt(row.querySelector("input[name='qty']")?.value || "0", 10)),
+      }));
+
+      saveItemsBtn.textContent = "Saving…";
+      saveItemsBtn.disabled = true;
+
+      const res = await fetch("/api/admin/orders/update-items", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, items }),
+      });
+
+      const data = await res.json().catch(() => null);
+      saveItemsBtn.textContent = "Save items";
+      saveItemsBtn.disabled = false;
+
+      if (!res.ok || !data?.ok) {
+        saveItemsStatus.textContent = data?.error || "Failed to save";
+        return;
+      }
+
+      saveItemsStatus.textContent = "Saved";
+      window.DarkroomCart?.toast("Items updated");
+      setTimeout(() => (saveItemsStatus.textContent = ""), 3000);
     });
   </script>
 </BaseLayout>

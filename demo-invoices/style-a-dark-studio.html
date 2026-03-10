@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<style>
+  @font-face {
+    font-family: 'League Gothic';
+    src: url('../public/fonts/LeagueGothic-Variable.ttf') format('truetype');
+  }
+  @font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../public/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .invoice {
+    width: 900px;
+    background: #000000;
+    color: #EEE4D2;
+    overflow: hidden;
+  }
+
+  /* Red top accent bar */
+  .top-bar {
+    background: #ED1C24;
+    height: 8px;
+    width: 100%;
+  }
+
+  .invoice-inner {
+    padding: 52px 56px 60px;
+  }
+
+  /* Header row */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .logo img {
+    height: 48px;
+    width: auto;
+    display: block;
+  }
+
+  .invoice-label {
+    text-align: right;
+  }
+
+  .invoice-label .word {
+    font-family: 'League Gothic', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    color: #ED1C24;
+  }
+
+  .invoice-label .ref {
+    font-size: 12px;
+    color: rgba(238,228,210,0.55);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid rgba(238,228,210,0.15);
+    margin: 36px 0;
+  }
+
+  /* Info grid */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 28px;
+    font-size: 12px;
+  }
+
+  .info-block .label {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(238,228,210,0.45);
+    margin-bottom: 6px;
+  }
+
+  .info-block .value {
+    color: #EEE4D2;
+    line-height: 1.7;
+  }
+
+  .info-block .value strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  /* Items table */
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 36px;
+    font-size: 13px;
+  }
+
+  .items-table thead tr {
+    border-top: 1px solid rgba(238,228,210,0.15);
+    border-bottom: 1px solid rgba(238,228,210,0.15);
+  }
+
+  .items-table thead th {
+    padding: 10px 0;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(238,228,210,0.45);
+    font-weight: 400;
+  }
+
+  .items-table thead th:last-child,
+  .items-table thead th:nth-child(2) { text-align: right; }
+
+  .items-table tbody tr {
+    border-bottom: 1px solid rgba(238,228,210,0.08);
+  }
+
+  .items-table tbody td {
+    padding: 16px 0;
+    color: #EEE4D2;
+  }
+
+  .items-table tbody td:nth-child(2),
+  .items-table tbody td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .items-table tbody td .group {
+    font-size: 11px;
+    color: rgba(238,228,210,0.45);
+    margin-top: 2px;
+  }
+
+  /* Total row */
+  .total-row {
+    margin-top: 28px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: 40px;
+    border-top: 1px solid rgba(238,228,210,0.15);
+    padding-top: 20px;
+  }
+
+  .total-row .label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(238,228,210,0.55);
+  }
+
+  .total-row .amount {
+    font-family: 'League Gothic', sans-serif;
+    font-size: 42px;
+    letter-spacing: 0.04em;
+    color: #EEE4D2;
+  }
+
+  .total-row .currency {
+    font-size: 14px;
+    color: rgba(238,228,210,0.55);
+    margin-right: 6px;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 52px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(238,228,210,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer .contact {
+    font-size: 11px;
+    color: rgba(238,228,210,0.4);
+    line-height: 1.8;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .footer .tagline {
+    font-family: 'League Gothic', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.1em;
+    color: rgba(238,228,210,0.18);
+  }
+
+  .bottom-bar {
+    background: #ED1C24;
+    height: 4px;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+<div class="invoice">
+  <div class="top-bar"></div>
+  <div class="invoice-inner">
+
+    <div class="header">
+      <div class="logo">
+        <img src="../public/images/logos/logo-light.png" alt="darkroom" />
+      </div>
+      <div class="invoice-label">
+        <div class="word">INVOICE</div>
+        <div class="ref">DR-2603-002 &nbsp;·&nbsp; 9 March 2026</div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="info-grid">
+      <div class="info-block">
+        <div class="label">Billed to</div>
+        <div class="value">
+          <strong>Muby</strong>
+          +960 7606769<br/>
+          Telegram
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="label">From</div>
+        <div class="value">
+          <strong>Darkroom</strong>
+          hello@darkroom.mv<br/>
+          +960 000-0000
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="label">Status</div>
+        <div class="value">
+          <strong style="color:#ED1C24;">Confirmed</strong>
+          Please contact us<br/>via Telegram to arrange<br/>drop-off.
+        </div>
+      </div>
+    </div>
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Service</th>
+          <th>Qty</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Kodak Ektar 100<div class="group">C-41 Process</div></td>
+          <td style="text-align:right;">1</td>
+          <td style="text-align:right;">MVR &nbsp;2.00</td>
+        </tr>
+        <tr>
+          <td>Kodak Gold 200<div class="group">C-41 Process</div></td>
+          <td style="text-align:right;">1</td>
+          <td style="text-align:right;">MVR &nbsp;3.00</td>
+        </tr>
+        <tr>
+          <td>Kodak Portra 400<div class="group">C-41 Process</div></td>
+          <td style="text-align:right;">2</td>
+          <td style="text-align:right;">MVR &nbsp;4.00</td>
+        </tr>
+        <tr>
+          <td>Kodak Tri-X 400<div class="group">Black &amp; White</div></td>
+          <td style="text-align:right;">3</td>
+          <td style="text-align:right;">MVR 12.00</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="total-row">
+      <span class="label">Grand total</span>
+      <span class="amount"><span class="currency">MVR</span>21.00</span>
+    </div>
+
+    <div class="footer">
+      <div class="contact">
+        hello@darkroom.mv &nbsp;·&nbsp; +960 000-0000<br/>
+        Telegram &nbsp;·&nbsp; Viber &nbsp;·&nbsp; WhatsApp
+      </div>
+      <div class="tagline">BY SMOLBO1</div>
+    </div>
+
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+</body>
+</html>
