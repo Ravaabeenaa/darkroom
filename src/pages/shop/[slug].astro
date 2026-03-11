@@ -81,7 +81,7 @@ const galleryRows = gallery.results ?? [];
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
   <section class="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
-    <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-10">
+    <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-10">
       <div class="text-xs tracking-wide uppercase" style="color: var(--muted);">
         {service.service_group ?? "service"}
       </div>
@@ -96,7 +96,7 @@ const galleryRows = gallery.results ?? [];
           />
         ) : (
           <div
-            class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-[var(--line)] bg-white/20 text-sm"
+            class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--panel)] text-sm"
             style="color: var(--muted);"
           >
             No image
@@ -146,24 +146,14 @@ const galleryRows = gallery.results ?? [];
         </a>
       </div>
 
-      <div class="mt-10 grid gap-4">
-        <details class="rounded-3xl border border-[var(--line)] bg-white/30 p-6" open>
-          <summary class="cursor-pointer list-none text-lg font-semibold">Details</summary>
-          <div class="mt-3 text-sm leading-6" style="color: var(--muted);">
-            <div><b>ID:</b> {service.id}</div>
-            {service.tags && <div class="mt-2"><b>Tags:</b> {service.tags}</div>}
-            {service.requires_group && <div class="mt-2"><b>Requires group:</b> {service.requires_group}</div>}
-            {service.requires_service_id && <div class="mt-2"><b>Requires service:</b> {service.requires_service_id}</div>}
-          </div>
-        </details>
-
-        {service.notes && (
-          <details class="rounded-3xl border border-[var(--line)] bg-white/30 p-6">
+      {service.notes && (
+        <div class="mt-10">
+          <details class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-6">
             <summary class="cursor-pointer list-none text-lg font-semibold">Notes</summary>
             <p class="mt-3 text-sm leading-6" style="color: var(--muted);">{service.notes}</p>
           </details>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   </section>
 

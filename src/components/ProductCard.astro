@@ -14,8 +14,8 @@ if (!id) {
 }
 ---
 
-<article data-dr-product-card data-id={id} class="rounded-3xl border border-[var(--line)] bg-white/20 p-4">
-  <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-white/20">
+<article data-dr-product-card data-id={id} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4">
+  <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
     {image ? (
       <img src={image} alt={name} class="aspect-[4/3] w-full object-cover" loading="lazy" />
     ) : (

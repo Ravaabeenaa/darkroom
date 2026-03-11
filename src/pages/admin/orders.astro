@@ -24,6 +24,14 @@ const res = await db.prepare(`
 `).all<OrderRow>();
 
 const orders = res.results ?? [];
+
+const statusColour: Record<string, string> = {
+  NEW:         "bg-blue-100 text-blue-800",
+  IN_PROGRESS: "bg-yellow-100 text-yellow-800",
+  READY:       "bg-green-100 text-green-800",
+  COMPLETED:   "bg-gray-100 text-gray-600",
+  CANCELLED:   "bg-red-100 text-red-700",
+};
 ---
 
 <BaseLayout title="Orders — Admin">
@@ -58,12 +66,21 @@ const orders = res.results ?? [];
               <td class="px-4 py-3">{o.contact_method ?? "—"}</td>
               <td class="px-4 py-3" data-total-cents={o.total_price_cents}></td>
               <td class="px-4 py-3">
-                <span class="rounded-full border border-[var(--line)] bg-white/40 px-3 py-1 text-xs font-medium">{o.status}</span>
+                <span class={`rounded-full px-3 py-1 text-xs font-medium ${statusColour[o.status] ?? "bg-gray-100 text-gray-600"}`}>{o.status}</span>
               </td>
               <td class="px-4 py-3" onclick="event.stopPropagation()">
-                <a href={`/admin/orders/${o.id}`} class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-xs hover:bg-white/80">
-                  View
-                </a>
+                <div class="flex items-center gap-2">
+                  <a href={`/admin/orders/${o.id}`} class="rounded-[999px] border border-[var(--line)] bg-white/20 px-4 py-2 text-xs hover:bg-white/40">
+                    View
+                  </a>
+                  <button
+                    class="dr-invoice-btn cursor-pointer rounded-[999px] bg-[var(--btn)] px-4 py-2 text-xs text-[var(--btnText)] hover:opacity-90"
+                    data-order-id={o.id}
+                    data-order-ref={o.order_ref}
+                  >
+                    Invoice ↓
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -78,10 +95,38 @@ const orders = res.results ?? [];
     )}
   </section>
 
+  <script is:inline src="/invoice-draw.js"></script>
   <script is:inline>
     document.querySelectorAll("[data-total-cents]").forEach((td) => {
       const cents = Number(td.getAttribute("data-total-cents") || "0");
       td.textContent = window.DarkroomCart?.formatMVR(cents) ?? `MVR ${(cents/100).toFixed(2)}`;
+    });
+
+    document.querySelectorAll(".dr-invoice-btn").forEach((btn) => {
+      btn.addEventListener("click", async function () {
+        const orderId  = this.getAttribute("data-order-id");
+        const orderRef = this.getAttribute("data-order-ref");
+        const orig = this.textContent;
+        this.textContent = "…";
+        this.disabled = true;
+
+        try {
+          const res  = await fetch(`/api/admin/orders/invoice-data?id=${encodeURIComponent(orderId)}`);
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || "Failed");
+
+          const png = await window.darkroomDrawInvoice(data.order, data.items);
+          const a   = document.createElement("a");
+          a.href     = png;
+          a.download = `${orderRef}.png`;
+          a.click();
+        } catch (e) {
+          alert("Invoice failed: " + e.message);
+        } finally {
+          this.textContent = orig;
+          this.disabled = false;
+        }
+      });
     });
   </script>
 </BaseLayout>

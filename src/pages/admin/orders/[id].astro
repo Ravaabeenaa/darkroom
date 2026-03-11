@@ -91,6 +91,12 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
           ✎ Modified from original
         </span>
       )}
+      <button
+        id="dlInvoiceBtn"
+        class="ml-auto cursor-pointer rounded-[999px] bg-[var(--btn)] px-5 py-2 text-sm font-medium text-[var(--btnText)] hover:opacity-90"
+      >
+        Download Invoice ↓
+      </button>
     </div>
 
     <p class="mt-2 text-xs" style="color: var(--muted);">
@@ -385,6 +391,40 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       saveItemsStatus.textContent = "Saved";
       window.DarkroomCart?.toast("Items updated");
       setTimeout(() => (saveItemsStatus.textContent = ""), 3000);
+    });
+  </script>
+
+  <script is:inline src="/invoice-draw.js"></script>
+  <script define:vars={{ orderData: {
+    id: order.id,
+    order_ref: order.order_ref,
+    created_at: order.created_at,
+    customer_name: order.customer_name,
+    customer_phone: order.customer_phone,
+    contact_method: order.contact_method,
+    customer_email: order.customer_email,
+    total_price_cents: order.total_price_cents,
+  }, itemsData: items.map(it => ({
+    service_name: it.service_name,
+    service_group: it.service_group,
+    quantity: it.quantity,
+    line_total_cents: it.line_total_cents,
+  })) }}>
+    document.getElementById("dlInvoiceBtn")?.addEventListener("click", async function () {
+      this.textContent = "Generating…";
+      this.disabled = true;
+      try {
+        const png = await window.darkroomDrawInvoice(orderData, itemsData);
+        const a = document.createElement("a");
+        a.href = png;
+        a.download = `${orderData.order_ref}.png`;
+        a.click();
+      } catch (e) {
+        alert("Invoice failed: " + e.message);
+      } finally {
+        this.textContent = "Download Invoice ↓";
+        this.disabled = false;
+      }
     });
   </script>
 </BaseLayout>

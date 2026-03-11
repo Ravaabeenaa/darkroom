@@ -69,7 +69,7 @@ const services = [
       </div>
 
       <div class="md:pt-10">
-        <div class="bg-white/20 p-0">
+        <div class="bg-[var(--panel)] p-0">
           <img
             src={`${r2Base}/home/Ektar100_029.dng.png`}
             alt="Hero"
@@ -183,7 +183,18 @@ const services = [
         <h2 class="text-5xl md:text-6xl leading-[0.95] tracking-wide">Follow Us</h2>
       </div>
       <div class="pt-6">
-        <Button href="#" size="lg">Social</Button>
+        <a
+          href="#"
+          aria-label="Follow us on Instagram"
+          class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--btn)] text-[var(--btnText)] hover:opacity-90 transition"
+        >
+          <!-- Instagram icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </a>
       </div>
     </div>
 

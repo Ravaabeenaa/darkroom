@@ -1,0 +1,90 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="404 — DARKROOM">
+  <section class="flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
+
+    <!-- Film strip SVG -->
+    <svg
+      viewBox="0 0 560 180"
+      xmlns="http://www.w3.org/2000/svg"
+      class="w-full max-w-xl"
+      aria-hidden="true"
+    >
+      <!-- Strip body -->
+      <rect width="560" height="180" rx="10" fill="#111"/>
+
+      <!-- Top sprocket holes -->
+      {[20,60,100,140,180,220,260,300,340,380,420,460,500].map(x => (
+        <rect x={x} y="10" width="22" height="14" rx="3" fill="#000"/>
+      ))}
+
+      <!-- Bottom sprocket holes -->
+      {[20,60,100,140,180,220,260,300,340,380,420,460,500].map(x => (
+        <rect x={x} y="156" width="22" height="14" rx="3" fill="#000"/>
+      ))}
+
+      <!-- Frame 1 — exposed -->
+      <rect x="18" y="34" width="84" height="112" rx="2" fill="#1e1814"/>
+      <rect x="18" y="34" width="84" height="112" rx="2" fill="url(#film1)" opacity="0.6"/>
+
+      <!-- Frame 2 — exposed -->
+      <rect x="116" y="34" width="84" height="112" rx="2" fill="#1a1c1e"/>
+      <rect x="116" y="34" width="84" height="112" rx="2" fill="url(#film2)" opacity="0.5"/>
+
+      <!-- Frame 3 — EMPTY / 404 -->
+      <rect x="214" y="34" width="132" height="112" rx="2" fill="#0a0a0a"/>
+      <rect x="214" y="34" width="132" height="112" rx="2" stroke="#ED1C24" stroke-width="1.5" stroke-dasharray="6 4" fill="none"/>
+      <text x="280" y="101" text-anchor="middle" font-family="'League Gothic', 'Arial Narrow', sans-serif" font-size="52" fill="#ED1C24" opacity="0.85" font-weight="400" letter-spacing="2">404</text>
+      <text x="280" y="124" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="9" fill="rgba(238,228,210,0.35)" letter-spacing="3">FRAME MISSING</text>
+
+      <!-- Frame 4 — exposed -->
+      <rect x="360" y="34" width="84" height="112" rx="2" fill="#1c1a18"/>
+      <rect x="360" y="34" width="84" height="112" rx="2" fill="url(#film3)" opacity="0.55"/>
+
+      <!-- Frame 5 — exposed -->
+      <rect x="458" y="34" width="84" height="112" rx="2" fill="#1e1c1a"/>
+      <rect x="458" y="34" width="84" height="112" rx="2" fill="url(#film4)" opacity="0.5"/>
+
+      <defs>
+        <radialGradient id="film1" cx="40%" cy="35%" r="60%">
+          <stop offset="0%" stop-color="#9b8c7a"/>
+          <stop offset="100%" stop-color="#1e1814"/>
+        </radialGradient>
+        <radialGradient id="film2" cx="60%" cy="55%" r="65%">
+          <stop offset="0%" stop-color="#7a8c9b"/>
+          <stop offset="100%" stop-color="#1a1c1e"/>
+        </radialGradient>
+        <radialGradient id="film3" cx="45%" cy="40%" r="58%">
+          <stop offset="0%" stop-color="#8c7a6a"/>
+          <stop offset="100%" stop-color="#1c1a18"/>
+        </radialGradient>
+        <radialGradient id="film4" cx="55%" cy="60%" r="62%">
+          <stop offset="0%" stop-color="#6a7a8c"/>
+          <stop offset="100%" stop-color="#1e1c1a"/>
+        </radialGradient>
+      </defs>
+    </svg>
+
+    <h1 class="mt-10 text-5xl md:text-7xl tracking-wide">Frame not found</h1>
+    <p class="mt-4 text-sm md:text-base" style="color: var(--muted);">
+      This page doesn't exist — like an unexposed frame on a finished roll.
+    </p>
+
+    <div class="mt-10 flex flex-wrap justify-center gap-4">
+      <a
+        href="/"
+        class="inline-flex items-center justify-center rounded-[999px] bg-[var(--btn)] px-10 py-3 text-base font-medium text-[var(--btnText)] hover:opacity-90"
+      >
+        Go home
+      </a>
+      <a
+        href="/shop"
+        class="inline-flex items-center justify-center rounded-[999px] border border-[var(--line)] px-10 py-3 text-base font-medium hover:bg-[var(--panel)]"
+      >
+        Browse services
+      </a>
+    </div>
+  </section>
+</BaseLayout>
