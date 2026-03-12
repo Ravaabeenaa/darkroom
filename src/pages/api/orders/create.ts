@@ -150,10 +150,11 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const chatId   = env.TELEGRAM_CHAT_ID;
 
 if (botToken && chatId) {
+  const phoneNumber = customer_phone.replace(/\D/g, ""); // ensures tel: link works
   const lines = [
     `🧾 <b>New order: ${order_ref}</b>`,
     `👤 ${customer_name}`,
-    `📱 <a href="tel:${customer_phone}">${customer_phone}</a> · ${contact_method}`,
+    `📱 <a href="tel:+960${phoneNumber}">+960 ${customer_phone}</a> · ${contact_method}`,
     `📦 ${services_summary}`,
     `💰 MVR ${(total / 100).toFixed(2)}`,
     customer_notes ? `📝 <i>${customer_notes}</i>` : null,
@@ -166,9 +167,9 @@ if (botToken && chatId) {
     body: JSON.stringify({
       chat_id: chatId,
       text: lines,
-      parse_mode: "HTML", // <-- changed from Markdown to HTML
+      parse_mode: "HTML", // HTML is required for tel: links
     }),
-  }).catch(() => null); // if Telegram is down, order still succeeds silently
+  }).catch(() => null);
 
   locals.runtime.ctx.waitUntil(tgFetch);
 }
