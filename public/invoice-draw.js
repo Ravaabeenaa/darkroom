@@ -145,27 +145,29 @@
     hline(y);
 
     for (var j = 0; j < items.length; j++) {
-      var it    = items[j];
-      var name  = String(it.service_name || it.name || "");
-      var group = String(it.service_group || "");
-      var qty   = String(it.quantity || it.qty || 0);
-      var amt   = "MVR " + mvr(it.line_total_cents);
+      var it         = items[j];
+      var name       = String(it.service_name || it.name || "");
+      var group      = String(it.service_group || "");
+      var isDiscount = (it.line_total_cents < 0);
+      var qty        = isDiscount ? "" : String(it.quantity || it.qty || 0);
+      var absCents   = Math.abs(it.line_total_cents);
+      var amt        = isDiscount ? ("−MVR " + mvr(absCents)) : ("MVR " + mvr(it.line_total_cents));
 
       ctx.font = "500 13px 'JetBrains Mono', monospace";
-      ctx.fillStyle = BLACK;
+      ctx.fillStyle = isDiscount ? RED : BLACK;
       ctx.textAlign = "left";
       ctx.fillText(name, PAD, y + 22);
 
-      if (group) {
+      if (group && !isDiscount) {
         ctx.font = "400 10px 'JetBrains Mono', monospace";
         ctx.fillStyle = MUTED_DARK;
         ctx.fillText(group.toUpperCase(), PAD, y + 36);
       }
 
       ctx.font = "400 13px 'JetBrains Mono', monospace";
-      ctx.fillStyle = BLACK;
+      ctx.fillStyle = isDiscount ? RED : BLACK;
       ctx.textAlign = "right";
-      ctx.fillText(qty, W - PAD - 90, y + 22);
+      if (qty) ctx.fillText(qty, W - PAD - 90, y + 22);
       ctx.fillText(amt, W - PAD, y + 22);
 
       y += ROW_H;

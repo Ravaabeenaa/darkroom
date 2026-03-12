@@ -48,7 +48,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .bind(order_id)
     .all<{ service_name: string; quantity: number; unit_price_cents: number; line_total_cents: number }>();
 
-  const newTotal = (results ?? []).reduce((s, r) => s + r.line_total_cents, 0);
+  const itemTotal = (results ?? []).reduce((s, r) => s + r.line_total_cents, 0);
+  const discountRes = await db.prepare(`SELECT COALESCE(SUM(computed_cents), 0) AS t FROM order_discounts WHERE order_id = ?`).bind(order_id).first<{ t: number }>();
+  const newTotal = itemTotal - (discountRes?.t ?? 0);
   const summary = (results ?? [])
     .map((r) => `${r.service_name} x${r.quantity}`)
     .join(", ");

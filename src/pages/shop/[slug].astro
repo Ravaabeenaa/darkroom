@@ -20,6 +20,8 @@ type ServiceRow = {
   requires_service_id: string | null;
   notes: string | null;
   primary_image_key: string | null;
+  turnaround_options: string | null;
+  pushpull_options: string | null;
 };
 
 type ImgRow = {
@@ -37,7 +39,7 @@ function imgUrl(key: string) {
 let service = await db
   .prepare(
     `
-  SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
+  SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, pushpull_options
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
@@ -50,7 +52,7 @@ if (!service) {
   const byId = await db
     .prepare(
       `
-    SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key
+    SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, pushpull_options
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
@@ -77,6 +79,12 @@ const gallery = await db
   .all<ImgRow>();
 
 const galleryRows = gallery.results ?? [];
+
+function parseOpts(raw: string | null): string[] {
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+const turnaroundOpts = parseOpts(service.turnaround_options);
+const pushpullOpts = parseOpts(service.pushpull_options);
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -131,11 +139,40 @@ const galleryRows = gallery.results ?? [];
         </p>
       )}
 
+      {(service.service_group === 'Film' || service.service_group === 'Developing') && (
+        <div class="mt-6 rounded-2xl border px-4 py-3 text-sm" style="border-color: color-mix(in srgb, var(--red) 40%, transparent); background: color-mix(in srgb, var(--red) 8%, transparent);">
+          <span style="color: var(--red);">5% bulk discount</span>
+          <span style="color: var(--muted);">
+            {service.service_group === 'Film'
+              ? ' — order 5 or more film rolls in one order.'
+              : ' — order 5 or more of this service.'}
+          </span>
+        </div>
+      )}
+
+      {turnaroundOpts.length > 0 && (
+        <div class="mt-6">
+          <label class="block text-sm" style="color: var(--muted);">Turnaround</label>
+          <select id="turnaroundSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
+            {turnaroundOpts.map(opt => <option value={opt}>{opt}</option>)}
+          </select>
+        </div>
+      )}
+
+      {pushpullOpts.length > 0 && (
+        <div class="mt-4">
+          <label class="block text-sm" style="color: var(--muted);">Push/Pull</label>
+          <select id="pushpullSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
+            {pushpullOpts.map(opt => <option value={opt}>{opt}</option>)}
+          </select>
+        </div>
+      )}
+
       <!-- Cart controls (NO redirect to /cart) -->
       <div class="mt-8 flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
           <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70" id="decBtn">−</button>
-          <span class="w-10 text-center text-base tabular-nums" data-dr-cart-qty={service.id}>0</span>
+          <span id="qtyDisplay" class="w-10 text-center text-base tabular-nums">0</span>
           <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70" id="incBtn">+</button>
         </div>
 
@@ -164,31 +201,42 @@ const galleryRows = gallery.results ?? [];
         priceEl.textContent = window.DarkroomCart.formatMVR(priceCents);
       }
 
-      const qtyEl = document.querySelector(`[data-dr-cart-qty="${serviceId}"]`);
+      const qtyEl = document.getElementById("qtyDisplay");
       const incBtn = document.getElementById("incBtn");
       const decBtn = document.getElementById("decBtn");
+      const turnaroundEl = document.getElementById("turnaroundSelect");
+      const pushpullEl = document.getElementById("pushpullSelect");
+
+      function getCurrentKey() {
+        const t = turnaroundEl ? turnaroundEl.value || null : null;
+        const p = pushpullEl ? pushpullEl.value || null : null;
+        return window.DarkroomCart.makeKey(serviceId, t, p);
+      }
 
       function renderQty() {
         if (!window.DarkroomCart || !qtyEl) return;
-        qtyEl.textContent = String(window.DarkroomCart.getQty(serviceId));
+        qtyEl.textContent = String(window.DarkroomCart.getQty(getCurrentKey()));
       }
 
       incBtn?.addEventListener("click", (e) => {
         e.preventDefault();
-        window.DarkroomCart.inc(serviceId);
+        window.DarkroomCart.inc(getCurrentKey());
         window.DarkroomCart.toast("Added to cart");
         renderQty();
       });
 
       decBtn?.addEventListener("click", (e) => {
         e.preventDefault();
-        const before = window.DarkroomCart.getQty(serviceId);
-        window.DarkroomCart.dec(serviceId);
-        const after = window.DarkroomCart.getQty(serviceId);
+        const key = getCurrentKey();
+        const before = window.DarkroomCart.getQty(key);
+        window.DarkroomCart.dec(key);
+        const after = window.DarkroomCart.getQty(key);
         if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
         renderQty();
       });
 
+      turnaroundEl?.addEventListener("change", renderQty);
+      pushpullEl?.addEventListener("change", renderQty);
       window.addEventListener("dr-cart-changed", renderQty);
       renderQty();
     })();

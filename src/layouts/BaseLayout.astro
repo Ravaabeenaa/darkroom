@@ -19,7 +19,26 @@ const { title = "DARKROOM" } = Astro.props;
     </script>
     <script is:inline>
       (function () {
-        const CART_KEY = "dr_cart_v1";
+        const CART_KEY = "dr_cart_v2";
+
+        // Composite key: "serviceId" for simple services,
+        // "serviceId~turnaround~pushpull" for services with options.
+        function makeKey(serviceId, turnaround, pushpull) {
+          if (!turnaround && !pushpull) return serviceId;
+          return `${serviceId}~${turnaround ?? ""}~${pushpull ?? ""}`;
+        }
+
+        function parseKey(key) {
+          const tilde = key.indexOf("~");
+          if (tilde === -1) return { serviceId: key, turnaround: null, pushpull: null };
+          const rest = key.slice(tilde + 1);
+          const tilde2 = rest.indexOf("~");
+          return {
+            serviceId: key.slice(0, tilde),
+            turnaround: tilde2 === -1 ? (rest || null) : (rest.slice(0, tilde2) || null),
+            pushpull:   tilde2 === -1 ? null           : (rest.slice(tilde2 + 1) || null),
+          };
+        }
 
         function load() {
           try { return JSON.parse(localStorage.getItem(CART_KEY) || "{}") || {}; }
@@ -31,21 +50,21 @@ const { title = "DARKROOM" } = Astro.props;
           window.dispatchEvent(new CustomEvent("dr-cart-changed", { detail: cart }));
         }
 
-        function getQty(id) {
+        function getQty(key) {
           const cart = load();
-          return Math.max(0, Number(cart[id] || 0));
+          return Math.max(0, Number(cart[key] || 0));
         }
 
-        function setQty(id, qty) {
+        function setQty(key, qty) {
           const cart = load();
           const q = Math.max(0, Number(qty || 0));
-          if (q <= 0) delete cart[id];
-          else cart[id] = q;
+          if (q <= 0) delete cart[key];
+          else cart[key] = q;
           save(cart);
         }
 
-        function inc(id) { setQty(id, getQty(id) + 1); }
-        function dec(id) { setQty(id, getQty(id) - 1); }
+        function inc(key) { setQty(key, getQty(key) + 1); }
+        function dec(key) { setQty(key, getQty(key) - 1); }
 
         function countItems() {
           const cart = load();
@@ -68,7 +87,7 @@ const { title = "DARKROOM" } = Astro.props;
           el.__t = setTimeout(() => (el.style.display = "none"), 1600);
         }
 
-        window.DarkroomCart = { load, save, getQty, setQty, inc, dec, countItems, formatMVR, toast };
+        window.DarkroomCart = { load, save, getQty, setQty, inc, dec, countItems, formatMVR, toast, makeKey, parseKey };
 
         // also update header cart count when cart changes
         function syncHeaderCount() {

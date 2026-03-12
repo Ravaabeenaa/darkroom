@@ -17,6 +17,8 @@ type ServiceRow = {
   notes: string | null;
   primary_image_key: string | null;
   featured: number;
+  turnaround_options: string | null;
+  pushpull_options: string | null;
 };
 
 type ImageRow = {
@@ -30,7 +32,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, turnaround_options, pushpull_options
   FROM services
   WHERE id = ?
   LIMIT 1;
@@ -233,6 +235,20 @@ function imgUrl(key: string) {
         <span class="text-sm" style="color: var(--muted);">Notes (internal)</span>
         <textarea name="notes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{service.notes ?? ""}</textarea>
       </label>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Turnaround options (JSON array)</span>
+          <input name="turnaround_options" value={service.turnaround_options ?? ""} placeholder='e.g. ["Standard","Express"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave blank for no turnaround selector.</span>
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Push/Pull options (JSON array)</span>
+          <input name="pushpull_options" value={service.pushpull_options ?? ""} placeholder='e.g. ["Normal","+1","+2","-1"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave blank for no push/pull selector.</span>
+        </label>
+      </div>
 
       <label class="block">
         <span class="text-sm" style="color: var(--muted);">Primary image key (R2)</span>

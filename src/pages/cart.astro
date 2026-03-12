@@ -12,10 +12,11 @@ type ServiceRow = {
   name: string;
   price_cents: number;
   primary_image_key: string | null;
+  service_group: string | null;
 };
 
 const res = await db.prepare(`
-  SELECT id, name, price_cents, primary_image_key
+  SELECT id, name, price_cents, primary_image_key, service_group
   FROM services
   WHERE active = 1;
 `).all();
@@ -113,7 +114,7 @@ function imgUrl(key: string | null) {
     </div>
   </section>
 
-  <script define:vars={{ servicesJson: services.map(s => ({...s, image_url: imgUrl(s.primary_image_key)})) }}>
+  <script define:vars={{ servicesJson: services.map(s => ({...s, image_url: imgUrl(s.primary_image_key), service_group: s.service_group ?? null})) }}>
     const services = servicesJson;
     const byId = new Map(services.map(s => [s.id, s]));
 
@@ -168,8 +169,38 @@ function imgUrl(key: string | null) {
     function getCartItems() {
       const cart = getCart();
       return Object.entries(cart)
-        .map(([id, qty]) => ({ id, qty: Number(qty) || 0 }))
+        .map(([key, qty]) => {
+          const { serviceId, turnaround, pushpull } = window.DarkroomCart.parseKey(key);
+          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull };
+        })
         .filter(x => x.qty > 0);
+    }
+
+    function calcDiscounts(items) {
+      const discounts = [];
+
+      // Film rolls: service_group === 'Film', total qty >= 5
+      const filmItems = items.filter(it => byId.get(it.id)?.service_group === 'Film');
+      const filmQty = filmItems.reduce((s, it) => s + it.qty, 0);
+      if (filmQty >= 5) {
+        const filmTotal = filmItems.reduce((s, it) => {
+          const svc = byId.get(it.id);
+          return s + (svc ? svc.price_cents * it.qty : 0);
+        }, 0);
+        discounts.push({ name: 'Bulk discount (film rolls)', cents: -Math.round(filmTotal * 0.05) });
+      }
+
+      // Developing: service_group === 'Developing', per-item qty >= 5
+      const devItems = items.filter(it => byId.get(it.id)?.service_group === 'Developing');
+      for (const it of devItems) {
+        if (it.qty >= 5) {
+          const svc = byId.get(it.id);
+          if (!svc) continue;
+          discounts.push({ name: 'Bulk discount (developing)', cents: -Math.round(svc.price_cents * it.qty * 0.05) });
+        }
+      }
+
+      return discounts;
     }
 
     function calcTotal(items) {
@@ -179,6 +210,8 @@ function imgUrl(key: string | null) {
         if (!s) continue;
         t += s.price_cents * it.qty;
       }
+      const discounts = calcDiscounts(items);
+      t += discounts.reduce((s, d) => s + d.cents, 0);
       return t;
     }
 
@@ -202,6 +235,7 @@ function imgUrl(key: string | null) {
         const row = document.createElement("div");
         row.className = "flex gap-4 rounded-2xl border border-[var(--line)] bg-white/30 p-4";
 
+        const optLabel = [it.turnaround, it.pushpull].filter(Boolean).join(' · ');
         row.innerHTML = `
           <div class="h-16 w-16 overflow-hidden rounded-xl border border-[var(--line)] bg-white/20">
             ${s.image_url ? `<img src="${s.image_url}" alt="${s.name}" class="h-full w-full object-cover" />` : `<div class="flex h-full w-full items-center justify-center text-[10px]" style="color: var(--muted);">No image</div>`}
@@ -209,21 +243,34 @@ function imgUrl(key: string | null) {
 
           <div class="min-w-0 flex-1">
             <div class="text-sm font-semibold">${s.name}</div>
+            ${optLabel ? `<div class="mt-0.5 text-xs" style="color: var(--muted);">${optLabel}</div>` : ''}
             <div class="mt-1 text-xs" style="color: var(--muted);">${window.DarkroomCart.formatMVR(s.price_cents)} each</div>
 
             <div class="mt-3 flex items-center gap-2">
-              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-dec="${s.id}">−</button>
-              <span class="w-10 text-center text-sm tabular-nums" data-dr-cart-qty="${s.id}">${window.DarkroomCart.getQty(s.id)}</span>
-              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-inc="${s.id}">+</button>
+              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-dec="${it.key}">−</button>
+              <span class="w-10 text-center text-sm tabular-nums" data-dr-cart-qty="${it.key}">${window.DarkroomCart.getQty(it.key)}</span>
+              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-inc="${it.key}">+</button>
             </div>
           </div>
 
           <div class="text-right">
             <div class="text-sm font-semibold">${window.DarkroomCart.formatMVR(line)}</div>
-            <button class="mt-3 text-xs underline hover:opacity-70" data-remove="${s.id}">Remove</button>
+            <button class="mt-3 text-xs underline hover:opacity-70" data-remove="${it.key}">Remove</button>
           </div>
         `;
 
+        cartList.appendChild(row);
+      }
+
+      // discount line items
+      const discounts = calcDiscounts(items);
+      for (const disc of discounts) {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3";
+        row.innerHTML = `
+          <div class="text-sm" style="color: var(--muted);">${disc.name}</div>
+          <div class="text-sm font-semibold" style="color: var(--red);">−${window.DarkroomCart.formatMVR(-disc.cents)}</div>
+        `;
         cartList.appendChild(row);
       }
 
@@ -435,11 +482,14 @@ function imgUrl(key: string | null) {
       for (const it of items) {
         const name  = String(it.service_name || it.name || "");
         const group = String(it.service_group || "");
-        const qty   = String(it.quantity ?? it.qty ?? 0);
-        const amt   = `MVR ${mvr(it.line_total_cents)}`;
+        const isDiscount = it.service_id == null && (it.line_total_cents < 0);
+        const qty   = isDiscount ? "" : String(it.quantity ?? it.qty ?? 0);
+        const amt   = isDiscount
+          ? `−MVR ${mvr(-it.line_total_cents)}`
+          : `MVR ${mvr(it.line_total_cents)}`;
 
         ctx.font = "500 13px 'JetBrains Mono', monospace";
-        ctx.fillStyle = BLACK;
+        ctx.fillStyle = isDiscount ? RED : BLACK;
         ctx.textAlign = "left";
         ctx.fillText(name, PAD, y + 22);
 
@@ -450,9 +500,9 @@ function imgUrl(key: string | null) {
         }
 
         ctx.font = "400 13px 'JetBrains Mono', monospace";
-        ctx.fillStyle = BLACK;
+        ctx.fillStyle = isDiscount ? RED : BLACK;
         ctx.textAlign = "right";
-        ctx.fillText(qty, W - PAD - 90, y + 22);
+        if (qty) ctx.fillText(qty, W - PAD - 90, y + 22);
         ctx.fillText(amt, W - PAD, y + 22);
 
         y += ROW_H;
@@ -514,15 +564,18 @@ function imgUrl(key: string | null) {
       checkoutBtn.disabled = true;
       checkoutStatus.textContent = "Placing order…";
 
-      const cart = getCart();
-
       const payload = {
         customer_name: nameEl.value.trim(),
         customer_phone: phoneEl.value.trim(),
         contact_method: methodEl.value.trim(),
         customer_email: emailEl.value.trim() || null,
         customer_notes: notesEl.value.trim() || null,
-        cart,
+        cart: getCartItems().map(it => ({
+          service_id: it.id,
+          qty: it.qty,
+          turnaround_option: it.turnaround || null,
+          pushpull_option: it.pushpull || null,
+        })),
       };
 
       const res = await fetch("/api/orders/create", {

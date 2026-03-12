@@ -44,9 +44,14 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   if (!cart)
     return new Response(JSON.stringify({ ok: false, error: "Cart is empty" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  // Normalise cart map → items array
-  const norm = Object.entries(cart)
-    .map(([id, qty]) => ({ id: String(id).trim(), qty: Math.max(0, Math.floor(Number(qty ?? 0))) }))
+  // Normalise cart array → items
+  const norm = (Array.isArray(cart) ? cart : [])
+    .map((item: any) => ({
+      id: String(item.service_id ?? "").trim(),
+      qty: Math.max(0, Math.floor(Number(item.qty ?? 0))),
+      turnaround_option: String(item.turnaround_option ?? "").trim() || null,
+      pushpull_option: String(item.pushpull_option ?? "").trim() || null,
+    }))
     .filter((it) => it.id && it.qty > 0);
 
   if (!norm.length)
@@ -79,8 +84,45 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       quantity: it.qty,
       line_total_cents: line,
       service_group: s.service_group ?? null,
+      turnaround_option: it.turnaround_option,
+      pushpull_option: it.pushpull_option,
     });
   }
+
+  // ── Bulk discount logic ───────────────────────────────────────────────────
+  const discountItems: { service_id: null; service_name: string; unit_price_cents: number; quantity: number; line_total_cents: number; service_group: null }[] = [];
+
+  // Film rolls: 5+ rolls total → 5% off all film items
+  const filmItems = orderItems.filter((x) => x.service_group === "Film");
+  const filmQty = filmItems.reduce((s, x) => s + x.quantity, 0);
+  if (filmQty >= 5) {
+    const filmTotal = filmItems.reduce((s, x) => s + x.line_total_cents, 0);
+    discountItems.push({
+      service_id: null,
+      service_name: "Bulk discount (film rolls)",
+      unit_price_cents: 0,
+      quantity: 1,
+      line_total_cents: -Math.round(filmTotal * 0.05),
+      service_group: null,
+    });
+  }
+
+  // Developing: 5+ of the same developing service → 5% off those items
+  const devItems = orderItems.filter((x) => x.service_group === "Developing");
+  for (const it of devItems) {
+    if (it.quantity >= 5) {
+      discountItems.push({
+        service_id: null,
+        service_name: "Bulk discount (developing)",
+        unit_price_cents: 0,
+        quantity: 1,
+        line_total_cents: -Math.round(it.line_total_cents * 0.05),
+        service_group: null,
+      });
+    }
+  }
+
+  for (const d of discountItems) total += d.line_total_cents;
 
   const services_summary = orderItems.map((x) => `${x.service_name} x${x.quantity}`).join(", ");
 
@@ -124,23 +166,23 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .run();
 
   // Insert into both order_items (current/mutable) and order_items_original (immutable)
-  for (const oi of orderItems) {
+  for (const oi of [...orderItems, ...discountItems]) {
     await db
       .prepare(`
         INSERT INTO order_items
-          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
-      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null)
       .run();
 
     await db
       .prepare(`
         INSERT INTO order_items_original
-          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
-      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, now)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null, now)
       .run();
   }
 
@@ -189,7 +231,7 @@ if (botToken && chatId) {
         total_price_cents: total,
         status: "NEW",
       },
-      items: orderItems,
+      items: [...orderItems, ...discountItems],
     }),
     { headers: { "content-type": "application/json" } }
   );

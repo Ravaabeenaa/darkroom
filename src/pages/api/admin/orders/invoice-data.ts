@@ -22,6 +22,16 @@ type ItemRow = {
   line_total_cents: number;
 };
 
+type DiscountRow = {
+  id: string;
+  label: string;
+  scope: string;
+  scope_ref: string | null;
+  amount_type: string;
+  amount: number;
+  computed_cents: number;
+};
+
 export async function GET({ request, locals }: { request: Request; locals: any }) {
   const env = locals.runtime.env as Env;
   const db = env.darkroom_db;
@@ -46,15 +56,31 @@ export async function GET({ request, locals }: { request: Request; locals: any }
     return new Response(JSON.stringify({ ok: false, error: "Order not found" }), { status: 404 });
   }
 
-  const { results } = await db
-    .prepare(
+  const [itemsRes, discountsRes] = await Promise.all([
+    db.prepare(
       `SELECT service_name, service_group, quantity, unit_price_cents, line_total_cents
        FROM order_items WHERE order_id = ? ORDER BY service_group ASC, service_name ASC;`
-    )
-    .bind(id)
-    .all<ItemRow>();
+    ).bind(id).all<ItemRow>(),
+    db.prepare(
+      `SELECT id, label, scope, scope_ref, amount_type, amount, computed_cents
+       FROM order_discounts WHERE order_id = ? ORDER BY created_at ASC;`
+    ).bind(id).all<DiscountRow>(),
+  ]);
 
-  return new Response(JSON.stringify({ ok: true, order, items: results ?? [] }), {
+  const discountItems = (discountsRes.results ?? []).map((d) => ({
+    service_name: d.label,
+    service_group: null,
+    quantity: null,
+    unit_price_cents: 0,
+    line_total_cents: -d.computed_cents,
+  }));
+
+  return new Response(JSON.stringify({
+    ok: true,
+    order,
+    items: [...(itemsRes.results ?? []), ...discountItems],
+    discounts: discountsRes.results ?? [],
+  }), {
     headers: { "content-type": "application/json" },
   });
 }

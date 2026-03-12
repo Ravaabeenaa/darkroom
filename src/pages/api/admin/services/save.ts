@@ -83,6 +83,10 @@ export async function POST({ request, locals }: { request: Request; locals: any 
 
   const primary_image_key = String(form.get("primary_image_key") ?? "").trim() || null;
 
+  // JSON arrays for configurable options; stored as-is (null if blank)
+  const turnaround_options = String(form.get("turnaround_options") ?? "").trim() || null;
+  const pushpull_options = String(form.get("pushpull_options") ?? "").trim() || null;
+
   if (!name) {
     return Response.redirect(
       new URL(`/admin/services/${encodeURIComponent(id)}?error=missing_name`, request.url),
@@ -106,9 +110,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .prepare(
       `
       INSERT INTO services
-        (id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, updated_at)
+        (id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, turnaround_options, pushpull_options, updated_at)
       VALUES
-        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,    ?,     ?,               datetime('now'))
+        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,    ?,     ?,               ?,                  ?,               datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         service_group=excluded.service_group,
@@ -120,10 +124,12 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         tags=excluded.tags,
         notes=excluded.notes,
         primary_image_key=excluded.primary_image_key,
+        turnaround_options=excluded.turnaround_options,
+        pushpull_options=excluded.pushpull_options,
         updated_at=datetime('now');
     `
     )
-    .bind(id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key)
+    .bind(id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, turnaround_options, pushpull_options)
     .run();
 
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);
