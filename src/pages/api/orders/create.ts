@@ -153,7 +153,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     const lines = [
       `🧾 *New order: ${order_ref}*`,
       `👤 ${customer_name}`,
-      `📱 +960 ${customer_phone} · ${contact_method}`,
+      `📱 [+960 ${customer_phone}](tel:+960${customer_phone}) · ${contact_method}`,
       `📦 ${services_summary}`,
       `💰 MVR ${(total / 100).toFixed(2)}`,
       customer_notes ? `📝 _${customer_notes}_` : null,
