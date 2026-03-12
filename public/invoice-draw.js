@@ -30,10 +30,12 @@
             + TABLE_PAD_TOP + COL_LABEL_H + items.length * ROW_H
             + TOTAL_H + CONTACT_H + FOOTER_H;
 
+    const SCALE = 2; // 2× resolution for crisp output
     const canvas = document.createElement("canvas");
-    canvas.width  = W;
-    canvas.height = H;
+    canvas.width  = W * SCALE;
+    canvas.height = H * SCALE;
     const ctx = canvas.getContext("2d");
+    ctx.scale(SCALE, SCALE);
 
     await Promise.all([
       document.fonts.load("400 16px 'League Gothic'"),

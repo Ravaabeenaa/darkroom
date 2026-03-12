@@ -16,7 +16,10 @@ function makeOrderRef(last: string | null, yy: string, mm: string) {
 }
 
 export async function POST({ request, locals }: { request: Request; locals: any }) {
-  const env = locals.runtime.env as Env;
+  const env = locals.runtime.env as Env & {
+    TELEGRAM_BOT_TOKEN?: string;
+    TELEGRAM_CHAT_ID?: string;
+  };
   const db = env.darkroom_db;
 
   const body = await request.json().catch(() => null);
@@ -139,6 +142,30 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       `)
       .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, now)
       .run();
+  }
+
+  // ── Telegram notification ────────────────────────────────────
+  // Runs in the background via waitUntil — never delays the customer response.
+  const botToken = env.TELEGRAM_BOT_TOKEN;
+  const chatId   = env.TELEGRAM_CHAT_ID;
+
+  if (botToken && chatId) {
+    const lines = [
+      `🧾 *New order: ${order_ref}*`,
+      `👤 ${customer_name}`,
+      `📱 +960 ${customer_phone} · ${contact_method}`,
+      `📦 ${services_summary}`,
+      `💰 MVR ${(total / 100).toFixed(2)}`,
+      customer_notes ? `📝 _${customer_notes}_` : null,
+    ].filter(Boolean).join("\n");
+
+    const tgFetch = fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: lines, parse_mode: "Markdown" }),
+    }).catch(() => null); // if Telegram is down, order still succeeds silently
+
+    locals.runtime.ctx.waitUntil(tgFetch);
   }
 
   return new Response(

@@ -41,8 +41,61 @@ const statusColour: Record<string, string> = {
       Latest orders from checkout.
     </p>
 
-    <div class="mt-8 overflow-x-auto rounded-3xl border border-[var(--line)] bg-white/20">
-      <table class="min-w-full text-sm">
+    <!-- ── Filters ────────────────────────────────────────────── -->
+    <div class="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4">
+      <div class="flex flex-wrap gap-3">
+        <!-- Name / phone search -->
+        <input
+          id="fSearch"
+          type="search"
+          placeholder="Name or phone…"
+          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none w-48"
+        />
+
+        <!-- Date from -->
+        <input
+          id="fDateFrom"
+          type="date"
+          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none"
+          title="From date"
+        />
+
+        <!-- Date to -->
+        <input
+          id="fDateTo"
+          type="date"
+          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none"
+          title="To date"
+        />
+
+        <!-- Status toggles -->
+        <div class="flex flex-wrap items-center gap-1.5" id="statusFilters">
+          {(["NEW","IN_PROGRESS","READY","COMPLETED","CANCELLED"]).map((s) => (
+            <label class="flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--line)] px-3 py-1.5 text-xs select-none hover:bg-[var(--panel2)]">
+              <input
+                type="checkbox"
+                class="status-cb accent-[#ED1C24]"
+                value={s}
+                checked={s !== "COMPLETED" && s !== "CANCELLED"}
+              />
+              <span class={`rounded-full px-2 py-0.5 font-medium ${statusColour[s] ?? "bg-gray-100 text-gray-600"}`}>{s}</span>
+            </label>
+          ))}
+        </div>
+
+        <!-- Reset -->
+        <button id="fReset" class="cursor-pointer rounded-xl border border-[var(--line)] px-3 py-1.5 text-xs hover:bg-[var(--panel2)]">
+          Reset
+        </button>
+
+        <!-- Match count -->
+        <span id="fCount" class="ml-auto self-center text-xs" style="color:var(--muted);"></span>
+      </div>
+    </div>
+
+    <!-- ── Table ──────────────────────────────────────────────── -->
+    <div class="mt-4 overflow-x-auto rounded-3xl border border-[var(--line)] bg-white/20">
+      <table class="min-w-full text-sm" id="ordersTable">
         <thead>
           <tr class="border-b border-[var(--line)] text-left">
             <th class="px-4 py-3">Order</th>
@@ -54,42 +107,56 @@ const statusColour: Record<string, string> = {
           </tr>
         </thead>
         <tbody>
-          {orders.map((o) => (
-            <tr class="border-b border-[var(--line)] hover:bg-white/20 cursor-pointer" onclick={`location.href='/admin/orders/${o.id}'`}>
-              <td class="px-4 py-3 font-mono">
-                <a href={`/admin/orders/${o.id}`} class="hover:underline">{o.order_ref}</a>
-              </td>
-              <td class="px-4 py-3">
-                <div class="font-medium">{o.customer_name}</div>
-                <div class="text-xs" style="color: var(--muted);">{o.customer_phone}</div>
-              </td>
-              <td class="px-4 py-3">{o.contact_method ?? "—"}</td>
-              <td class="px-4 py-3" data-total-cents={o.total_price_cents}></td>
-              <td class="px-4 py-3">
-                <span class={`rounded-full px-3 py-1 text-xs font-medium ${statusColour[o.status] ?? "bg-gray-100 text-gray-600"}`}>{o.status}</span>
-              </td>
-              <td class="px-4 py-3" onclick="event.stopPropagation()">
-                <div class="flex items-center gap-2">
-                  <a href={`/admin/orders/${o.id}`} class="rounded-[999px] border border-[var(--line)] bg-white/20 px-4 py-2 text-xs hover:bg-white/40">
-                    View
-                  </a>
-                  <button
-                    class="dr-invoice-btn cursor-pointer rounded-[999px] bg-[var(--btn)] px-4 py-2 text-xs text-[var(--btnText)] hover:opacity-90"
-                    data-order-id={o.id}
-                    data-order-ref={o.order_ref}
-                  >
-                    Invoice ↓
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+          {orders.map((o) => {
+            const dateStr = o.created_at ? o.created_at.slice(0, 10) : "";
+            return (
+              <tr
+                class="order-row border-b border-[var(--line)] hover:bg-white/20 cursor-pointer"
+                onclick={`location.href='/admin/orders/${o.id}'`}
+                data-customer={o.customer_name.toLowerCase()}
+                data-phone={o.customer_phone}
+                data-status={o.status}
+                data-date={dateStr}
+              >
+                <td class="px-4 py-3 font-mono">
+                  <a href={`/admin/orders/${o.id}`} class="hover:underline">{o.order_ref}</a>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="font-medium">{o.customer_name}</div>
+                  <div class="text-xs" style="color: var(--muted);">{o.customer_phone}</div>
+                </td>
+                <td class="px-4 py-3">{o.contact_method ?? "—"}</td>
+                <td class="px-4 py-3" data-total-cents={o.total_price_cents}></td>
+                <td class="px-4 py-3">
+                  <span class={`rounded-full px-3 py-1 text-xs font-medium ${statusColour[o.status] ?? "bg-gray-100 text-gray-600"}`}>{o.status}</span>
+                </td>
+                <td class="px-4 py-3" onclick="event.stopPropagation()">
+                  <div class="flex items-center gap-2">
+                    <a href={`/admin/orders/${o.id}`} class="rounded-[999px] border border-[var(--line)] bg-white/20 px-4 py-2 text-xs hover:bg-white/40">
+                      View
+                    </a>
+                    <button
+                      class="dr-invoice-btn cursor-pointer rounded-[999px] bg-[var(--btn)] px-4 py-2 text-xs text-[var(--btnText)] hover:opacity-90"
+                      data-order-id={o.id}
+                      data-order-ref={o.order_ref}
+                    >
+                      Invoice ↓
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
 
+    <div id="noResults" class="mt-4 rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-6 text-sm" style="color:var(--muted);display:none;">
+      No orders match the current filters.
+    </div>
+
     {orders.length === 0 && (
-      <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/20 p-6 text-sm" style="color: var(--muted);">
+      <div class="mt-4 rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-6 text-sm" style="color: var(--muted);">
         No orders yet.
       </div>
     )}
@@ -97,11 +164,73 @@ const statusColour: Record<string, string> = {
 
   <script is:inline src="/invoice-draw.js"></script>
   <script is:inline>
+    // ── Format totals ────────────────────────────────────────────
     document.querySelectorAll("[data-total-cents]").forEach((td) => {
       const cents = Number(td.getAttribute("data-total-cents") || "0");
       td.textContent = window.DarkroomCart?.formatMVR(cents) ?? `MVR ${(cents/100).toFixed(2)}`;
     });
 
+    // ── Filters ──────────────────────────────────────────────────
+    const fSearch   = document.getElementById("fSearch");
+    const fDateFrom = document.getElementById("fDateFrom");
+    const fDateTo   = document.getElementById("fDateTo");
+    const fReset    = document.getElementById("fReset");
+    const fCount    = document.getElementById("fCount");
+    const noResults = document.getElementById("noResults");
+    const rows      = document.querySelectorAll(".order-row");
+
+    function activeStatuses() {
+      return new Set(
+        Array.from(document.querySelectorAll(".status-cb:checked")).map(el => el.value)
+      );
+    }
+
+    function applyFilters() {
+      const q      = (fSearch.value || "").toLowerCase().trim();
+      const from   = fDateFrom.value;
+      const to     = fDateTo.value;
+      const statuses = activeStatuses();
+      let visible  = 0;
+
+      rows.forEach((row) => {
+        const customer = row.getAttribute("data-customer") || "";
+        const phone    = row.getAttribute("data-phone")    || "";
+        const status   = row.getAttribute("data-status")   || "";
+        const date     = row.getAttribute("data-date")     || "";
+
+        const matchSearch = !q || customer.includes(q) || phone.includes(q);
+        const matchStatus = statuses.has(status);
+        const matchFrom   = !from || date >= from;
+        const matchTo     = !to   || date <= to;
+
+        const show = matchSearch && matchStatus && matchFrom && matchTo;
+        row.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+
+      fCount.textContent = `${visible} order${visible !== 1 ? "s" : ""}`;
+      noResults.style.display = visible === 0 && rows.length > 0 ? "block" : "none";
+    }
+
+    fSearch.addEventListener("input", applyFilters);
+    fDateFrom.addEventListener("change", applyFilters);
+    fDateTo.addEventListener("change", applyFilters);
+    document.querySelectorAll(".status-cb").forEach(cb => cb.addEventListener("change", applyFilters));
+
+    fReset.addEventListener("click", () => {
+      fSearch.value = "";
+      fDateFrom.value = "";
+      fDateTo.value = "";
+      document.querySelectorAll(".status-cb").forEach(cb => {
+        cb.checked = cb.value !== "COMPLETED" && cb.value !== "CANCELLED";
+      });
+      applyFilters();
+    });
+
+    // Run on load
+    applyFilters();
+
+    // ── Invoice download ─────────────────────────────────────────
     document.querySelectorAll(".dr-invoice-btn").forEach((btn) => {
       btn.addEventListener("click", async function () {
         const orderId  = this.getAttribute("data-order-id");
