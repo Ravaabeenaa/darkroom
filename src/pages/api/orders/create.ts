@@ -149,25 +149,29 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const botToken = env.TELEGRAM_BOT_TOKEN;
   const chatId   = env.TELEGRAM_CHAT_ID;
 
-  if (botToken && chatId) {
-    const lines = [
-      `🧾 *New order: ${order_ref}*`,
-      `👤 ${customer_name}`,
-      `📱 [+960 ${customer_phone}](tel:+960${customer_phone}) · ${contact_method}`,
-      `📦 ${services_summary}`,
-      `💰 MVR ${(total / 100).toFixed(2)}`,
-      customer_notes ? `📝 _${customer_notes}_` : null,
-      `🔗 [View order](https://darkroom-558.pages.dev/admin/orders/${order_id})`,
-    ].filter(Boolean).join("\n");
+if (botToken && chatId) {
+  const lines = [
+    `🧾 <b>New order: ${order_ref}</b>`,
+    `👤 ${customer_name}`,
+    `📱 <a href="tel:${customer_phone}">${customer_phone}</a> · ${contact_method}`,
+    `📦 ${services_summary}`,
+    `💰 MVR ${(total / 100).toFixed(2)}`,
+    customer_notes ? `📝 <i>${customer_notes}</i>` : null,
+    `🔗 <a href="https://darkroom-558.pages.dev/admin/orders/${order_id}">View order</a>`,
+  ].filter(Boolean).join("\n");
 
-    const tgFetch = fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text: lines, parse_mode: "Markdown" }),
-    }).catch(() => null); // if Telegram is down, order still succeeds silently
+  const tgFetch = fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: lines,
+      parse_mode: "HTML", // <-- changed from Markdown to HTML
+    }),
+  }).catch(() => null); // if Telegram is down, order still succeeds silently
 
-    locals.runtime.ctx.waitUntil(tgFetch);
-  }
+  locals.runtime.ctx.waitUntil(tgFetch);
+}
 
   return new Response(
     JSON.stringify({
