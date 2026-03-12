@@ -157,6 +157,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       `📦 ${services_summary}`,
       `💰 MVR ${(total / 100).toFixed(2)}`,
       customer_notes ? `📝 _${customer_notes}_` : null,
+      `🔗 [View order](https://darkroom-558.pages.dev/admin/orders/${order_id})`,
     ].filter(Boolean).join("\n");
 
     const tgFetch = fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
