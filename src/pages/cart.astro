@@ -9,6 +9,7 @@ const base = String(Astro.locals.runtime.env.PUBLIC_R2_BASE_URL ?? "").replace(/
 // We’ll render a shell; JS populates from localStorage cart.
 type ServiceRow = {
   id: string;
+  slug: string | null;
   name: string;
   price_cents: number;
   primary_image_key: string | null;
@@ -23,7 +24,7 @@ type ServiceRow = {
 
 const [svcRes, settingsRes] = await Promise.all([
   db.prepare(`
-    SELECT id, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
+    SELECT id, slug, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
     FROM services
     WHERE active = 1;
   `).all(),
@@ -150,6 +151,7 @@ function imgUrl(key: string | null) {
     servicesJson: services.map(s => ({
       ...s,
       image_url: imgUrl(s.primary_image_key),
+      shop_href: `/shop/${s.slug ?? s.id}`,
       service_group: s.service_group ?? null,
       bulk_discount_eligible: s.bulk_discount_eligible,
       bulk_discount_percent: s.bulk_discount_percent ?? 5,
@@ -323,7 +325,7 @@ function imgUrl(key: string | null) {
           </div>
 
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-semibold">${s.name}</div>
+            <a href="${s.shop_href}" class="text-sm font-semibold hover:opacity-70">${s.name}</a>
             ${optLabel ? `<div class="mt-0.5 text-xs" style="color: var(--muted);">${optLabel}</div>` : ''}
             <div class="mt-1 text-xs" style="color: var(--muted);">${window.DarkroomCart.formatMVR(unit)} each</div>
 

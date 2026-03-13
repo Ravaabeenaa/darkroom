@@ -230,8 +230,8 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
           renderAll();
         });
       } else {
-        if (incBtn) (incBtn as HTMLButtonElement).disabled = true;
-        if (decBtn) (decBtn as HTMLButtonElement).disabled = true;
+        if (incBtn) incBtn.disabled = true;
+        if (decBtn) decBtn.disabled = true;
       }
 
       turnaroundEl?.addEventListener("change", renderAll);
