@@ -138,7 +138,7 @@
     ctx.textAlign = "left";
     ctx.fillText("SERVICE", PAD, y + 22);
     ctx.textAlign = "right";
-    ctx.fillText("QTY", W - PAD - 90, y + 22);
+    ctx.fillText("QTY", W - PAD - 140, y + 22);
     ctx.fillText("AMOUNT", W - PAD, y + 22);
 
     y += COL_LABEL_H;
@@ -167,7 +167,7 @@
       ctx.font = "400 13px 'JetBrains Mono', monospace";
       ctx.fillStyle = isDiscount ? RED : BLACK;
       ctx.textAlign = "right";
-      if (qty) ctx.fillText(qty, W - PAD - 90, y + 22);
+      if (qty) ctx.fillText(qty, W - PAD - 140, y + 22);
       ctx.fillText(amt, W - PAD, y + 22);
 
       y += ROW_H;

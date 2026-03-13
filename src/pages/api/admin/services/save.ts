@@ -78,7 +78,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const price_cents = priceToCents(String(form.get("price") ?? "0"));
   const active = toInt01(form.get("active"));
   const featured = toInt01(form.get("featured"));
-  const bulk_discount_eligible = toInt01(form.get("bulk_discount_eligible"));
+  const bulk_discount_eligible = Math.min(2, Math.max(0, parseInt(String(form.get("bulk_discount_eligible") ?? "0"), 10) || 0));
   const bulk_discount_percent = Math.min(100, Math.max(1, parseInt(String(form.get("bulk_discount_percent") ?? "5"), 10) || 5));
   const tags = String(form.get("tags") ?? "").trim() || null;
   const notes = String(form.get("notes") ?? "").trim() || null;

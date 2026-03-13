@@ -214,9 +214,13 @@ function imgUrl(key: string) {
           Featured (show on home page)
         </label>
 
-        <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
-          <input type="checkbox" name="bulk_discount_eligible" checked={service.bulk_discount_eligible === 1} />
-          Bulk discount eligible (when 5+ of this group ordered)
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Bulk discount eligibility</span>
+          <select name="bulk_discount_eligible" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">
+            <option value="0" selected={service.bulk_discount_eligible === 0}>0 — Not eligible</option>
+            <option value="1" selected={service.bulk_discount_eligible === 1}>1 — 5+ of same group</option>
+            <option value="2" selected={service.bulk_discount_eligible === 2}>2 — 5+ of same item & options</option>
+          </select>
         </label>
 
         <label class="block">

@@ -214,12 +214,12 @@ function imgUrl(key: string | null) {
     function calcDiscounts(items) {
       const discounts = [];
 
-      // Group eligible items by service_group
-      const groupMap = new Map(); // group name → { totalQty, totalCents, minPct }
+      // Mode 1: group-level — aggregate by service_group for eligible=1 items
+      const groupMap = new Map(); // group → { totalQty, totalCents, minPct }
       for (const it of items) {
         const svc = byId.get(it.id);
-        if (!svc || !svc.bulk_discount_eligible || !svc.service_group) continue;
-        const g = svc.service_group;
+        if (!svc || svc.bulk_discount_eligible !== 1 || !svc.service_group) continue;
+        const g   = svc.service_group;
         const pct = svc.bulk_discount_percent ?? 5;
         const prev = groupMap.get(g) ?? { totalQty: 0, totalCents: 0, minPct: pct };
         groupMap.set(g, {
@@ -228,13 +228,20 @@ function imgUrl(key: string | null) {
           minPct:     Math.min(prev.minPct, pct),
         });
       }
-
       for (const [group, { totalQty, totalCents, minPct }] of groupMap) {
         if (totalQty >= 5) {
-          discounts.push({
-            name: `Bulk discount (${group})`,
-            cents: -Math.round(totalCents * minPct / 100),
-          });
+          discounts.push({ name: `Bulk discount (${group})`, cents: -Math.round(totalCents * minPct / 100) });
+        }
+      }
+
+      // Mode 2: item-level — per cart entry (same service + same options) for eligible=2 items
+      for (const it of items) {
+        const svc = byId.get(it.id);
+        if (!svc || svc.bulk_discount_eligible !== 2) continue;
+        if (it.qty >= 5) {
+          const pct      = svc.bulk_discount_percent ?? 5;
+          const lineCents = unitPriceCents(svc, it) * it.qty;
+          discounts.push({ name: `Bulk discount (${svc.name})`, cents: -Math.round(lineCents * pct / 100) });
         }
       }
 
@@ -511,7 +518,7 @@ function imgUrl(key: string | null) {
       ctx.textAlign = "left";
       ctx.fillText("SERVICE", PAD, y + 22);
       ctx.textAlign = "right";
-      ctx.fillText("QTY", W - PAD - 90, y + 22);
+      ctx.fillText("QTY", W - PAD - 140, y + 22);
       ctx.fillText("AMOUNT", W - PAD, y + 22);
 
       y += COL_LABEL_H;
@@ -541,7 +548,7 @@ function imgUrl(key: string | null) {
         ctx.font = "400 13px 'JetBrains Mono', monospace";
         ctx.fillStyle = isDiscount ? RED : BLACK;
         ctx.textAlign = "right";
-        if (qty) ctx.fillText(qty, W - PAD - 90, y + 22);
+        if (qty) ctx.fillText(qty, W - PAD - 140, y + 22);
         ctx.fillText(amt, W - PAD, y + 22);
 
         y += ROW_H;

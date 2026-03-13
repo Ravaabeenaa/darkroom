@@ -109,27 +109,29 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   // ── Bulk discount logic ───────────────────────────────────────────────────
   const discountItems: { service_id: null; service_name: string; unit_price_cents: number; quantity: number; line_total_cents: number; service_group: null }[] = [];
 
-  // Group eligible items by service_group; if group total qty ≥ 5 → discount% off that group
+  // Mode 1: group-level — eligible=1, aggregate by service_group, qty ≥ 5
   const groupMap = new Map<string, { totalQty: number; totalCents: number; minPct: number }>();
   for (const oi of orderItems) {
     const svc = svcs.get(oi.service_id);
-    if (!svc || !svc.bulk_discount_eligible || !svc.service_group) continue;
-    const g = svc.service_group;
+    if (!svc || svc.bulk_discount_eligible !== 1 || !svc.service_group) continue;
+    const g   = svc.service_group;
     const pct = svc.bulk_discount_percent ?? 5;
     const prev = groupMap.get(g) ?? { totalQty: 0, totalCents: 0, minPct: pct };
     groupMap.set(g, { totalQty: prev.totalQty + oi.quantity, totalCents: prev.totalCents + oi.line_total_cents, minPct: Math.min(prev.minPct, pct) });
   }
-
   for (const [group, { totalQty, totalCents, minPct }] of groupMap) {
     if (totalQty >= 5) {
-      discountItems.push({
-        service_id: null,
-        service_name: `Bulk discount (${group})`,
-        unit_price_cents: 0,
-        quantity: 1,
-        line_total_cents: -Math.round(totalCents * minPct / 100),
-        service_group: null,
-      });
+      discountItems.push({ service_id: null, service_name: `Bulk discount (${group})`, unit_price_cents: 0, quantity: 1, line_total_cents: -Math.round(totalCents * minPct / 100), service_group: null });
+    }
+  }
+
+  // Mode 2: item-level — eligible=2, same service + same options, qty ≥ 5
+  for (const oi of orderItems) {
+    const svc = svcs.get(oi.service_id);
+    if (!svc || svc.bulk_discount_eligible !== 2) continue;
+    if (oi.quantity >= 5) {
+      const pct = svc.bulk_discount_percent ?? 5;
+      discountItems.push({ service_id: null, service_name: `Bulk discount (${svc.name})`, unit_price_cents: 0, quantity: 1, line_total_cents: -Math.round(oi.line_total_cents * pct / 100), service_group: null });
     }
   }
 
