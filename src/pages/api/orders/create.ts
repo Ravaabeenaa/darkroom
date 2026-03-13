@@ -1,7 +1,7 @@
 export const prerender = false;
 
 type Env = { darkroom_db: D1Database };
-type CollectionOption = { label: string; cents: number };
+type CollectionOption = { label: string; price: number };
 
 function onlyDigits(s: string) {
   return /^[0-9]+$/.test(s);
@@ -120,7 +120,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   }
   for (const [group, { totalQty, totalCents, minPct }] of groupMap) {
     if (totalQty >= 5) {
-      discountItems.push({ service_id: null, service_name: `Bulk discount (${group})`, unit_price_cents: 0, quantity: 1, line_total_cents: -Math.round(totalCents * minPct / 100), service_group: null });
+      const unitCents = -Math.round(totalCents * 0.01); // -1% of group total
+      discountItems.push({ service_id: null, service_name: `Bulk discount (${group})`, unit_price_cents: unitCents, quantity: minPct, line_total_cents: unitCents * minPct, service_group: null });
     }
   }
 
@@ -130,7 +131,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     if (!svc || svc.bulk_discount_eligible !== 2) continue;
     if (oi.quantity >= 5) {
       const pct = svc.bulk_discount_percent ?? 5;
-      discountItems.push({ service_id: null, service_name: `Bulk discount (${svc.name})`, unit_price_cents: 0, quantity: 1, line_total_cents: -Math.round(oi.line_total_cents * pct / 100), service_group: null });
+      const unitCents = -Math.round(oi.line_total_cents * 0.01); // -1% of item line total
+      discountItems.push({ service_id: null, service_name: `Bulk discount (${svc.name})`, unit_price_cents: unitCents, quantity: pct, line_total_cents: unitCents * pct, service_group: null });
     }
   }
 
@@ -147,7 +149,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       const collOpts: CollectionOption[] = JSON.parse(collRow?.value ?? "[]");
       const match = collOpts.find(o => o.label === collection_option_label);
       if (match) {
-        collection_option_cents = match.cents;
+        collection_option_cents = Math.round((match.price ?? 0) * 100);
         if (collection_option_cents > 0) {
           collectionLineItem.push({
             service_id: null,

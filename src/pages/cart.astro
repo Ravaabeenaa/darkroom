@@ -37,7 +37,7 @@ const settingsMap: Record<string, string> = Object.fromEntries((settingsRes.resu
 const shopClosed = settingsMap['shop_closed'] === '1';
 const shopClosedMessage = settingsMap['shop_closed_message'] ?? 'We are currently closed.';
 
-type CollectionOption = { label: string; cents: number };
+type CollectionOption = { label: string; price: number };
 let collectionOptions: CollectionOption[] = [];
 try { collectionOptions = JSON.parse(settingsMap['collection_options'] ?? '[]'); } catch {}
 
@@ -68,7 +68,7 @@ function imgUrl(key: string | null) {
           <select id="collectionSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
             {collectionOptions.map((opt) => (
               <option value={opt.label} data-cents={opt.cents}>
-                {opt.label}{opt.cents > 0 ? ` (+MVR ${(opt.cents / 100).toFixed(2)})` : ''}
+                {opt.label}{opt.price > 0 ? ` (+MVR ${Number(opt.price).toFixed(2)})` : ''}
               </option>
             ))}
           </select>
@@ -244,7 +244,7 @@ function imgUrl(key: string | null) {
       if (!sel || !collectionOptions.length) return { label: null, cents: 0 };
       const idx = sel.selectedIndex;
       const opt = collectionOptions[idx] ?? collectionOptions[0];
-      return { label: opt?.label ?? null, cents: opt?.cents ?? 0 };
+      return { label: opt?.label ?? null, cents: Math.round((opt?.price ?? 0) * 100) };
     }
 
     function calcDiscounts(items) {

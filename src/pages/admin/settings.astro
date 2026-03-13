@@ -79,8 +79,8 @@ const error = Astro.url.searchParams.get("error") ?? "";
       <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 space-y-4">
         <h2 class="text-lg font-semibold">Collection options</h2>
         <p class="text-xs" style="color: var(--muted);">
-          JSON array of <code class="font-mono">{"{"}"label","cents"{"}"}</code> objects. Shown as a dropdown in the cart.
-          <code class="font-mono">cents</code> is the price added to the order total.
+          JSON array of <code class="font-mono">{"{"}"label","price"{"}"}</code> objects. Shown as a dropdown in the cart.
+          <code class="font-mono">price</code> is in MVR and is added to the order total.
         </p>
 
         <label class="block">
@@ -93,7 +93,7 @@ const error = Astro.url.searchParams.get("error") ?? "";
           >{s['collection_options'] ?? '[]'}</textarea>
           <span id="collectionOptionsError" class="mt-1 hidden text-xs text-red-600"></span>
           <span class="mt-1 block text-xs" style="color: var(--muted);">
-            Example: <code class="font-mono">[{"{"}"label":"Pickup","cents":0{"}"}, {"{"}"label":"Delivery","cents":500{"}"}]</code>
+            Example: <code class="font-mono">[{"{"}"label":"Pickup","price":0{"}"}, {"{"}"label":"Delivery","price":5{"}"}]</code>
           </span>
         </label>
       </div>
@@ -122,8 +122,8 @@ const error = Astro.url.searchParams.get("error") ?? "";
           const parsed = JSON.parse(val);
           if (!Array.isArray(parsed)) throw new Error("Must be a JSON array.");
           for (const item of parsed) {
-            if (typeof item.label !== "string" || typeof item.cents !== "number") {
-              throw new Error('Each item must have "label" (string) and "cents" (number).');
+            if (typeof item.label !== "string" || typeof item.price !== "number") {
+              throw new Error('Each item must have "label" (string) and "price" (number in MVR).');
             }
           }
           if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); }

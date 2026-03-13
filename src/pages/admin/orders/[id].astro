@@ -167,39 +167,51 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
               </tr>
             </thead>
             <tbody>
-              {items.map((it) => (
-                <tr class="border-t border-[var(--line)]" data-item-id={it.id}>
-                  <td class="px-4 py-3">
-                    <div class="font-medium">{it.service_name}</div>
-                    {it.service_group && (
-                      <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
-                    )}
-                  </td>
-                  <td class="px-4 py-2 text-right">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      name="unit"
-                      value={(it.unit_price_cents / 100).toFixed(2)}
-                      class="w-24 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-[var(--red)]"
-                    />
-                  </td>
-                  <td class="px-4 py-2 text-right">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      name="qty"
-                      value={it.quantity}
-                      class="w-16 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-[var(--red)]"
-                    />
-                  </td>
-                  <td class="px-4 py-3 text-right tabular-nums font-medium item-line-total">
-                    {money(it.line_total_cents)}
-                  </td>
-                </tr>
-              ))}
+              {items.map((it) => {
+                const isBulk = it.service_id === null && it.service_name.startsWith("Bulk discount ");
+                const bulkMatch = isBulk ? it.service_name.match(/^Bulk discount \((.+)\)$/) : null;
+                const bulkScope = bulkMatch ? bulkMatch[1] : null;
+                return (
+                  <tr
+                    class="border-t border-[var(--line)]"
+                    data-item-id={it.id}
+                    data-service-group={!isBulk ? (it.service_group ?? "") : undefined}
+                    data-service-name={!isBulk ? it.service_name : undefined}
+                    data-bulk-scope={bulkScope ?? undefined}
+                  >
+                    <td class="px-4 py-3">
+                      <div class="font-medium" style={isBulk ? "color: var(--red);" : ""}>{it.service_name}</div>
+                      {it.service_group && (
+                        <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
+                      )}
+                    </td>
+                    <td class="px-4 py-2 text-right">
+                      <input
+                        type="number"
+                        min={isBulk ? undefined : "0"}
+                        step="0.01"
+                        name="unit"
+                        value={(it.unit_price_cents / 100).toFixed(2)}
+                        readonly={isBulk}
+                        class={`w-24 rounded-xl border border-[var(--line)] px-2 py-1.5 text-right text-sm tabular-nums outline-none ${isBulk ? "bg-white/5 cursor-default opacity-60" : "bg-[var(--input-bg)] focus:border-[var(--red)]"}`}
+                      />
+                    </td>
+                    <td class="px-4 py-2 text-right">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        name="qty"
+                        value={it.quantity}
+                        class="w-16 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-[var(--red)]"
+                      />
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums font-medium item-line-total" style={isBulk ? "color: var(--red);" : ""}>
+                      {money(it.line_total_cents)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot class="border-t border-[var(--line)] bg-white/5">
               <tr>
@@ -430,33 +442,76 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       return "MVR " + (cents / 100).toFixed(2);
     }
 
-    // Live-update row totals as user types
-    table?.querySelectorAll("tr[data-item-id]").forEach((row) => {
-      const unitInput = row.querySelector("input[name='unit']");
-      const qtyInput = row.querySelector("input[name='qty']");
+    function rowLineCents(row) {
+      const unit = Math.round(parseFloat(row.querySelector("input[name='unit']")?.value || "0") * 100);
+      const qty = Math.max(0, parseInt(row.querySelector("input[name='qty']")?.value || "0", 10));
+      return unit * qty;
+    }
+
+    function recalcRow(row) {
       const totalCell = row.querySelector(".item-line-total");
+      if (totalCell) totalCell.textContent = formatMVR(rowLineCents(row));
+    }
 
-      function recalcRow() {
-        const unit = Math.round(parseFloat(unitInput.value || "0") * 100);
-        const qty = Math.max(0, parseInt(qtyInput.value || "0", 10));
-        totalCell.textContent = formatMVR(unit * qty);
-        recalcOrderTotal();
-      }
+    // Recalculate all bulk-discount rows based on their scope's current item totals
+    function recalcAllBulkDiscounts() {
+      table?.querySelectorAll("tr[data-bulk-scope]").forEach((discRow) => {
+        const scope = discRow.getAttribute("data-bulk-scope");
+        let scopeTotal = 0;
 
-      unitInput?.addEventListener("input", recalcRow);
-      qtyInput?.addEventListener("input", recalcRow);
-    });
+        // Sum regular items that match this scope (by group OR by service name)
+        table?.querySelectorAll("tr[data-service-group]").forEach((itemRow) => {
+          if (
+            itemRow.getAttribute("data-service-group") === scope ||
+            itemRow.getAttribute("data-service-name") === scope
+          ) {
+            scopeTotal += rowLineCents(itemRow);
+          }
+        });
+
+        // Unit = -1% of scope total; qty = the discount percentage
+        const unitCents = -Math.round(scopeTotal * 0.01);
+        const unitInput = discRow.querySelector("input[name='unit']");
+        if (unitInput) unitInput.value = (unitCents / 100).toFixed(2);
+        recalcRow(discRow);
+      });
+    }
 
     function recalcOrderTotal() {
       let sum = 0;
       table?.querySelectorAll("tr[data-item-id]").forEach((row) => {
-        const unit = Math.round(parseFloat(row.querySelector("input[name='unit']")?.value || "0") * 100);
-        const qty = Math.max(0, parseInt(row.querySelector("input[name='qty']")?.value || "0", 10));
-        sum += unit * qty;
+        sum += rowLineCents(row);
       });
       const totalEl = document.getElementById("itemsTotal");
       if (totalEl) totalEl.textContent = formatMVR(sum);
     }
+
+    // Attach listeners
+    table?.querySelectorAll("tr[data-item-id]").forEach((row) => {
+      const isBulk = row.hasAttribute("data-bulk-scope");
+      const unitInput = row.querySelector("input[name='unit']");
+      const qtyInput  = row.querySelector("input[name='qty']");
+
+      if (isBulk) {
+        // Only qty is manually editable; unit is auto-calculated
+        qtyInput?.addEventListener("input", () => {
+          recalcRow(row);
+          recalcOrderTotal();
+        });
+      } else {
+        const onRegularChange = () => {
+          recalcRow(row);
+          recalcAllBulkDiscounts();
+          recalcOrderTotal();
+        };
+        unitInput?.addEventListener("input", onRegularChange);
+        qtyInput?.addEventListener("input", onRegularChange);
+      }
+    });
+
+    // Seed correct bulk-discount units on page load (DB stores 0)
+    recalcAllBulkDiscounts();
+    recalcOrderTotal();
 
     saveItemsBtn?.addEventListener("click", async () => {
       const rows = table?.querySelectorAll("tr[data-item-id]");
