@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:darkroom-558.pages.dev)",
       "Bash(npx wrangler:*)",
-      "Bash(ls \"C:\\\\Users\\\\ravaa\\\\OneDrive\\\\Documents\\\\smolbo1\\\\darkroom\\\\src\\\\components\\\\\" 2>/dev/null || echo \"no components dir\")"
+      "Bash(ls \"C:\\\\Users\\\\ravaa\\\\OneDrive\\\\Documents\\\\smolbo1\\\\darkroom\\\\src\\\\components\\\\\" 2>/dev/null || echo \"no components dir\")",
+      "Bash(cd \"C:/Users/ravaa/OneDrive/Documents/smolbo1/darkroom\" && npm run dev)"
     ]
   }
 }

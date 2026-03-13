@@ -1,7 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
-import SectionHeader from "../components/SectionHeader.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Accordion from "../components/Accordion.astro";
 
@@ -20,13 +19,7 @@ type FeaturedRow = {
   turnaround_prices: string | null;
   pushpull_options: string | null;
   pushpull_prices: string | null;
-  collection_options: string | null;
-  collection_prices: string | null;
 };
-
-function moneyMVR(cents: number) {
-  return `MVR ${(cents / 100).toFixed(2)}`;
-}
 
 function imgUrl(key: string | null) {
   if (!key) return null;
@@ -44,7 +37,7 @@ function parseOpts(raw: string | null): string[] {
 const featuredRes = await db
   .prepare(`
     SELECT id, slug, name, price_cents, primary_image_key,
-           turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
+           turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
     FROM services
     WHERE active = 1 AND featured = 1
     ORDER BY updated_at DESC
@@ -55,169 +48,713 @@ const featuredRes = await db
 const featured = (featuredRes.results ?? []) as FeaturedRow[];
 
 const services = [
-  { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it’s unique." },
+  { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it's unique." },
   { title: "Intermediate Service", content: "Add a second service tier with key inclusions and turnaround time." },
   { title: "Advanced Service", content: "Add premium offering details, add-ons, and deliverables." },
 ];
 ---
 
 <BaseLayout title="DARKROOM">
-  <!-- HERO -->
-  <section class="pt-10 md:pt-16">
-    <div class="grid gap-10 md:grid-cols-2 md:items-start">
-      <div>
-        <h1 class="text-[52px] leading-[0.88] tracking-wide sm:text-[72px] md:text-[112px]">
-          High-quality film services
+
+  <!-- ═══════════════════════════════════════════════════════ HERO -->
+  <section class="hero pt-10 md:pt-14">
+    <div class="hero-grid">
+
+      <!-- Left: counter + heading + meta -->
+      <div class="hero-copy">
+        <div class="hero-counter" aria-hidden="true">— 001 —</div>
+
+        <h1 class="hero-h1">
+          High&#8209;quality<br/>film services
         </h1>
 
-        <p class="mt-10 max-w-md text-lg leading-7 uppercase tracking-widest sm:text-xl" style="color: var(--muted);">
-          Process, scan, and print your images with people who really love film.
-        </p>
-
-        <div class="mt-10">
-          <Button href="/about" size="lg">Learn more</Button>
+        <div class="hero-bottom">
+          <p class="hero-sub">
+            Process, scan, and print your images with people who really love film.
+          </p>
+          <div class="hero-cta">
+            <Button href="/about" size="lg">Learn more</Button>
+          </div>
         </div>
       </div>
 
-      <div class="md:pt-10">
-        <div class="bg-[var(--panel)] p-0">
+      <!-- Right: tall hero image -->
+      <div class="hero-img-col">
+        <div class="develop-wrapper">
           <img
             src={`${r2Base}/home/Ektar100_029.dng.png`}
-            alt="Hero"
-            class="aspect-[4/3] w-full object-cover"
+            alt="Film photograph"
+            class="hero-img"
             loading="eager"
           />
+          <div class="safelight-overlay" aria-hidden="true"></div>
+          <div class="light-leak"        aria-hidden="true"></div>
+          <div class="vignette"          aria-hidden="true"></div>
+        </div>
+
+        <!-- Film canister metadata strip -->
+        <div class="exposure-strip" aria-hidden="true">
+          <span>EI 400 △DX</span>
+          <span>EKTAR 100</span>
+          <span>C-41</span>
+          <span>36 EXP</span>
         </div>
       </div>
+
     </div>
   </section>
 
-  <!-- FEATURED PRODUCTS -->
-  <section class="mt-20 md:mt-28">
-    {/* ACCENT RULE — delete the next line to revert */}
-    <div class="mb-5 h-[3px] w-12" style="background:#FFD200;"></div>
-    <SectionHeader title="Featured Products" actionLabel="Shop all" actionHref="/shop" />
+  <!-- ════════════════════════════════════════════ PROCESS TICKER -->
+  <div class="process-bar reveal" aria-hidden="true">
+    <span>C-41</span>
+    <span class="dot">·</span>
+    <span>E-6</span>
+    <span class="dot">·</span>
+    <span>B&amp;W</span>
+    <span class="dot">·</span>
+    <span>ECN-2</span>
+    <span class="dot">·</span>
+    <span>SCANNING</span>
+    <span class="dot">·</span>
+    <span>PRINTING</span>
+    <span class="dot">·</span>
+    <span>PUSH / PULL</span>
+  </div>
 
-    <div class="mt-10 grid grid-cols-2 gap-4 md:gap-8 md:grid-cols-4">
+  <!-- ══════════════════════════════════════ FEATURED PRODUCTS -->
+  <section class="mt-20 md:mt-28">
+    <div class="featured-header reveal">
+      <div class="featured-label">Featured</div>
+      <a href="/shop" class="featured-shopall">Shop all →</a>
+    </div>
+
+    <div class="mt-8 product-grid reveal-stagger">
       {featured.length === 0 ? (
-        <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 text-sm" style="color: var(--muted);">
+        <div class="col-span-4 rounded-3xl border border-[var(--line)] bg-white/20 p-6 text-sm reveal" style="color: var(--muted);">
           No featured products yet.
         </div>
       ) : (
         featured.map((p) => (
-          <ProductCard
-            id={p.id}
-            href={hrefFor(p)}
-            image={imgUrl(p.primary_image_key) ?? undefined}
-            name={p.name}
-            priceCents={p.price_cents}
-            turnaroundOptions={parseOpts(p.turnaround_options)}
-            turnaroundPrices={parseOpts(p.turnaround_prices)}
-            pushpullOptions={parseOpts(p.pushpull_options)}
-            pushpullPrices={parseOpts(p.pushpull_prices)}
-          />
+          <div class="reveal card-lift">
+            <ProductCard
+              id={p.id}
+              href={hrefFor(p)}
+              image={imgUrl(p.primary_image_key) ?? undefined}
+              name={p.name}
+              priceCents={p.price_cents}
+              turnaroundOptions={parseOpts(p.turnaround_options)}
+              turnaroundPrices={parseOpts(p.turnaround_prices)}
+              pushpullOptions={parseOpts(p.pushpull_options)}
+              pushpullPrices={parseOpts(p.pushpull_prices)}
+            />
+          </div>
         ))
       )}
     </div>
   </section>
 
-  <!-- SERVICES -->
-  <section class="mt-24 md:mt-32">
-    <div class="grid gap-10 md:grid-cols-2 md:items-start">
-      <div>
-        {/* ACCENT RULE — delete the next line to revert */}
-        <div class="mb-5 h-[3px] w-12" style="background:#007A59;"></div>
-        <h2 class="text-5xl md:text-6xl leading-[0.95] tracking-wide">Explore our<br/>services</h2>
-        <p class="mt-6 max-w-md text-sm leading-6" style="color: var(--muted);">
-          Capture life’s joyful moments with our playful photo services that turn ordinary
-          snaps into extraordinary stories.
-        </p>
+  <!-- ════════════════════════════════════════════ STATEMENT -->
+  <div class="statement-wrap reveal">
+    <blockquote class="statement">
+      Every frame tells&nbsp;a&nbsp;story.<br/>
+      <em>We develop yours.</em>
+    </blockquote>
+    <div class="statement-rule" aria-hidden="true"></div>
+  </div>
 
-        <div class="mt-10">
-          <Accordion items={services} />
-        </div>
-
-        <div class="mt-10">
-          <Button href="/services" size="lg">Learn more</Button>
-        </div>
-      </div>
-
-      <div class="md:pt-4">
+  <!-- ══════════════════════════════════════════════ SERVICES -->
+  <section class="services-section">
+    <!-- Image left -->
+    <div class="services-img reveal">
+      <div class="img-frame">
         <img
           src={`${r2Base}/services/inspecting.jpg`}
           alt="Services"
-          class="aspect-[4/3] w-full object-cover"
+          class="scroll-develop"
           loading="lazy"
         />
+        <div class="vignette" aria-hidden="true"></div>
+        <div class="corner-mark cm-tl" aria-hidden="true"></div>
+        <div class="corner-mark cm-br" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Text right -->
+    <div class="services-copy reveal">
+      <div class="section-num" aria-hidden="true">02</div>
+      <div class="mb-5 h-[3px] w-10" style="background:#007A59;"></div>
+      <h2 class="section-heading">Explore our<br/>services</h2>
+      <p class="section-body">
+        Capture life's joyful moments with our playful photo services that turn ordinary
+        snaps into extraordinary stories.
+      </p>
+      <div class="mt-10">
+        <Accordion items={services} />
+      </div>
+      <div class="mt-10">
+        <Button href="/services" size="lg">Learn more</Button>
       </div>
     </div>
   </section>
 
-  <!-- GET TO KNOW US -->
-  <section class="mt-24 md:mt-32">
-    <div class="grid gap-10 md:grid-cols-2 md:items-start">
+  <!-- ════════════════════════════════════════ GET TO KNOW US -->
+  <section class="about-section mt-24 md:mt-32">
+    <!-- Full-width heading row -->
+    <div class="about-header reveal">
       <div>
-        {/* ACCENT RULE — delete the next line to revert */}
-        <div class="mb-5 h-[3px] w-12" style="background:#0047BA;"></div>
-        <h2 class="text-5xl md:text-6xl leading-[0.95] tracking-wide">Get to<br/>know us</h2>
-        <p class="mt-6 max-w-md text-sm leading-6" style="color: var(--muted);">
+        <div class="section-num" aria-hidden="true">03</div>
+        <div class="mb-5 h-[3px] w-10" style="background:#0047BA;"></div>
+        <h2 class="section-heading">Get to<br/>know us</h2>
+      </div>
+      <div class="about-header-right">
+        <p class="section-body" style="max-width: 320px;">
           Tell people about who you are, your origin, your process, or your inspirations.
         </p>
-
-        <div class="mt-10">
+        <div class="mt-8">
           <Button href="/about" size="lg">Learn more</Button>
         </div>
+      </div>
+    </div>
 
-        <div class="mt-10">
+    <!-- Two images — different sizes, slightly offset -->
+    <div class="about-images mt-12 md:mt-16">
+      <div class="about-img-a reveal">
+        <div class="img-frame">
           <img
             src={`${r2Base}/home/Gold200_025.dng.png`}
-            alt="About 1"
-            class="w-full object-cover"
+            alt="Film photograph"
+            class="scroll-develop"
             loading="lazy"
           />
+          <div class="vignette" aria-hidden="true"></div>
         </div>
       </div>
 
-      <div class="md:pt-10">
-        <img
-          src={`${r2Base}/home/Ektar100_028.dng.png`}
-          alt="About 2"
-          class="w-full object-cover"
-          loading="lazy"
-        />
+      <div class="about-img-b reveal">
+        <div class="img-frame">
+          <img
+            src={`${r2Base}/home/Ektar100_028.dng.png`}
+            alt="Film photograph"
+            class="scroll-develop"
+            loading="lazy"
+          />
+          <div class="vignette" aria-hidden="true"></div>
+          <div class="corner-mark cm-tl" aria-hidden="true"></div>
+          <div class="corner-mark cm-br" aria-hidden="true"></div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- FOLLOW US -->
-  <section class="mt-24 md:mt-32 pb-10">
-    <div class="flex items-start justify-between gap-8">
+  <!-- ═════════════════════════════════════════ FOLLOW US -->
+  <section class="mt-24 md:mt-32 pb-16">
+    <div class="follow-header reveal">
       <div>
-        {/* ACCENT RULE — delete the next line to revert */}
-        <div class="mb-5 h-[3px] w-12" style="background:#FF5200;"></div>
-        <h2 class="text-5xl md:text-6xl leading-[0.95] tracking-wide">Follow Us</h2>
+        <div class="section-num" aria-hidden="true">04</div>
+        <div class="mb-5 h-[3px] w-10" style="background:#FF5200;"></div>
+        <h2 class="section-heading">Follow Us</h2>
       </div>
-      <div class="pt-6">
+      <div class="pt-2">
         <a
           href="#"
           aria-label="Follow us on Instagram"
-          class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--btn)] text-[var(--btnText)] hover:opacity-90 transition"
+          class="ig-btn"
         >
-          <!-- Instagram icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
             <circle cx="12" cy="12" r="4"/>
             <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
           </svg>
+          <span>Instagram</span>
         </a>
       </div>
     </div>
 
-    <div class="mt-10 grid grid-cols-2 gap-4 md:gap-6 md:grid-cols-4">
-      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g1" alt="g1" loading="lazy" />
-      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g2" alt="g2" loading="lazy" />
-      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g3" alt="g3" loading="lazy" />
-      <img class="aspect-[4/3] w-full object-cover" src="https://picsum.photos/900/700?g4" alt="g4" loading="lazy" />
+    <!-- Gallery — first image is 2× wide on desktop -->
+    <div class="gallery-grid mt-10 reveal-stagger">
+      <div class="gallery-a reveal gallery-wrap">
+        <img class="gallery-img" src="https://picsum.photos/900/700?g1" alt="Gallery 1" loading="lazy" />
+        <div class="gallery-overlay" aria-hidden="true"></div>
+      </div>
+      <div class="gallery-b reveal gallery-wrap">
+        <img class="gallery-img" src="https://picsum.photos/900/700?g2" alt="Gallery 2" loading="lazy" />
+        <div class="gallery-overlay" aria-hidden="true"></div>
+      </div>
+      <div class="gallery-c reveal gallery-wrap">
+        <img class="gallery-img" src="https://picsum.photos/900/700?g3" alt="Gallery 3" loading="lazy" />
+        <div class="gallery-overlay" aria-hidden="true"></div>
+      </div>
+      <div class="gallery-d reveal gallery-wrap">
+        <img class="gallery-img" src="https://picsum.photos/900/700?g4" alt="Gallery 4" loading="lazy" />
+        <div class="gallery-overlay" aria-hidden="true"></div>
+      </div>
     </div>
   </section>
+
+  <!-- ════════════════════════════════════════════════════ STYLES -->
+  <style>
+
+    /* ─── HERO ──────────────────────────────────────────────────── */
+    .hero-grid {
+      display: grid;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (min-width: 768px) {
+      .hero-grid {
+        grid-template-columns: 5fr 7fr;
+        gap: 48px;
+        align-items: stretch;
+      }
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      padding-top: 8px;
+    }
+    @media (min-width: 768px) {
+      .hero-copy {
+        justify-content: space-between;
+        min-height: 480px;
+      }
+    }
+
+    .hero-counter {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: rgba(238, 228, 210, 0.3);
+      margin-bottom: 20px;
+      animation: fadeUp 0.6s ease 0.1s both;
+    }
+
+    .hero-h1 {
+      font-size: clamp(52px, 9vw, 116px);
+      line-height: 0.88;
+      letter-spacing: 0.01em;
+      animation: clipUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+    }
+
+    .hero-bottom {
+      margin-top: 40px;
+      animation: fadeUp 0.9s ease 0.75s both;
+    }
+
+    .hero-sub {
+      max-width: 380px;
+      font-size: 14px;
+      line-height: 1.7;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* Hero image column */
+    .hero-img-col {
+      animation: fadeUp 1s ease 0.2s both;
+    }
+    .develop-wrapper {
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      animation: developIn 3.2s ease-out 0.1s both;
+    }
+    @media (min-width: 768px) {
+      .hero-img {
+        aspect-ratio: auto;
+        height: 520px;
+      }
+    }
+
+    @keyframes developIn {
+      0%   { filter: brightness(0.03) sepia(1) saturate(0.2); }
+      20%  { filter: brightness(0.12) sepia(0.85) saturate(0.25); }
+      55%  { filter: brightness(0.55) sepia(0.35) saturate(0.6); }
+      100% { filter: brightness(1) sepia(0) saturate(1); }
+    }
+
+    .safelight-overlay {
+      position: absolute; inset: 0;
+      background: #ED1C24;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+      animation: safelightFade 3.2s ease-out 0.1s both;
+    }
+    @keyframes safelightFade {
+      0%   { opacity: 0.85; }
+      45%  { opacity: 0.45; }
+      80%  { opacity: 0.08; }
+      100% { opacity: 0; }
+    }
+
+    .light-leak {
+      position: absolute; inset: 0;
+      background: linear-gradient(120deg, rgba(237,28,36,0.16) 0%, rgba(237,28,36,0.04) 35%, transparent 55%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
+    .vignette {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.65) 100%);
+      pointer-events: none;
+    }
+
+    .exposure-strip {
+      display: flex;
+      gap: 16px;
+      padding: 6px 0 0;
+      margin-top: 5px;
+      font-family: var(--font-sans);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(238, 228, 210, 0.22);
+      border-top: 1px solid rgba(238, 228, 210, 0.07);
+      animation: fadeUp 0.8s ease 2s both;
+    }
+
+    /* ─── PROCESS BAR ─────────────────────────────────────────── */
+    .process-bar {
+      margin: 52px 0;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 20px;
+      font-family: var(--font-sans);
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(238, 228, 210, 0.35);
+    }
+    .process-bar .dot {
+      color: var(--red);
+      font-size: 12px;
+    }
+
+    /* ─── FEATURED HEADER ─────────────────────────────────────── */
+    .featured-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+    .featured-label {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 5vw, 56px);
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .featured-shopall {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      transition: color 0.2s ease;
+      white-space: nowrap;
+    }
+    .featured-shopall:hover { color: var(--text); }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    @media (min-width: 768px) {
+      .product-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+      }
+    }
+
+    .card-lift {
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .card-lift:hover { transform: translateY(-5px); }
+
+    /* ─── STATEMENT ───────────────────────────────────────────── */
+    .statement-wrap {
+      margin: 72px 0;
+      padding: 60px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      position: relative;
+    }
+    .statement {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 6vw, 80px);
+      line-height: 1.0;
+      letter-spacing: 0.01em;
+      max-width: 900px;
+      margin: 0;
+    }
+    .statement em {
+      color: var(--red);
+      font-style: italic;
+    }
+    .statement-rule {
+      position: absolute;
+      bottom: -1px; left: 0;
+      width: 48px;
+      height: 3px;
+      background: var(--red);
+    }
+
+    /* ─── SERVICES ────────────────────────────────────────────── */
+    .services-section {
+      display: grid;
+      gap: 40px;
+      align-items: center;
+      margin-top: 24px;
+    }
+    @media (min-width: 768px) {
+      .services-section {
+        grid-template-columns: 6fr 5fr;
+        gap: 64px;
+        margin-top: 0;
+      }
+    }
+
+    .services-img .img-frame img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      display: block;
+    }
+    @media (min-width: 768px) {
+      .services-img .img-frame img {
+        aspect-ratio: auto;
+        height: 540px;
+      }
+    }
+
+    /* ─── SECTION SHARED ──────────────────────────────────────── */
+    .section-num {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: rgba(238, 228, 210, 0.2);
+      margin-bottom: 20px;
+    }
+    .section-heading {
+      font-size: clamp(40px, 5vw, 64px);
+      line-height: 0.95;
+      letter-spacing: 0.01em;
+      margin-bottom: 20px;
+    }
+    .section-body {
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--muted);
+    }
+
+    /* ─── IMG FRAME / CORNER MARKS ────────────────────────────── */
+    .img-frame {
+      position: relative;
+      overflow: hidden;
+    }
+    .corner-mark {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-color: rgba(238, 228, 210, 0.28);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .cm-tl { top: 10px;    left: 10px;    border-top: 1px solid;    border-left: 1px solid; }
+    .cm-br { bottom: 10px; right: 10px;   border-bottom: 1px solid; border-right: 1px solid; }
+
+    /* ─── ABOUT ───────────────────────────────────────────────── */
+    .about-header {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    @media (min-width: 768px) {
+      .about-header {
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 64px;
+      }
+    }
+
+    .about-images {
+      display: grid;
+      gap: 16px;
+      align-items: end;
+    }
+    @media (min-width: 768px) {
+      .about-images {
+        grid-template-columns: 5fr 7fr;
+        gap: 24px;
+      }
+    }
+
+    .about-img-a img {
+      width: 100%;
+      aspect-ratio: 3/4;
+      object-fit: cover;
+      display: block;
+    }
+    .about-img-b img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      display: block;
+    }
+    @media (min-width: 768px) {
+      .about-img-a { padding-top: 48px; }
+      .about-img-b { padding-bottom: 0; }
+    }
+
+    /* ─── FOLLOW ──────────────────────────────────────────────── */
+    .follow-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 4px;
+    }
+    .ig-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      background: var(--btn);
+      color: var(--btnText);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .ig-btn:hover {
+      opacity: 0.85;
+      transform: translateY(-2px);
+    }
+
+    /* Gallery: first image wider on desktop */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (min-width: 768px) {
+      .gallery-grid {
+        grid-template-columns: 2fr 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 16px;
+      }
+      .gallery-a { grid-row: 1 / 3; }
+    }
+
+    .gallery-wrap {
+      position: relative;
+      overflow: hidden;
+    }
+    .gallery-img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      filter: sepia(0.3) brightness(0.82) saturate(0.75);
+      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), filter 0.55s ease;
+      will-change: transform, filter;
+    }
+    .gallery-a .gallery-img {
+      aspect-ratio: auto;
+      min-height: 100%;
+    }
+    .gallery-wrap:hover .gallery-img {
+      transform: scale(1.05);
+      filter: sepia(0) brightness(1) saturate(1);
+    }
+    .gallery-overlay {
+      position: absolute; inset: 0;
+      border: 2px solid transparent;
+      transition: border-color 0.3s ease;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .gallery-wrap:hover .gallery-overlay {
+      border-color: rgba(237, 28, 36, 0.5);
+    }
+
+    /* ─── SCROLL REVEAL ───────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .reveal.is-visible {
+      opacity: 1;
+      transform: none;
+    }
+    .reveal-stagger .reveal:nth-child(1) { transition-delay: 0s; }
+    .reveal-stagger .reveal:nth-child(2) { transition-delay: 0.11s; }
+    .reveal-stagger .reveal:nth-child(3) { transition-delay: 0.22s; }
+    .reveal-stagger .reveal:nth-child(4) { transition-delay: 0.33s; }
+
+    /* Scroll-triggered develop effect on interior images */
+    .scroll-develop {
+      filter: brightness(0.3) sepia(0.8) saturate(0.25);
+      transition: filter 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .is-visible .scroll-develop {
+      filter: brightness(1) sepia(0) saturate(1);
+    }
+
+    /* ─── KEYFRAMES ───────────────────────────────────────────── */
+    @keyframes clipUp {
+      from {
+        opacity: 0;
+        transform: translateY(32px);
+        clip-path: inset(0 0 100% 0);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+        clip-path: inset(0 0 0% 0);
+      }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: none; }
+    }
+  </style>
+
+  <!-- ════════════════════════════════════════ SCROLL OBSERVER -->
+  <script is:inline>
+    (function () {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll(".reveal").forEach(function (el) {
+        io.observe(el);
+      });
+    })();
+  </script>
+
 </BaseLayout>
