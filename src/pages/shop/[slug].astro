@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import ServiceGallery from "../../components/ServiceGallery.astro";
 
 export const prerender = false;
 
@@ -99,43 +100,14 @@ const collectionPrices = parseOpts(service.collection_prices);
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
   <section class="mt-10 grid gap-10 lg:grid-cols-2 lg:items-start">
-    <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-10">
-      <div class="text-xs tracking-wide uppercase" style="color: var(--muted);">
+    <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-6 lg:p-8">
+      <div class="mb-4 text-xs tracking-wide uppercase" style="color: var(--muted);">
         {service.service_group ?? "service"}
       </div>
-
-      <div class="mt-5">
-        {service.primary_image_key ? (
-          <img
-            src={imgUrl(service.primary_image_key)}
-            alt={service.name}
-            class="w-full rounded-2xl border border-[var(--line)] object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div
-            class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--panel)] text-sm"
-            style="color: var(--muted);"
-          >
-            No image
-          </div>
-        )}
-      </div>
-
-      {galleryRows.length > 0 && (
-        <div class="mt-4 grid grid-cols-4 gap-2">
-          {galleryRows.slice(0, 8).map((img) => (
-            <a href={imgUrl(img.image_key)} target="_blank" class="block">
-              <img
-                src={imgUrl(img.image_key)}
-                alt={img.alt ?? service.name}
-                class="aspect-square w-full rounded-xl border border-[var(--line)] object-cover"
-                loading="lazy"
-              />
-            </a>
-          ))}
-        </div>
-      )}
+      <ServiceGallery
+        primary={service.primary_image_key ? { src: imgUrl(service.primary_image_key), alt: service.name } : null}
+        gallery={galleryRows.map(img => ({ src: imgUrl(img.image_key), alt: img.alt ?? service.name }))}
+      />
     </div>
 
     <div class="lg:pt-2">
