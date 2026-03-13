@@ -83,13 +83,10 @@ const services = [
             id="heroImg"
             loading="eager"
           />
-          <div class="safelight-overlay" aria-hidden="true"></div>
         </div>
         <div class="exposure-strip" aria-hidden="true">
-          <span>EI 400 △DX</span>
-          <span>EKTAR 100</span>
-          <span>C-41</span>
-          <span>36 EXP</span>
+          <span>Gold 200</span>
+          <span>Minolta Sweet Alpha</span>
         </div>
       </div>
 
@@ -130,6 +127,12 @@ const services = [
 
   <!-- ════════════════════════════════════════════ STATEMENT -->
   <div class="statement-wrap reveal">
+    <img
+      src="https://snelsonphotolab.com/wp-content/uploads/2016/11/35mm-Strip.jpg"
+      alt=""
+      aria-hidden="true"
+      class="statement-film"
+    />
     <blockquote class="statement">
       Every frame tells&nbsp;a&nbsp;story.<br/>
       <em>We develop yours.</em>
@@ -144,7 +147,7 @@ const services = [
         <img
           src={`${r2Base}/services/inspecting.jpg`}
           alt="Services"
-          class="services-img-el gallery-img scroll-develop"
+          class="services-img-el gallery-img"
           loading="lazy"
         />
         <div class="gallery-overlay" aria-hidden="true"></div>
@@ -152,8 +155,10 @@ const services = [
     </div>
 
     <div class="services-copy reveal">
-      <div class="mb-5 h-[3px] w-10" style="background: var(--green);"></div>
-      <h2 class="section-heading">Explore our<br/>services</h2>
+      <div class="services-heading-wrap">
+
+        <h2 class="section-heading">Explore our<br/>services</h2>
+      </div>
       <p class="section-body">
         Capture life's joyful moments with our playful photo services that turn ordinary
         snaps into extraordinary stories.
@@ -171,8 +176,10 @@ const services = [
   <section class="about-section mt-24 md:mt-32">
     <div class="about-header reveal">
       <div>
-        <div class="mb-5 h-[3px] w-10" style="background: var(--blue);"></div>
-        <h2 class="section-heading">Get to<br/>know us</h2>
+        <div class="services-heading-wrap">
+
+          <h2 class="section-heading">Get to<br/>know us</h2>
+        </div>
       </div>
       <div class="about-header-right">
         <p class="section-body" style="max-width: 320px;">
@@ -190,7 +197,7 @@ const services = [
           <img
             src={`${r2Base}/home/Gold200_025.dng.png`}
             alt="Film photograph"
-            class="about-img-el gallery-img scroll-develop"
+            class="about-img-el gallery-img"
             loading="lazy"
           />
           <div class="gallery-overlay" aria-hidden="true"></div>
@@ -202,7 +209,7 @@ const services = [
           <img
             src={`${r2Base}/home/Ektar100_028.dng.png`}
             alt="Film photograph"
-            class="about-img-el gallery-img scroll-develop"
+            class="about-img-el gallery-img"
             loading="lazy"
           />
           <div class="gallery-overlay" aria-hidden="true"></div>
@@ -215,8 +222,10 @@ const services = [
   <section class="mt-24 md:mt-32 pb-16">
     <div class="follow-header reveal">
       <div>
-        <div class="mb-5 h-[3px] w-10" style="background: var(--orange);"></div>
-        <h2 class="section-heading">Follow Us</h2>
+        <div class="services-heading-wrap">
+
+          <h2 class="section-heading">Follow Us</h2>
+        </div>
       </div>
       <div class="pt-2">
         <a href="#" aria-label="Follow us on Instagram" class="ig-btn">
@@ -313,7 +322,7 @@ const services = [
       width: 100%;
       aspect-ratio: 4/3;
       object-fit: cover;
-      animation: developIn 3.2s ease-out 0.1s both;
+      animation: heroImgIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
       will-change: transform;
     }
     @media (min-width: 768px) {
@@ -323,25 +332,9 @@ const services = [
       }
     }
 
-    @keyframes developIn {
-      0%   { filter: brightness(0.03) sepia(1) saturate(0.2); }
-      20%  { filter: brightness(0.12) sepia(0.85) saturate(0.25); }
-      55%  { filter: brightness(0.55) sepia(0.35) saturate(0.6); }
-      100% { filter: brightness(1) sepia(0) saturate(1); }
-    }
-
-    .safelight-overlay {
-      position: absolute; inset: 0;
-      background: var(--red);
-      mix-blend-mode: multiply;
-      pointer-events: none;
-      animation: safelightFade 3.2s ease-out 0.1s both;
-    }
-    @keyframes safelightFade {
-      0%   { opacity: 0.85; }
-      45%  { opacity: 0.45; }
-      80%  { opacity: 0.08; }
-      100% { opacity: 0; }
+    @keyframes heroImgIn {
+      from { opacity: 0; transform: scale(1.04); }
+      to   { opacity: 1; transform: scale(1); }
     }
 
     .exposure-strip {
@@ -405,9 +398,20 @@ const services = [
     .statement-wrap {
       margin: 72px 0;
       padding: 60px 0;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
       position: relative;
+      overflow: hidden;
+    }
+    .statement-film {
+      position: absolute;
+      right: 0;
+      top: 0;
+      height: 100%;
+      width: auto;
+      object-fit: cover;
+      opacity: 0.35;
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 45%);
+      mask-image: linear-gradient(to right, transparent 0%, black 45%);
+      pointer-events: none;
     }
     .statement {
       font-family: var(--font-display);
@@ -416,6 +420,8 @@ const services = [
       letter-spacing: 0.01em;
       max-width: 900px;
       margin: 0;
+      position: relative;
+      z-index: 1;
     }
     .statement em {
       color: var(--red);
@@ -427,6 +433,12 @@ const services = [
       width: 48px;
       height: 3px;
       background: var(--red);
+    }
+
+    .services-heading-wrap {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
     }
 
     /* ─── SERVICES ────────────────────────────────────────────── */
@@ -563,10 +575,8 @@ const services = [
       width: 100%;
       height: 100%;
       object-fit: cover;
-      filter: sepia(0.3) brightness(0.82) saturate(0.75);
-      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-                  filter 0.55s ease;
-      will-change: transform, filter;
+      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
     }
     /* Follow grid images need aspect ratio */
     .gallery-grid .gallery-img { aspect-ratio: 4/3; }
@@ -574,7 +584,6 @@ const services = [
 
     .gallery-wrap:hover .gallery-img {
       transform: scale(1.05);
-      filter: sepia(0) brightness(1) saturate(1);
     }
     .gallery-overlay {
       position: absolute; inset: 0;
@@ -587,20 +596,6 @@ const services = [
       border-color: color-mix(in srgb, var(--red) 50%, transparent);
     }
 
-    /* Scroll-develop overrides the filter until visible,
-       then hover takes back over naturally */
-    .scroll-develop {
-      filter: brightness(0.3) sepia(0.8) saturate(0.25) !important;
-      transition: filter 1.8s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    }
-    .is-visible .scroll-develop {
-      filter: sepia(0.3) brightness(0.82) saturate(0.75) !important;
-    }
-    /* Once revealed AND hovered, full colour */
-    .is-visible .gallery-wrap:hover .scroll-develop {
-      filter: sepia(0) brightness(1) saturate(1) !important;
-      transition: filter 0.55s ease !important;
-    }
 
     /* ─── SCROLL REVEAL ───────────────────────────────────────── */
     .reveal {
