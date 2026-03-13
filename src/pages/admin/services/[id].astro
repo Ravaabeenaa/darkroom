@@ -13,10 +13,16 @@ type ServiceRow = {
   description: string | null;
   price_cents: number;
   active: number;
+  featured: number;
+  bulk_discount_eligible: number;
+  bulk_discount_percent: number;
   tags: string | null;
+  collection_options: string | null;
+  turnaround_prices: string | null;
+  pushpull_prices: string | null;
+  collection_prices: string | null;
   notes: string | null;
   primary_image_key: string | null;
-  featured: number;
   turnaround_options: string | null;
   pushpull_options: string | null;
 };
@@ -32,7 +38,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, turnaround_options, pushpull_options
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
   FROM services
   WHERE id = ?
   LIMIT 1;
@@ -207,6 +213,24 @@ function imgUrl(key: string) {
           <input type="checkbox" name="featured" checked={service.featured === 1} />
           Featured (show on home page)
         </label>
+
+        <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
+          <input type="checkbox" name="bulk_discount_eligible" checked={service.bulk_discount_eligible === 1} />
+          Bulk discount eligible (when 5+ of this group ordered)
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Bulk discount % <span class="text-xs">(applied when eligible, default 5)</span></span>
+          <input
+            name="bulk_discount_percent"
+            type="number"
+            min="1"
+            max="100"
+            step="1"
+            value={service.bulk_discount_percent ?? 5}
+            class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
+          />
+        </label>
       </div>
 
       <label class="block">
@@ -236,17 +260,41 @@ function imgUrl(key: string) {
         <textarea name="notes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{service.notes ?? ""}</textarea>
       </label>
 
+      <!-- Options + Prices grid -->
+      <div id="optValidationError" class="hidden rounded-2xl border border-red-400/40 bg-red-50/80 px-4 py-3 text-sm text-red-700"></div>
+
       <div class="grid gap-4 md:grid-cols-2">
         <label class="block">
           <span class="text-sm" style="color: var(--muted);">Turnaround options (JSON array)</span>
-          <input name="turnaround_options" value={service.turnaround_options ?? ""} placeholder='e.g. ["Standard","Express"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave blank for no turnaround selector.</span>
+          <input id="f_turnaround_options" name="turnaround_options" value={service.turnaround_options ?? ""} placeholder='e.g. ["Standard","Express"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Turnaround prices (MVR, must match count)</span>
+          <input id="f_turnaround_prices" name="turnaround_prices" value={service.turnaround_prices ?? ""} placeholder='e.g. ["+0","+20"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no turnaround selector.</span>
         </label>
 
         <label class="block">
           <span class="text-sm" style="color: var(--muted);">Push/Pull options (JSON array)</span>
-          <input name="pushpull_options" value={service.pushpull_options ?? ""} placeholder='e.g. ["Normal","+1","+2","-1"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave blank for no push/pull selector.</span>
+          <input id="f_pushpull_options" name="pushpull_options" value={service.pushpull_options ?? ""} placeholder='e.g. ["Normal","+1","+2","-1"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Push/Pull prices (MVR, must match count)</span>
+          <input id="f_pushpull_prices" name="pushpull_prices" value={service.pushpull_prices ?? ""} placeholder='e.g. ["+0","+30","+60","+30"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no push/pull selector.</span>
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Collection options (JSON array)</span>
+          <input id="f_collection_options" name="collection_options" value={service.collection_options ?? ""} placeholder='e.g. ["Customer drop off","Pick up from Male"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Collection prices (MVR, must match count)</span>
+          <input id="f_collection_prices" name="collection_prices" value={service.collection_prices ?? ""} placeholder='e.g. ["+0","+50","+50"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no collection selector.</span>
         </label>
       </div>
 
@@ -276,6 +324,48 @@ function imgUrl(key: string) {
       </p>
     </form>
   </section>
+
+  <script>
+    // Validate options/prices count match on submit
+    (function () {
+      function parseJsonArr(val) {
+        if (!val.trim()) return null;
+        try { return JSON.parse(val); } catch { return "invalid"; }
+      }
+
+      function checkPair(optsId, pricesId, label) {
+        const opts = parseJsonArr(document.getElementById(optsId)?.value ?? "");
+        const prices = parseJsonArr(document.getElementById(pricesId)?.value ?? "");
+        if (opts === null && prices === null) return null; // both blank = OK
+        if (opts === "invalid") return `${label} options is not valid JSON.`;
+        if (prices === "invalid") return `${label} prices is not valid JSON.`;
+        if (opts !== null && prices === null) return `${label} prices is required when options are set.`;
+        if (opts === null && prices !== null) return `${label} options is required when prices are set.`;
+        if (!Array.isArray(opts) || !Array.isArray(prices)) return `${label} options and prices must be JSON arrays.`;
+        if (opts.length !== prices.length) return `${label} options (${opts.length}) and prices (${prices.length}) must have the same number of items.`;
+        return null;
+      }
+
+      const form = document.querySelector('form[action="/api/admin/services/save"]');
+      const errEl = document.getElementById("optValidationError");
+      form?.addEventListener("submit", (e) => {
+        const errors = [
+          checkPair("f_turnaround_options", "f_turnaround_prices", "Turnaround"),
+          checkPair("f_pushpull_options", "f_pushpull_prices", "Push/Pull"),
+          checkPair("f_collection_options", "f_collection_prices", "Collection"),
+        ].filter(Boolean);
+
+        if (errors.length) {
+          e.preventDefault();
+          errEl.textContent = errors.join(" ");
+          errEl.classList.remove("hidden");
+          errEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          errEl.classList.add("hidden");
+        }
+      });
+    })();
+  </script>
 
   <script define:vars={{ serviceId: service.id }}>
     // Client-side compression to WEBP (automatic)

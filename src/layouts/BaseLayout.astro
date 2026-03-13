@@ -23,20 +23,23 @@ const { title = "DARKROOM" } = Astro.props;
 
         // Composite key: "serviceId" for simple services,
         // "serviceId~turnaround~pushpull" for services with options.
-        function makeKey(serviceId, turnaround, pushpull) {
-          if (!turnaround && !pushpull) return serviceId;
-          return `${serviceId}~${turnaround ?? ""}~${pushpull ?? ""}`;
+        function makeKey(serviceId, turnaround, pushpull, collection) {
+          const t = turnaround  ?? "";
+          const p = pushpull    ?? "";
+          const c = collection  ?? "";
+          if (!t && !p && !c) return serviceId;
+          if (!c) return `${serviceId}~${t}~${p}`;
+          return `${serviceId}~${t}~${p}~${c}`;
         }
 
         function parseKey(key) {
-          const tilde = key.indexOf("~");
-          if (tilde === -1) return { serviceId: key, turnaround: null, pushpull: null };
-          const rest = key.slice(tilde + 1);
-          const tilde2 = rest.indexOf("~");
+          const parts = key.split("~");
+          if (parts.length === 1) return { serviceId: key, turnaround: null, pushpull: null, collection: null };
           return {
-            serviceId: key.slice(0, tilde),
-            turnaround: tilde2 === -1 ? (rest || null) : (rest.slice(0, tilde2) || null),
-            pushpull:   tilde2 === -1 ? null           : (rest.slice(tilde2 + 1) || null),
+            serviceId:  parts[0] || key,
+            turnaround: parts[1] || null,
+            pushpull:   parts[2] || null,
+            collection: parts[3] || null,
           };
         }
 
@@ -119,6 +122,8 @@ const { title = "DARKROOM" } = Astro.props;
               <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
             </a>
 
+            <a id="drAdminLink" href="/admin" class="hover:opacity-70" style="display:none">Admin</a>
+
             <!-- Theme switcher (desktop) -->
             <div id="drThemeWrapper" class="relative">
               <button id="drThemeBtn" class="flex cursor-pointer items-center gap-1 rounded-xl border border-black/20 px-3 py-1.5 text-xs font-medium text-black hover:bg-black/10" aria-label="Switch theme">
@@ -193,6 +198,7 @@ const { title = "DARKROOM" } = Astro.props;
           Cart
           <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black" style="display:none"></span>
         </a>
+        <a id="drAdminLinkMobile" href="/admin" class="hover:opacity-70" style="display:none">Admin</a>
       </div>
 
       <!-- Mobile theme switcher -->
@@ -263,6 +269,14 @@ const { title = "DARKROOM" } = Astro.props;
         btn?.addEventListener("click", open);
         closeBtn?.addEventListener("click", close);
         overlay?.addEventListener("click", close);
+
+        // Show admin link if dr_admin cookie is set
+        if (document.cookie.split(";").some(c => c.trim().startsWith("dr_admin="))) {
+          const a = document.getElementById("drAdminLink");
+          const b = document.getElementById("drAdminLinkMobile");
+          if (a) a.style.display = "";
+          if (b) b.style.display = "";
+        }
 
         // Keep mobile cart count in sync
         function syncMobileCount() {

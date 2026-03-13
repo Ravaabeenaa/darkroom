@@ -1,42 +1,19 @@
-import type { APIRoute } from "astro";
+export const prerender = false;
 
-export const POST: APIRoute = async (Astro) => {
-  try {
-    const env = Astro.locals.runtime.env as any;
-    const db = env.darkroom_db as D1Database;
-    const bucket = env.darkroom_media as R2Bucket;
+export async function POST({ request, locals }: { request: Request; locals: any }) {
+  const db = (locals.runtime.env as any).darkroom_db as D1Database;
 
-    const body = await Astro.request.json().catch(() => null);
-    const image_id = String(body?.image_id ?? "").trim();
-    if (!image_id) {
-      return new Response(JSON.stringify({ ok: false, error: "Missing image_id" }), { status: 400, headers: { "content-type": "application/json" } });
-    }
+  const form = await request.formData().catch(() => null);
+  const id = String(form?.get("id") ?? "").trim();
 
-    const row = await db
-      .prepare(`SELECT id, service_id, image_key, kind FROM service_images WHERE id = ? LIMIT 1`)
-      .bind(image_id)
-      .first<{ id: string; service_id: string; image_key: string; kind: string }>();
-
-    if (!row) {
-      return new Response(JSON.stringify({ ok: false, error: "Image not found" }), { status: 404, headers: { "content-type": "application/json" } });
-    }
-
-    await db.prepare(`DELETE FROM service_images WHERE id = ?`).bind(image_id).run();
-
-    if (row.kind === "primary") {
-      await db.prepare(
-        `UPDATE services SET primary_image_key = NULL, updated_at = datetime('now')
-         WHERE id = ? AND primary_image_key = ?`
-      ).bind(row.service_id, row.image_key).run();
-    }
-
-    await bucket.delete(row.image_key);
-
-    return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ ok: false, error: e?.message ?? "Delete failed" }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+  if (!id) {
+    return Response.redirect(new URL("/admin/services?error=missing_id", request.url), 302);
   }
-};
+
+  await db
+    .prepare(`UPDATE services SET active = 0, updated_at = datetime('now') WHERE id = ?`)
+    .bind(id)
+    .run();
+
+  return Response.redirect(new URL("/admin/services", request.url), 302);
+}

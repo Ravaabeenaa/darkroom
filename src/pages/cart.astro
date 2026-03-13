@@ -13,10 +13,18 @@ type ServiceRow = {
   price_cents: number;
   primary_image_key: string | null;
   service_group: string | null;
+  bulk_discount_eligible: number;
+  bulk_discount_percent: number;
+  turnaround_options: string | null;
+  turnaround_prices: string | null;
+  pushpull_options: string | null;
+  pushpull_prices: string | null;
+  collection_options: string | null;
+  collection_prices: string | null;
 };
 
 const res = await db.prepare(`
-  SELECT id, name, price_cents, primary_image_key, service_group
+  SELECT id, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
   FROM services
   WHERE active = 1;
 `).all();
@@ -114,7 +122,19 @@ function imgUrl(key: string | null) {
     </div>
   </section>
 
-  <script define:vars={{ servicesJson: services.map(s => ({...s, image_url: imgUrl(s.primary_image_key), service_group: s.service_group ?? null})) }}>
+  <script define:vars={{ servicesJson: services.map(s => ({
+  ...s,
+  image_url: imgUrl(s.primary_image_key),
+  service_group: s.service_group ?? null,
+  bulk_discount_eligible: s.bulk_discount_eligible,
+  bulk_discount_percent: s.bulk_discount_percent ?? 5,
+  turnaround_options: s.turnaround_options ? JSON.parse(s.turnaround_options) : [],
+  turnaround_prices: s.turnaround_prices ? JSON.parse(s.turnaround_prices) : [],
+  pushpull_options: s.pushpull_options ? JSON.parse(s.pushpull_options) : [],
+  pushpull_prices: s.pushpull_prices ? JSON.parse(s.pushpull_prices) : [],
+  collection_options: s.collection_options ? JSON.parse(s.collection_options) : [],
+  collection_prices: s.collection_prices ? JSON.parse(s.collection_prices) : [],
+})) }}>
     const services = servicesJson;
     const byId = new Map(services.map(s => [s.id, s]));
 
@@ -170,33 +190,51 @@ function imgUrl(key: string | null) {
       const cart = getCart();
       return Object.entries(cart)
         .map(([key, qty]) => {
-          const { serviceId, turnaround, pushpull } = window.DarkroomCart.parseKey(key);
-          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull };
+          const { serviceId, turnaround, pushpull, collection } = window.DarkroomCart.parseKey(key);
+          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull, collection };
         })
         .filter(x => x.qty > 0);
+    }
+
+    function getOptionPriceCents(opts, prices, selected) {
+      if (!selected || !opts?.length || !prices?.length) return 0;
+      const idx = opts.indexOf(selected);
+      if (idx === -1 || !prices[idx]) return 0;
+      const n = parseFloat(String(prices[idx]).replace(/^\+/, "")) || 0;
+      return Math.round(n * 100);
+    }
+
+    function unitPriceCents(svc, it) {
+      return svc.price_cents
+        + getOptionPriceCents(svc.turnaround_options, svc.turnaround_prices, it.turnaround)
+        + getOptionPriceCents(svc.pushpull_options,   svc.pushpull_prices,   it.pushpull)
+        + getOptionPriceCents(svc.collection_options, svc.collection_prices, it.collection);
     }
 
     function calcDiscounts(items) {
       const discounts = [];
 
-      // Film rolls: service_group === 'Film', total qty >= 5
-      const filmItems = items.filter(it => byId.get(it.id)?.service_group === 'Film');
-      const filmQty = filmItems.reduce((s, it) => s + it.qty, 0);
-      if (filmQty >= 5) {
-        const filmTotal = filmItems.reduce((s, it) => {
-          const svc = byId.get(it.id);
-          return s + (svc ? svc.price_cents * it.qty : 0);
-        }, 0);
-        discounts.push({ name: 'Bulk discount (film rolls)', cents: -Math.round(filmTotal * 0.05) });
+      // Group eligible items by service_group
+      const groupMap = new Map(); // group name → { totalQty, totalCents, minPct }
+      for (const it of items) {
+        const svc = byId.get(it.id);
+        if (!svc || !svc.bulk_discount_eligible || !svc.service_group) continue;
+        const g = svc.service_group;
+        const pct = svc.bulk_discount_percent ?? 5;
+        const prev = groupMap.get(g) ?? { totalQty: 0, totalCents: 0, minPct: pct };
+        groupMap.set(g, {
+          totalQty:   prev.totalQty   + it.qty,
+          totalCents: prev.totalCents + unitPriceCents(svc, it) * it.qty,
+          minPct:     Math.min(prev.minPct, pct),
+        });
       }
 
-      // Developing: service_group === 'Developing', per-item qty >= 5
-      const devItems = items.filter(it => byId.get(it.id)?.service_group === 'Developing');
-      for (const it of devItems) {
-        if (it.qty >= 5) {
-          const svc = byId.get(it.id);
-          if (!svc) continue;
-          discounts.push({ name: 'Bulk discount (developing)', cents: -Math.round(svc.price_cents * it.qty * 0.05) });
+      for (const [group, { totalQty, totalCents, minPct }] of groupMap) {
+        if (totalQty >= 5) {
+          discounts.push({
+            name: `Bulk discount (${group})`,
+            cents: -Math.round(totalCents * minPct / 100),
+          });
         }
       }
 
@@ -208,7 +246,7 @@ function imgUrl(key: string | null) {
       for (const it of items) {
         const s = byId.get(it.id);
         if (!s) continue;
-        t += s.price_cents * it.qty;
+        t += unitPriceCents(s, it) * it.qty;
       }
       const discounts = calcDiscounts(items);
       t += discounts.reduce((s, d) => s + d.cents, 0);
@@ -230,12 +268,13 @@ function imgUrl(key: string | null) {
         const s = byId.get(it.id);
         if (!s) continue;
 
-        const line = s.price_cents * it.qty;
+        const unit = unitPriceCents(s, it);
+        const line = unit * it.qty;
 
         const row = document.createElement("div");
         row.className = "flex gap-4 rounded-2xl border border-[var(--line)] bg-white/30 p-4";
 
-        const optLabel = [it.turnaround, it.pushpull].filter(Boolean).join(' · ');
+        const optLabel = [it.turnaround, it.pushpull, it.collection].filter(Boolean).join(' · ');
         row.innerHTML = `
           <div class="h-16 w-16 overflow-hidden rounded-xl border border-[var(--line)] bg-white/20">
             ${s.image_url ? `<img src="${s.image_url}" alt="${s.name}" class="h-full w-full object-cover" />` : `<div class="flex h-full w-full items-center justify-center text-[10px]" style="color: var(--muted);">No image</div>`}
@@ -244,7 +283,7 @@ function imgUrl(key: string | null) {
           <div class="min-w-0 flex-1">
             <div class="text-sm font-semibold">${s.name}</div>
             ${optLabel ? `<div class="mt-0.5 text-xs" style="color: var(--muted);">${optLabel}</div>` : ''}
-            <div class="mt-1 text-xs" style="color: var(--muted);">${window.DarkroomCart.formatMVR(s.price_cents)} each</div>
+            <div class="mt-1 text-xs" style="color: var(--muted);">${window.DarkroomCart.formatMVR(unit)} each</div>
 
             <div class="mt-3 flex items-center gap-2">
               <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-dec="${it.key}">−</button>
@@ -575,6 +614,7 @@ function imgUrl(key: string | null) {
           qty: it.qty,
           turnaround_option: it.turnaround || null,
           pushpull_option: it.pushpull || null,
+          collection_option: it.collection || null,
         })),
       };
 

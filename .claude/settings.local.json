@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:darkroom-558.pages.dev)"
+      "WebFetch(domain:darkroom-558.pages.dev)",
+      "Bash(npx wrangler:*)"
     ]
   }
 }

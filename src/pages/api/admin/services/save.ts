@@ -77,15 +77,21 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const description = String(form.get("description") ?? "").trim() || null;
   const price_cents = priceToCents(String(form.get("price") ?? "0"));
   const active = toInt01(form.get("active"));
-  const featured = toInt01(form.get("featured")); // NEW
+  const featured = toInt01(form.get("featured"));
+  const bulk_discount_eligible = toInt01(form.get("bulk_discount_eligible"));
+  const bulk_discount_percent = Math.min(100, Math.max(1, parseInt(String(form.get("bulk_discount_percent") ?? "5"), 10) || 5));
   const tags = String(form.get("tags") ?? "").trim() || null;
   const notes = String(form.get("notes") ?? "").trim() || null;
 
   const primary_image_key = String(form.get("primary_image_key") ?? "").trim() || null;
 
-  // JSON arrays for configurable options; stored as-is (null if blank)
+  // JSON arrays for configurable options + prices; stored as-is (null if blank)
   const turnaround_options = String(form.get("turnaround_options") ?? "").trim() || null;
   const pushpull_options = String(form.get("pushpull_options") ?? "").trim() || null;
+  const collection_options = String(form.get("collection_options") ?? "").trim() || null;
+  const turnaround_prices = String(form.get("turnaround_prices") ?? "").trim() || null;
+  const pushpull_prices = String(form.get("pushpull_prices") ?? "").trim() || null;
+  const collection_prices = String(form.get("collection_prices") ?? "").trim() || null;
 
   if (!name) {
     return Response.redirect(
@@ -110,9 +116,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .prepare(
       `
       INSERT INTO services
-        (id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, turnaround_options, pushpull_options, updated_at)
+        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices, updated_at)
       VALUES
-        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,    ?,     ?,               ?,                  ?,               datetime('now'))
+        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              ?,                 ?,                datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         service_group=excluded.service_group,
@@ -121,15 +127,21 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         price_cents=excluded.price_cents,
         active=excluded.active,
         featured=excluded.featured,
+        bulk_discount_eligible=excluded.bulk_discount_eligible,
+        bulk_discount_percent=excluded.bulk_discount_percent,
         tags=excluded.tags,
         notes=excluded.notes,
         primary_image_key=excluded.primary_image_key,
         turnaround_options=excluded.turnaround_options,
+        turnaround_prices=excluded.turnaround_prices,
         pushpull_options=excluded.pushpull_options,
+        pushpull_prices=excluded.pushpull_prices,
+        collection_options=excluded.collection_options,
+        collection_prices=excluded.collection_prices,
         updated_at=datetime('now');
     `
     )
-    .bind(id, slug, service_group, name, description, price_cents, active, featured, tags, notes, primary_image_key, turnaround_options, pushpull_options)
+    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices)
     .run();
 
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);

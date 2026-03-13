@@ -36,7 +36,8 @@ const statusColour: Record<string, string> = {
 
 <BaseLayout title="Orders — Admin">
   <section class="mx-auto mt-12 max-w-6xl px-6">
-    <h1 class="text-4xl" style="font-family: var(--font-serif);">Orders</h1>
+    <a href="/admin" class="text-sm hover:opacity-70" style="color: var(--muted);">← Admin</a>
+    <h1 class="mt-2 text-4xl" style="font-family: var(--font-serif);">Orders</h1>
     <p class="mt-2 text-sm" style="color: var(--muted);">
       Latest orders from checkout.
     </p>
@@ -44,28 +45,36 @@ const statusColour: Record<string, string> = {
     <!-- ── Filters ────────────────────────────────────────────── -->
     <div class="mt-6 rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4">
       <div class="flex flex-wrap gap-3">
-        <!-- Name / phone search -->
+        <!-- Order ID -->
         <input
-          id="fSearch"
+          id="fOrderId"
           type="search"
-          placeholder="Name or phone…"
-          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none w-48"
+          placeholder="Order ID…"
+          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none w-36"
         />
 
-        <!-- Date from -->
+        <!-- Name -->
         <input
-          id="fDateFrom"
-          type="date"
-          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none"
-          title="From date"
+          id="fName"
+          type="search"
+          placeholder="Name…"
+          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none w-36"
         />
 
-        <!-- Date to -->
+        <!-- Phone -->
         <input
-          id="fDateTo"
+          id="fPhone"
+          type="search"
+          placeholder="Phone…"
+          class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none w-32"
+        />
+
+        <!-- Order date -->
+        <input
+          id="fDate"
           type="date"
           class="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm outline-none"
-          title="To date"
+          title="Order date"
         />
 
         <!-- Status toggles -->
@@ -83,7 +92,6 @@ const statusColour: Record<string, string> = {
           ))}
         </div>
 
-        <!-- Reset -->
         <button id="fReset" class="cursor-pointer rounded-xl border border-[var(--line)] px-3 py-1.5 text-xs hover:bg-[var(--panel2)]">
           Reset
         </button>
@@ -113,6 +121,7 @@ const statusColour: Record<string, string> = {
               <tr
                 class="order-row border-b border-[var(--line)] hover:bg-white/20 cursor-pointer"
                 onclick={`location.href='/admin/orders/${o.id}'`}
+                data-ref={o.order_ref.toLowerCase()}
                 data-customer={o.customer_name.toLowerCase()}
                 data-phone={o.customer_phone}
                 data-status={o.status}
@@ -171,13 +180,14 @@ const statusColour: Record<string, string> = {
     });
 
     // ── Filters ──────────────────────────────────────────────────
-    const fSearch   = document.getElementById("fSearch");
-    const fDateFrom = document.getElementById("fDateFrom");
-    const fDateTo   = document.getElementById("fDateTo");
-    const fReset    = document.getElementById("fReset");
-    const fCount    = document.getElementById("fCount");
+    const fOrderId = document.getElementById("fOrderId");
+    const fName    = document.getElementById("fName");
+    const fPhone   = document.getElementById("fPhone");
+    const fDate    = document.getElementById("fDate");
+    const fReset   = document.getElementById("fReset");
+    const fCount   = document.getElementById("fCount");
     const noResults = document.getElementById("noResults");
-    const rows      = document.querySelectorAll(".order-row");
+    const rows     = document.querySelectorAll(".order-row");
 
     function activeStatuses() {
       return new Set(
@@ -186,24 +196,27 @@ const statusColour: Record<string, string> = {
     }
 
     function applyFilters() {
-      const q      = (fSearch.value || "").toLowerCase().trim();
-      const from   = fDateFrom.value;
-      const to     = fDateTo.value;
+      const qRef     = (fOrderId.value || "").toLowerCase().trim();
+      const qName    = (fName.value || "").toLowerCase().trim();
+      const qPhone   = (fPhone.value || "").trim();
+      const qDate    = fDate.value;
       const statuses = activeStatuses();
-      let visible  = 0;
+      let visible    = 0;
 
       rows.forEach((row) => {
+        const ref      = row.getAttribute("data-ref")      || "";
         const customer = row.getAttribute("data-customer") || "";
         const phone    = row.getAttribute("data-phone")    || "";
         const status   = row.getAttribute("data-status")   || "";
         const date     = row.getAttribute("data-date")     || "";
 
-        const matchSearch = !q || customer.includes(q) || phone.includes(q);
+        const matchRef    = !qRef   || ref.includes(qRef);
+        const matchName   = !qName  || customer.includes(qName);
+        const matchPhone  = !qPhone || phone.includes(qPhone);
+        const matchDate   = !qDate  || date === qDate;
         const matchStatus = statuses.has(status);
-        const matchFrom   = !from || date >= from;
-        const matchTo     = !to   || date <= to;
 
-        const show = matchSearch && matchStatus && matchFrom && matchTo;
+        const show = matchRef && matchName && matchPhone && matchDate && matchStatus;
         row.style.display = show ? "" : "none";
         if (show) visible++;
       });
@@ -212,15 +225,17 @@ const statusColour: Record<string, string> = {
       noResults.style.display = visible === 0 && rows.length > 0 ? "block" : "none";
     }
 
-    fSearch.addEventListener("input", applyFilters);
-    fDateFrom.addEventListener("change", applyFilters);
-    fDateTo.addEventListener("change", applyFilters);
+    fOrderId.addEventListener("input", applyFilters);
+    fName.addEventListener("input", applyFilters);
+    fPhone.addEventListener("input", applyFilters);
+    fDate.addEventListener("change", applyFilters);
     document.querySelectorAll(".status-cb").forEach(cb => cb.addEventListener("change", applyFilters));
 
     fReset.addEventListener("click", () => {
-      fSearch.value = "";
-      fDateFrom.value = "";
-      fDateTo.value = "";
+      fOrderId.value = "";
+      fName.value    = "";
+      fPhone.value   = "";
+      fDate.value    = "";
       document.querySelectorAll(".status-cb").forEach(cb => {
         cb.checked = cb.value !== "COMPLETED" && cb.value !== "CANCELLED";
       });

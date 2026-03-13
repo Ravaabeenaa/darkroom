@@ -15,13 +15,19 @@ type ServiceRow = {
   description: string | null;
   price_cents: number;
   active: number;
+  bulk_discount_eligible: number;
+  bulk_discount_percent: number;
   tags: string | null;
   requires_group: string | null;
   requires_service_id: string | null;
   notes: string | null;
   primary_image_key: string | null;
   turnaround_options: string | null;
+  turnaround_prices: string | null;
   pushpull_options: string | null;
+  pushpull_prices: string | null;
+  collection_options: string | null;
+  collection_prices: string | null;
 };
 
 type ImgRow = {
@@ -39,7 +45,7 @@ function imgUrl(key: string) {
 let service = await db
   .prepare(
     `
-  SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, pushpull_options
+  SELECT id, slug, service_group, name, description, price_cents, active, bulk_discount_eligible, bulk_discount_percent, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
@@ -52,7 +58,7 @@ if (!service) {
   const byId = await db
     .prepare(
       `
-    SELECT id, slug, service_group, name, description, price_cents, active, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, pushpull_options
+    SELECT id, slug, service_group, name, description, price_cents, active, bulk_discount_eligible, bulk_discount_percent, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
@@ -84,7 +90,11 @@ function parseOpts(raw: string | null): string[] {
   try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 const turnaroundOpts = parseOpts(service.turnaround_options);
+const turnaroundPrices = parseOpts(service.turnaround_prices);
 const pushpullOpts = parseOpts(service.pushpull_options);
+const pushpullPrices = parseOpts(service.pushpull_prices);
+const collectionOpts = parseOpts(service.collection_options);
+const collectionPrices = parseOpts(service.collection_prices);
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -139,14 +149,10 @@ const pushpullOpts = parseOpts(service.pushpull_options);
         </p>
       )}
 
-      {(service.service_group === 'Film' || service.service_group === 'Developing') && (
+      {service.bulk_discount_eligible === 1 && (
         <div class="mt-6 rounded-2xl border px-4 py-3 text-sm" style="border-color: color-mix(in srgb, var(--red) 40%, transparent); background: color-mix(in srgb, var(--red) 8%, transparent);">
-          <span style="color: var(--red);">5% bulk discount</span>
-          <span style="color: var(--muted);">
-            {service.service_group === 'Film'
-              ? ' — order 5 or more film rolls in one order.'
-              : ' — order 5 or more of this service.'}
-          </span>
+          <span style="color: var(--red);">{service.bulk_discount_percent ?? 5}% bulk discount</span>
+          <span style="color: var(--muted);"> — order 5 or more in one order.</span>
         </div>
       )}
 
@@ -154,7 +160,9 @@ const pushpullOpts = parseOpts(service.pushpull_options);
         <div class="mt-6">
           <label class="block text-sm" style="color: var(--muted);">Turnaround</label>
           <select id="turnaroundSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
-            {turnaroundOpts.map(opt => <option value={opt}>{opt}</option>)}
+            {turnaroundOpts.map((opt, i) => (
+              <option value={opt} data-price={turnaroundPrices[i] ?? "+0"}>{opt}{turnaroundPrices[i] && turnaroundPrices[i] !== "+0" ? ` (+MVR ${turnaroundPrices[i].replace(/^\+/, "")})` : ""}</option>
+            ))}
           </select>
         </div>
       )}
@@ -163,7 +171,20 @@ const pushpullOpts = parseOpts(service.pushpull_options);
         <div class="mt-4">
           <label class="block text-sm" style="color: var(--muted);">Push/Pull</label>
           <select id="pushpullSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
-            {pushpullOpts.map(opt => <option value={opt}>{opt}</option>)}
+            {pushpullOpts.map((opt, i) => (
+              <option value={opt} data-price={pushpullPrices[i] ?? "+0"}>{opt}{pushpullPrices[i] && pushpullPrices[i] !== "+0" ? ` (+MVR ${pushpullPrices[i].replace(/^\+/, "")})` : ""}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {collectionOpts.length > 0 && (
+        <div class="mt-4">
+          <label class="block text-sm" style="color: var(--muted);">Collection</label>
+          <select id="collectionSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
+            {collectionOpts.map((opt, i) => (
+              <option value={opt} data-price={collectionPrices[i] ?? "+0"}>{opt}{collectionPrices[i] && collectionPrices[i] !== "+0" ? ` (+MVR ${collectionPrices[i].replace(/^\+/, "")})` : ""}</option>
+            ))}
           </select>
         </div>
       )}
@@ -194,35 +215,49 @@ const pushpullOpts = parseOpts(service.pushpull_options);
     </div>
   </section>
 
-  <script define:vars={{ serviceId: service.id, priceCents: service.price_cents }}>
+  <script define:vars={{ serviceId: service.id, basePriceCents: service.price_cents }}>
     (function () {
-      const priceEl = document.getElementById("priceMvr");
-      if (priceEl && window.DarkroomCart) {
-        priceEl.textContent = window.DarkroomCart.formatMVR(priceCents);
+      const priceEl      = document.getElementById("priceMvr");
+      const qtyEl        = document.getElementById("qtyDisplay");
+      const incBtn       = document.getElementById("incBtn");
+      const decBtn       = document.getElementById("decBtn");
+      const turnaroundEl = document.getElementById("turnaroundSelect");
+      const pushpullEl   = document.getElementById("pushpullSelect");
+      const collectionEl = document.getElementById("collectionSelect");
+
+      function selectedOptionPrice(selectEl) {
+        if (!selectEl) return 0;
+        const opt = selectEl.options[selectEl.selectedIndex];
+        const raw = opt?.getAttribute("data-price") ?? "+0";
+        const n = parseFloat(raw.replace(/^\+/, "")) || 0;
+        return Math.round(n * 100); // MVR → cents
       }
 
-      const qtyEl = document.getElementById("qtyDisplay");
-      const incBtn = document.getElementById("incBtn");
-      const decBtn = document.getElementById("decBtn");
-      const turnaroundEl = document.getElementById("turnaroundSelect");
-      const pushpullEl = document.getElementById("pushpullSelect");
+      function currentUnitPrice() {
+        return basePriceCents
+          + selectedOptionPrice(turnaroundEl)
+          + selectedOptionPrice(pushpullEl)
+          + selectedOptionPrice(collectionEl);
+      }
 
       function getCurrentKey() {
-        const t = turnaroundEl ? turnaroundEl.value || null : null;
-        const p = pushpullEl ? pushpullEl.value || null : null;
-        return window.DarkroomCart.makeKey(serviceId, t, p);
+        const t = turnaroundEl?.value || null;
+        const p = pushpullEl?.value   || null;
+        const c = collectionEl?.value || null;
+        return window.DarkroomCart.makeKey(serviceId, t, p, c);
       }
 
-      function renderQty() {
-        if (!window.DarkroomCart || !qtyEl) return;
-        qtyEl.textContent = String(window.DarkroomCart.getQty(getCurrentKey()));
+      function renderAll() {
+        if (!window.DarkroomCart) return;
+        if (priceEl) priceEl.textContent = window.DarkroomCart.formatMVR(currentUnitPrice());
+        if (qtyEl)   qtyEl.textContent   = String(window.DarkroomCart.getQty(getCurrentKey()));
       }
 
       incBtn?.addEventListener("click", (e) => {
         e.preventDefault();
         window.DarkroomCart.inc(getCurrentKey());
         window.DarkroomCart.toast("Added to cart");
-        renderQty();
+        renderAll();
       });
 
       decBtn?.addEventListener("click", (e) => {
@@ -232,13 +267,14 @@ const pushpullOpts = parseOpts(service.pushpull_options);
         window.DarkroomCart.dec(key);
         const after = window.DarkroomCart.getQty(key);
         if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
-        renderQty();
+        renderAll();
       });
 
-      turnaroundEl?.addEventListener("change", renderQty);
-      pushpullEl?.addEventListener("change", renderQty);
-      window.addEventListener("dr-cart-changed", renderQty);
-      renderQty();
+      turnaroundEl?.addEventListener("change", renderAll);
+      pushpullEl?.addEventListener("change", renderAll);
+      collectionEl?.addEventListener("change", renderAll);
+      window.addEventListener("dr-cart-changed", renderAll);
+      renderAll();
     })();
   </script>
 </BaseLayout>
