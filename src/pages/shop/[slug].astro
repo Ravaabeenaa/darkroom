@@ -27,8 +27,6 @@ type ServiceRow = {
   turnaround_prices: string | null;
   pushpull_options: string | null;
   pushpull_prices: string | null;
-  collection_options: string | null;
-  collection_prices: string | null;
 };
 
 type ImgRow = {
@@ -46,7 +44,7 @@ function imgUrl(key: string) {
 let service = await db
   .prepare(
     `
-  SELECT id, slug, service_group, name, description, price_cents, active, bulk_discount_eligible, bulk_discount_percent, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
+  SELECT id, slug, service_group, name, description, price_cents, active, bulk_discount_eligible, bulk_discount_percent, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
@@ -59,7 +57,7 @@ if (!service) {
   const byId = await db
     .prepare(
       `
-    SELECT id, slug, service_group, name, description, price_cents, active, bulk_discount_eligible, bulk_discount_percent, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
+    SELECT id, slug, service_group, name, description, price_cents, active, bulk_discount_eligible, bulk_discount_percent, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
@@ -94,8 +92,6 @@ const turnaroundOpts = parseOpts(service.turnaround_options);
 const turnaroundPrices = parseOpts(service.turnaround_prices);
 const pushpullOpts = parseOpts(service.pushpull_options);
 const pushpullPrices = parseOpts(service.pushpull_prices);
-const collectionOpts = parseOpts(service.collection_options);
-const collectionPrices = parseOpts(service.collection_prices);
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -153,17 +149,6 @@ const collectionPrices = parseOpts(service.collection_prices);
         </div>
       )}
 
-      {collectionOpts.length > 0 && (
-        <div class="mt-4">
-          <label class="block text-sm" style="color: var(--muted);">Collection</label>
-          <select id="collectionSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
-            {collectionOpts.map((opt, i) => (
-              <option value={opt} data-price={collectionPrices[i] ?? "+0"}>{opt}{collectionPrices[i] && collectionPrices[i] !== "+0" ? ` (+MVR ${collectionPrices[i].replace(/^\+/, "")})` : ""}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
       <!-- Cart controls (NO redirect to /cart) -->
       <div class="mt-8 flex flex-wrap items-center gap-4">
         <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
@@ -198,28 +183,25 @@ const collectionPrices = parseOpts(service.collection_prices);
       const decBtn       = document.getElementById("decBtn");
       const turnaroundEl = document.getElementById("turnaroundSelect");
       const pushpullEl   = document.getElementById("pushpullSelect");
-      const collectionEl = document.getElementById("collectionSelect");
 
       function selectedOptionPrice(selectEl) {
         if (!selectEl) return 0;
         const opt = selectEl.options[selectEl.selectedIndex];
         const raw = opt?.getAttribute("data-price") ?? "+0";
         const n = parseFloat(raw.replace(/^\+/, "")) || 0;
-        return Math.round(n * 100); // MVR → cents
+        return Math.round(n * 100);
       }
 
       function currentUnitPrice() {
         return basePriceCents
           + selectedOptionPrice(turnaroundEl)
-          + selectedOptionPrice(pushpullEl)
-          + selectedOptionPrice(collectionEl);
+          + selectedOptionPrice(pushpullEl);
       }
 
       function getCurrentKey() {
         const t = turnaroundEl?.value || null;
         const p = pushpullEl?.value   || null;
-        const c = collectionEl?.value || null;
-        return window.DarkroomCart.makeKey(serviceId, t, p, c);
+        return window.DarkroomCart.makeKey(serviceId, t, p);
       }
 
       function renderAll() {
@@ -228,26 +210,32 @@ const collectionPrices = parseOpts(service.collection_prices);
         if (qtyEl)   qtyEl.textContent   = String(window.DarkroomCart.getQty(getCurrentKey()));
       }
 
-      incBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        window.DarkroomCart.inc(getCurrentKey());
-        window.DarkroomCart.toast("Added to cart");
-        renderAll();
-      });
+      const shopClosed = document.body.dataset.shopClosed === "1";
 
-      decBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        const key = getCurrentKey();
-        const before = window.DarkroomCart.getQty(key);
-        window.DarkroomCart.dec(key);
-        const after = window.DarkroomCart.getQty(key);
-        if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
-        renderAll();
-      });
+      if (!shopClosed) {
+        incBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          window.DarkroomCart.inc(getCurrentKey());
+          window.DarkroomCart.toast("Added to cart");
+          renderAll();
+        });
+
+        decBtn?.addEventListener("click", (e) => {
+          e.preventDefault();
+          const key = getCurrentKey();
+          const before = window.DarkroomCart.getQty(key);
+          window.DarkroomCart.dec(key);
+          const after = window.DarkroomCart.getQty(key);
+          if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
+          renderAll();
+        });
+      } else {
+        if (incBtn) (incBtn as HTMLButtonElement).disabled = true;
+        if (decBtn) (decBtn as HTMLButtonElement).disabled = true;
+      }
 
       turnaroundEl?.addEventListener("change", renderAll);
       pushpullEl?.addEventListener("change", renderAll);
-      collectionEl?.addEventListener("change", renderAll);
       window.addEventListener("dr-cart-changed", renderAll);
       renderAll();
     })();

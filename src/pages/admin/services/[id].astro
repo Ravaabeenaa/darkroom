@@ -17,10 +17,8 @@ type ServiceRow = {
   bulk_discount_eligible: number;
   bulk_discount_percent: number;
   tags: string | null;
-  collection_options: string | null;
   turnaround_prices: string | null;
   pushpull_prices: string | null;
-  collection_prices: string | null;
   notes: string | null;
   primary_image_key: string | null;
   turnaround_options: string | null;
@@ -38,7 +36,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
   FROM services
   WHERE id = ?
   LIMIT 1;
@@ -290,16 +288,6 @@ function imgUrl(key: string) {
           <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no push/pull selector.</span>
         </label>
 
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Collection options (JSON array)</span>
-          <input id="f_collection_options" name="collection_options" value={service.collection_options ?? ""} placeholder='e.g. ["Customer drop off","Pick up from Male"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Collection prices (MVR, must match count)</span>
-          <input id="f_collection_prices" name="collection_prices" value={service.collection_prices ?? ""} placeholder='e.g. ["+0","+50","+50"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no collection selector.</span>
-        </label>
       </div>
 
       <label class="block">
@@ -356,7 +344,6 @@ function imgUrl(key: string) {
         const errors = [
           checkPair("f_turnaround_options", "f_turnaround_prices", "Turnaround"),
           checkPair("f_pushpull_options", "f_pushpull_prices", "Push/Pull"),
-          checkPair("f_collection_options", "f_collection_prices", "Collection"),
         ].filter(Boolean);
 
         if (errors.length) {

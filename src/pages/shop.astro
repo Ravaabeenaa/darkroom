@@ -17,10 +17,17 @@ type ServiceRow = {
   active: number;
   tags: string | null;
   primary_image_key: string | null;
+  turnaround_options: string | null;
+  turnaround_prices: string | null;
+  pushpull_options: string | null;
+  pushpull_prices: string | null;
+  collection_options: string | null;
+  collection_prices: string | null;
 };
 
 const res = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, tags, primary_image_key
+  SELECT id, slug, service_group, name, description, price_cents, active, tags, primary_image_key,
+         turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
   FROM services
   WHERE active = 1
   ORDER BY service_group ASC, name ASC;
@@ -35,6 +42,10 @@ function imgUrl(key: string | null) {
 
 function hrefFor(s: ServiceRow) {
   return `/shop/${s.slug ?? s.id}`;
+}
+
+function parseOpts(raw: string | null): string[] {
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
 }
 ---
 
@@ -53,6 +64,10 @@ function hrefFor(s: ServiceRow) {
           image={imgUrl(s.primary_image_key)}
           name={s.name}
           priceCents={s.price_cents}
+          turnaroundOptions={parseOpts(s.turnaround_options)}
+          turnaroundPrices={parseOpts(s.turnaround_prices)}
+          pushpullOptions={parseOpts(s.pushpull_options)}
+          pushpullPrices={parseOpts(s.pushpull_prices)}
         />
       ))}
     </div>

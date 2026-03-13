@@ -88,10 +88,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   // JSON arrays for configurable options + prices; stored as-is (null if blank)
   const turnaround_options = String(form.get("turnaround_options") ?? "").trim() || null;
   const pushpull_options = String(form.get("pushpull_options") ?? "").trim() || null;
-  const collection_options = String(form.get("collection_options") ?? "").trim() || null;
   const turnaround_prices = String(form.get("turnaround_prices") ?? "").trim() || null;
   const pushpull_prices = String(form.get("pushpull_prices") ?? "").trim() || null;
-  const collection_prices = String(form.get("collection_prices") ?? "").trim() || null;
 
   if (!name) {
     return Response.redirect(
@@ -116,9 +114,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .prepare(
       `
       INSERT INTO services
-        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices, updated_at)
+        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, updated_at)
       VALUES
-        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              ?,                 ?,                datetime('now'))
+        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         service_group=excluded.service_group,
@@ -136,12 +134,10 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         turnaround_prices=excluded.turnaround_prices,
         pushpull_options=excluded.pushpull_options,
         pushpull_prices=excluded.pushpull_prices,
-        collection_options=excluded.collection_options,
-        collection_prices=excluded.collection_prices,
         updated_at=datetime('now');
     `
     )
-    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices)
+    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices)
     .run();
 
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);

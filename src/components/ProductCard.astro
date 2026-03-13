@@ -1,20 +1,46 @@
 ---
 const {
-  id, // REQUIRED for cart controls
+  id,
   href = "/shop/sample",
   image,
   name = "Product Name",
-  priceCents, // number (cents)
-  compareAtCents, // optional
-  badge, // optional "SALE"
+  priceCents,
+  compareAtCents,
+  badge,
+  turnaroundOptions = [],
+  turnaroundPrices  = [],
+  pushpullOptions   = [],
+  pushpullPrices    = [],
 } = Astro.props;
 
-if (!id) {
-  throw new Error("ProductCard requires prop: id");
+if (!id) throw new Error("ProductCard requires prop: id");
+
+// ── Default option values (first item of each array) ──────────────
+const defaultTurnaround = turnaroundOptions[0] ?? null;
+const defaultPushpull   = pushpullOptions[0]   ?? null;
+const hasOptions        = !!(defaultTurnaround || defaultPushpull);
+
+// ── Composite cart key with defaults baked in ─────────────────────
+function makeKey(t: string | null, p: string | null): string {
+  const tv = t ?? "";
+  const pv = p ?? "";
+  if (!tv && !pv) return id;
+  return `${id}~${tv}~${pv}`;
 }
+const cartKey = makeKey(defaultTurnaround, defaultPushpull);
+
+// ── Display price = base + default option prices ──────────────────
+function parseOptCents(str: string): number {
+  return Math.round((parseFloat(str.replace(/^\+/, "")) || 0) * 100);
+}
+const displayPrice = priceCents
+  + (turnaroundPrices[0] ? parseOptCents(turnaroundPrices[0]) : 0)
+  + (pushpullPrices[0]   ? parseOptCents(pushpullPrices[0])   : 0);
+
+const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as string[];
 ---
 
-<article data-dr-product-card data-id={id} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4">
+<article data-dr-product-card data-id={cartKey} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col">
   <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
     {image ? (
       <img src={image} alt={name} class="aspect-[4/3] w-full object-cover" loading="lazy" />
@@ -25,30 +51,48 @@ if (!id) {
     )}
   </a>
 
-  <div class="mt-4 flex flex-col gap-3">
-    <div class="min-w-0">
-      <div class="flex items-center gap-2">
+  <div class="mt-4 flex flex-1 flex-col gap-3">
+    <div class="min-w-0 flex-1">
+      <div class="flex items-start gap-2">
         {badge && (
-          <span class="rounded-full bg-[var(--red)] px-2 py-0.5 text-[11px] text-black">{badge}</span>
+          <span class="mt-0.5 shrink-0 rounded-full bg-[var(--red)] px-2 py-0.5 text-[11px] text-black">{badge}</span>
         )}
-        <a href={href} class="truncate text-sm font-semibold hover:opacity-70">{name}</a>
+        <a href={href} class="text-sm font-semibold leading-snug hover:opacity-70">{name}</a>
       </div>
 
       <div class="mt-1 text-sm">
-        <span class="font-medium" data-price-cents={priceCents}></span>
+        <span class="font-medium" data-price-cents={displayPrice}></span>
         {compareAtCents && (
           <span class="ml-2 text-xs line-through" style="color: var(--muted);" data-compare-cents={compareAtCents}></span>
         )}
       </div>
+
+      {/* Default option chips */}
+      {defaultLabels.length > 0 && (
+        <div class="mt-2 flex flex-wrap gap-1">
+          {defaultLabels.map(label => (
+            <span class="rounded-full border border-[var(--line)] px-2 py-0.5 text-[10px] leading-tight" style="color: var(--muted);">
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
       <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
         <button type="button" class="h-7 w-7 cursor-pointer rounded-full hover:bg-white/70" data-dec aria-label="Decrease">−</button>
-        <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={id}>0</span>
+        <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={cartKey}>0</span>
         <button type="button" class="h-7 w-7 cursor-pointer rounded-full hover:bg-white/70" data-inc aria-label="Increase">+</button>
       </div>
-      <span class="text-[11px]" style="color: var(--muted);">🛒 Add to cart</span>
+
+      {hasOptions ? (
+        <a href={href} class="text-[11px] hover:opacity-70 underline underline-offset-2" style="color: var(--muted);">
+          Customise →
+        </a>
+      ) : (
+        <span class="text-base" style="color: var(--muted);">🛒</span>
+      )}
     </div>
   </div>
 </article>
@@ -58,47 +102,52 @@ if (!id) {
     const card = document.currentScript?.previousElementSibling;
     if (!card) return;
 
-    const id = card.getAttribute("data-id");
-    if (!id) return;
+    const cartKey = card.getAttribute("data-id");
+    if (!cartKey) return;
 
-    const incBtn = card.querySelector("[data-inc]");
-    const decBtn = card.querySelector("[data-dec]");
-    const qtyEl = card.querySelector(`[data-dr-cart-qty="${id}"]`);
+    const incBtn  = card.querySelector("[data-inc]");
+    const decBtn  = card.querySelector("[data-dec]");
+    const qtyEl   = card.querySelector(`[data-dr-cart-qty="${CSS.escape(cartKey)}"]`);
 
     // Price formatting
     const priceEl = card.querySelector("[data-price-cents]");
     if (priceEl && window.DarkroomCart) {
-      const cents = Number(priceEl.getAttribute("data-price-cents") || "0");
-      priceEl.textContent = window.DarkroomCart.formatMVR(cents);
+      priceEl.textContent = window.DarkroomCart.formatMVR(Number(priceEl.getAttribute("data-price-cents") || "0"));
     }
     const compareEl = card.querySelector("[data-compare-cents]");
     if (compareEl && window.DarkroomCart) {
-      const cents = Number(compareEl.getAttribute("data-compare-cents") || "0");
-      compareEl.textContent = window.DarkroomCart.formatMVR(cents);
+      compareEl.textContent = window.DarkroomCart.formatMVR(Number(compareEl.getAttribute("data-compare-cents") || "0"));
     }
 
     function render() {
       if (!window.DarkroomCart || !qtyEl) return;
-      qtyEl.textContent = String(window.DarkroomCart.getQty(id));
+      qtyEl.textContent = String(window.DarkroomCart.getQty(cartKey));
     }
 
-    incBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      window.DarkroomCart?.inc(id);
-      window.DarkroomCart?.toast("Added to cart");
-      render();
-    });
+    const shopClosed = document.body.dataset.shopClosed === "1";
 
-    decBtn?.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const before = window.DarkroomCart?.getQty(id) || 0;
-      window.DarkroomCart?.dec(id);
-      const after = window.DarkroomCart?.getQty(id) || 0;
-      if (before > 0 && after < before) window.DarkroomCart?.toast("Removed from cart");
-      render();
-    });
+    if (shopClosed) {
+      if (incBtn) (incBtn as HTMLButtonElement).disabled = true;
+      if (decBtn) (decBtn as HTMLButtonElement).disabled = true;
+    } else {
+      incBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.DarkroomCart?.inc(cartKey);
+        window.DarkroomCart?.toast("Added to cart");
+        render();
+      });
+
+      decBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const before = window.DarkroomCart?.getQty(cartKey) || 0;
+        window.DarkroomCart?.dec(cartKey);
+        const after  = window.DarkroomCart?.getQty(cartKey) || 0;
+        if (before > 0 && after < before) window.DarkroomCart?.toast("Removed from cart");
+        render();
+      });
+    }
 
     window.addEventListener("dr-cart-changed", render);
     render();

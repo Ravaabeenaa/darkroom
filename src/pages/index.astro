@@ -16,6 +16,12 @@ type FeaturedRow = {
   name: string;
   price_cents: number;
   primary_image_key: string | null;
+  turnaround_options: string | null;
+  turnaround_prices: string | null;
+  pushpull_options: string | null;
+  pushpull_prices: string | null;
+  collection_options: string | null;
+  collection_prices: string | null;
 };
 
 function moneyMVR(cents: number) {
@@ -31,9 +37,14 @@ function hrefFor(p: FeaturedRow) {
   return `/shop/${p.slug ?? p.id}`;
 }
 
+function parseOpts(raw: string | null): string[] {
+  try { return JSON.parse(raw || '[]'); } catch { return []; }
+}
+
 const featuredRes = await db
   .prepare(`
-    SELECT id, slug, name, price_cents, primary_image_key
+    SELECT id, slug, name, price_cents, primary_image_key,
+           turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
     FROM services
     WHERE active = 1 AND featured = 1
     ORDER BY updated_at DESC
@@ -100,6 +111,10 @@ const services = [
             image={imgUrl(p.primary_image_key) ?? undefined}
             name={p.name}
             priceCents={p.price_cents}
+            turnaroundOptions={parseOpts(p.turnaround_options)}
+            turnaroundPrices={parseOpts(p.turnaround_prices)}
+            pushpullOptions={parseOpts(p.pushpull_options)}
+            pushpullPrices={parseOpts(p.pushpull_prices)}
           />
         ))
       )}

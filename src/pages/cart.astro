@@ -19,17 +19,26 @@ type ServiceRow = {
   turnaround_prices: string | null;
   pushpull_options: string | null;
   pushpull_prices: string | null;
-  collection_options: string | null;
-  collection_prices: string | null;
 };
 
-const res = await db.prepare(`
-  SELECT id, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
-  FROM services
-  WHERE active = 1;
-`).all();
+const [svcRes, settingsRes] = await Promise.all([
+  db.prepare(`
+    SELECT id, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
+    FROM services
+    WHERE active = 1;
+  `).all(),
+  db.prepare(`SELECT key, value FROM settings WHERE key IN ('collection_options', 'shop_closed', 'shop_closed_message')`).all<{ key: string; value: string }>(),
+]);
 
-const services = (res.results ?? []) as ServiceRow[];
+const services = (svcRes.results ?? []) as ServiceRow[];
+
+const settingsMap: Record<string, string> = Object.fromEntries((settingsRes.results ?? []).map(r => [r.key, r.value]));
+const shopClosed = settingsMap['shop_closed'] === '1';
+const shopClosedMessage = settingsMap['shop_closed_message'] ?? 'We are currently closed.';
+
+type CollectionOption = { label: string; cents: number };
+let collectionOptions: CollectionOption[] = [];
+try { collectionOptions = JSON.parse(settingsMap['collection_options'] ?? '[]'); } catch {}
 
 function imgUrl(key: string | null) {
   if (!key) return null;
@@ -52,7 +61,20 @@ function imgUrl(key: string | null) {
 
       <div id="cartList" class="mt-8 space-y-4"></div>
 
-      <div class="mt-8 flex items-center justify-between border-t border-[var(--line)] pt-4">
+      {collectionOptions.length > 0 && (
+        <div class="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4">
+          <label class="block text-sm font-medium">Collection</label>
+          <select id="collectionSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
+            {collectionOptions.map((opt) => (
+              <option value={opt.label} data-cents={opt.cents}>
+                {opt.label}{opt.cents > 0 ? ` (+MVR ${(opt.cents / 100).toFixed(2)})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div class="mt-6 flex items-center justify-between border-t border-[var(--line)] pt-4">
         <div class="text-sm" style="color: var(--muted);">Total</div>
         <div id="cartTotal" class="text-lg font-semibold">MVR 0.00</div>
       </div>
@@ -61,9 +83,11 @@ function imgUrl(key: string | null) {
     <!-- SECTION 2: CUSTOMER -->
     <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-6">
       <h2 class="text-2xl md:text-3xl">Customer details</h2>
-      <p class="mt-2 text-sm" style="color: var(--muted);">
-        Required fields must be filled before checkout.
-      </p>
+      {shopClosed ? (
+        <p class="mt-3 text-sm font-medium" style="color: var(--red);">{shopClosedMessage}</p>
+      ) : (
+        <p class="mt-2 text-sm" style="color: var(--muted);">Required fields must be filled before checkout.</p>
+      )}
 
       <div class="mt-8 space-y-4">
         <label class="block">
@@ -122,21 +146,24 @@ function imgUrl(key: string | null) {
     </div>
   </section>
 
-  <script define:vars={{ servicesJson: services.map(s => ({
-  ...s,
-  image_url: imgUrl(s.primary_image_key),
-  service_group: s.service_group ?? null,
-  bulk_discount_eligible: s.bulk_discount_eligible,
-  bulk_discount_percent: s.bulk_discount_percent ?? 5,
-  turnaround_options: s.turnaround_options ? JSON.parse(s.turnaround_options) : [],
-  turnaround_prices: s.turnaround_prices ? JSON.parse(s.turnaround_prices) : [],
-  pushpull_options: s.pushpull_options ? JSON.parse(s.pushpull_options) : [],
-  pushpull_prices: s.pushpull_prices ? JSON.parse(s.pushpull_prices) : [],
-  collection_options: s.collection_options ? JSON.parse(s.collection_options) : [],
-  collection_prices: s.collection_prices ? JSON.parse(s.collection_prices) : [],
-})) }}>
+  <script define:vars={{
+    servicesJson: services.map(s => ({
+      ...s,
+      image_url: imgUrl(s.primary_image_key),
+      service_group: s.service_group ?? null,
+      bulk_discount_eligible: s.bulk_discount_eligible,
+      bulk_discount_percent: s.bulk_discount_percent ?? 5,
+      turnaround_options: s.turnaround_options ? JSON.parse(s.turnaround_options) : [],
+      turnaround_prices: s.turnaround_prices ? JSON.parse(s.turnaround_prices) : [],
+      pushpull_options: s.pushpull_options ? JSON.parse(s.pushpull_options) : [],
+      pushpull_prices: s.pushpull_prices ? JSON.parse(s.pushpull_prices) : [],
+    })),
+    collectionOptionsData: collectionOptions,
+    isShopClosed: shopClosed,
+  }}>
     const services = servicesJson;
     const byId = new Map(services.map(s => [s.id, s]));
+    const collectionOptions = collectionOptionsData;
 
     const cartList = document.getElementById("cartList");
     const cartEmpty = document.getElementById("cartEmpty");
@@ -190,8 +217,8 @@ function imgUrl(key: string | null) {
       const cart = getCart();
       return Object.entries(cart)
         .map(([key, qty]) => {
-          const { serviceId, turnaround, pushpull, collection } = window.DarkroomCart.parseKey(key);
-          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull, collection };
+          const { serviceId, turnaround, pushpull } = window.DarkroomCart.parseKey(key);
+          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull };
         })
         .filter(x => x.qty > 0);
     }
@@ -207,8 +234,15 @@ function imgUrl(key: string | null) {
     function unitPriceCents(svc, it) {
       return svc.price_cents
         + getOptionPriceCents(svc.turnaround_options, svc.turnaround_prices, it.turnaround)
-        + getOptionPriceCents(svc.pushpull_options,   svc.pushpull_prices,   it.pushpull)
-        + getOptionPriceCents(svc.collection_options, svc.collection_prices, it.collection);
+        + getOptionPriceCents(svc.pushpull_options,   svc.pushpull_prices,   it.pushpull);
+    }
+
+    function getSelectedCollection() {
+      const sel = document.getElementById("collectionSelect");
+      if (!sel || !collectionOptions.length) return { label: null, cents: 0 };
+      const idx = sel.selectedIndex;
+      const opt = collectionOptions[idx] ?? collectionOptions[0];
+      return { label: opt?.label ?? null, cents: opt?.cents ?? 0 };
     }
 
     function calcDiscounts(items) {
@@ -257,6 +291,7 @@ function imgUrl(key: string | null) {
       }
       const discounts = calcDiscounts(items);
       t += discounts.reduce((s, d) => s + d.cents, 0);
+      t += getSelectedCollection().cents;
       return t;
     }
 
@@ -281,7 +316,7 @@ function imgUrl(key: string | null) {
         const row = document.createElement("div");
         row.className = "flex gap-4 rounded-2xl border border-[var(--line)] bg-white/30 p-4";
 
-        const optLabel = [it.turnaround, it.pushpull, it.collection].filter(Boolean).join(' · ');
+        const optLabel = [it.turnaround, it.pushpull].filter(Boolean).join(' · ');
         row.innerHTML = `
           <div class="h-16 w-16 overflow-hidden rounded-xl border border-[var(--line)] bg-white/20">
             ${s.image_url ? `<img src="${s.image_url}" alt="${s.name}" class="h-full w-full object-cover" />` : `<div class="flex h-full w-full items-center justify-center text-[10px]" style="color: var(--muted);">No image</div>`}
@@ -610,18 +645,26 @@ function imgUrl(key: string | null) {
       checkoutBtn.disabled = true;
       checkoutStatus.textContent = "Placing order…";
 
+      if (isShopClosed) {
+        checkoutStatus.textContent = "Shop is currently closed.";
+        validate();
+        return;
+      }
+
+      const { label: collectionLabel, cents: collectionCents } = getSelectedCollection();
+
       const payload = {
         customer_name: nameEl.value.trim(),
         customer_phone: phoneEl.value.trim(),
         contact_method: methodEl.value.trim(),
         customer_email: emailEl.value.trim() || null,
         customer_notes: notesEl.value.trim() || null,
+        collection_option: collectionLabel,
         cart: getCartItems().map(it => ({
           service_id: it.id,
           qty: it.qty,
           turnaround_option: it.turnaround || null,
           pushpull_option: it.pushpull || null,
-          collection_option: it.collection || null,
         })),
       };
 
@@ -657,6 +700,11 @@ function imgUrl(key: string | null) {
       }
     }
 
+    // Disable checkout entirely if shop is closed
+    if (isShopClosed) {
+      checkoutBtn.disabled = true;
+    }
+
     // initial
     renderCart();
     validate();
@@ -665,6 +713,12 @@ function imgUrl(key: string | null) {
     window.addEventListener("dr-cart-changed", () => {
       renderCart();
       validate();
+    });
+
+    // update total when collection changes
+    document.getElementById("collectionSelect")?.addEventListener("change", () => {
+      const items = getCartItems();
+      cartTotalEl.textContent = window.DarkroomCart.formatMVR(calcTotal(items));
     });
 
     // enforce digits-only phone

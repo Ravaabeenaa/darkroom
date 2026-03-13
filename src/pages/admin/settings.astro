@@ -1,0 +1,139 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+
+type SettingRow = { key: string; value: string };
+const res = await db.prepare(`SELECT key, value FROM settings ORDER BY key`).all<SettingRow>();
+const s: Record<string, string> = Object.fromEntries((res.results ?? []).map(r => [r.key, r.value]));
+
+const saved = Astro.url.searchParams.get("saved") === "1";
+const error = Astro.url.searchParams.get("error") ?? "";
+---
+
+<BaseLayout title="Settings — Admin">
+  <section class="mx-auto mt-12 max-w-2xl px-6">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-4xl" style="font-family: var(--font-serif);">Settings</h1>
+        <p class="mt-2 text-sm" style="color: var(--muted);">Global shop configuration.</p>
+      </div>
+      <a class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-3 text-sm hover:bg-white/80" href="/admin">
+        ← Admin
+      </a>
+    </div>
+
+    {saved && (
+      <div class="mt-6 rounded-2xl border border-[var(--line)] bg-white/40 p-4 text-sm">✔️ Saved</div>
+    )}
+    {error && (
+      <div class="mt-6 rounded-2xl border border-red-400/40 bg-red-50/80 p-4 text-sm text-red-700">{error}</div>
+    )}
+
+    <form method="post" action="/api/admin/settings/save" class="mt-8 space-y-6">
+
+      <!-- Shop closed -->
+      <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 space-y-4">
+        <h2 class="text-lg font-semibold">Shop status</h2>
+
+        <label class="flex items-center gap-3 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            name="shop_closed"
+            value="1"
+            checked={s['shop_closed'] === '1'}
+            class="h-4 w-4"
+          />
+          <span>Shop closed — disable new orders</span>
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Closed message (shown to customers)</span>
+          <textarea
+            name="shop_closed_message"
+            rows="2"
+            class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
+          >{s['shop_closed_message'] ?? ''}</textarea>
+        </label>
+      </div>
+
+      <!-- Announcement -->
+      <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 space-y-4">
+        <h2 class="text-lg font-semibold">Announcement banner</h2>
+        <p class="text-xs" style="color: var(--muted);">Shows on all pages when non-empty. Leave blank to hide.</p>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Announcement text</span>
+          <input
+            name="shop_announcement"
+            value={s['shop_announcement'] ?? ''}
+            placeholder="e.g. Closed 20–25 March for public holiday"
+            class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
+          />
+        </label>
+      </div>
+
+      <!-- Collection options -->
+      <div class="rounded-3xl border border-[var(--line)] bg-white/20 p-6 space-y-4">
+        <h2 class="text-lg font-semibold">Collection options</h2>
+        <p class="text-xs" style="color: var(--muted);">
+          JSON array of <code class="font-mono">{"{"}"label","cents"{"}"}</code> objects. Shown as a dropdown in the cart.
+          <code class="font-mono">cents</code> is the price added to the order total.
+        </p>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Options (JSON)</span>
+          <textarea
+            name="collection_options"
+            rows="5"
+            class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono"
+            id="collectionOptionsInput"
+          >{s['collection_options'] ?? '[]'}</textarea>
+          <span id="collectionOptionsError" class="mt-1 hidden text-xs text-red-600"></span>
+          <span class="mt-1 block text-xs" style="color: var(--muted);">
+            Example: <code class="font-mono">[{"{"}"label":"Pickup","cents":0{"}"}, {"{"}"label":"Delivery","cents":500{"}"}]</code>
+          </span>
+        </label>
+      </div>
+
+      <div class="flex gap-3">
+        <button
+          type="submit"
+          class="rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90"
+        >
+          Save settings
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <script>
+    // Validate collection_options JSON before submit
+    const form = document.querySelector('form[action="/api/admin/settings/save"]');
+    const input = document.getElementById("collectionOptionsInput") as HTMLTextAreaElement;
+    const errEl = document.getElementById("collectionOptionsError");
+
+    form?.addEventListener("submit", (e) => {
+      const val = input?.value.trim();
+      if (val && val !== "[]") {
+        try {
+          const parsed = JSON.parse(val);
+          if (!Array.isArray(parsed)) throw new Error("Must be a JSON array.");
+          for (const item of parsed) {
+            if (typeof item.label !== "string" || typeof item.cents !== "number") {
+              throw new Error('Each item must have "label" (string) and "cents" (number).');
+            }
+          }
+          if (errEl) { errEl.textContent = ""; errEl.classList.add("hidden"); }
+        } catch (err: any) {
+          e.preventDefault();
+          if (errEl) { errEl.textContent = err.message; errEl.classList.remove("hidden"); }
+        }
+      } else {
+        if (errEl) { errEl.classList.add("hidden"); }
+      }
+    });
+  </script>
+</BaseLayout>

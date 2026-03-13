@@ -1,6 +1,7 @@
 export const prerender = false;
 
 type Env = { darkroom_db: D1Database };
+type CollectionOption = { label: string; cents: number };
 
 function onlyDigits(s: string) {
   return /^[0-9]+$/.test(s);
@@ -30,6 +31,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const contact_method = String(body?.contact_method ?? "").trim();
   const customer_email = String(body?.customer_email ?? "").trim();
   const customer_notes = String(body?.customer_notes ?? "").trim();
+  const collection_option_label = String(body?.collection_option ?? "").trim() || null;
   const cart = body?.cart && typeof body.cart === "object" ? body.cart : null;
 
   if (!customer_name)
@@ -51,7 +53,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       qty: Math.max(0, Math.floor(Number(item.qty ?? 0))),
       turnaround_option: String(item.turnaround_option ?? "").trim() || null,
       pushpull_option: String(item.pushpull_option ?? "").trim() || null,
-      collection_option: String(item.collection_option ?? "").trim() || null,
     }))
     .filter((it) => it.id && it.qty > 0);
 
@@ -74,9 +75,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const placeholders = ids.map(() => "?").join(",");
 
   const svcRes = await db
-    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
+    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
     .bind(...ids)
-    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null; collection_options: string | null; collection_prices: string | null }>();
+    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null }>();
 
   const svcs = new Map((svcRes.results ?? []).map((s) => [s.id, s]));
   const missing = norm.filter((x) => !svcs.has(x.id));
@@ -89,8 +90,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     const s = svcs.get(it.id)!;
     const unitPrice = s.price_cents
       + getOptionCents(s.turnaround_options, s.turnaround_prices, it.turnaround_option)
-      + getOptionCents(s.pushpull_options, s.pushpull_prices, it.pushpull_option)
-      + getOptionCents(s.collection_options, s.collection_prices, it.collection_option);
+      + getOptionCents(s.pushpull_options, s.pushpull_prices, it.pushpull_option);
     const line = unitPrice * it.qty;
     total += line;
     orderItems.push({
@@ -102,7 +102,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       service_group: s.service_group ?? null,
       turnaround_option: it.turnaround_option,
       pushpull_option: it.pushpull_option,
-      collection_option: it.collection_option,
     });
   }
 
@@ -137,6 +136,35 @@ export async function POST({ request, locals }: { request: Request; locals: any 
 
   for (const d of discountItems) total += d.line_total_cents;
 
+  // ── Collection option ─────────────────────────────────────────────────────
+  let collection_option_cents = 0;
+  const collectionLineItem: any[] = [];
+  if (collection_option_label) {
+    try {
+      const collRow = await db
+        .prepare(`SELECT value FROM settings WHERE key = 'collection_options' LIMIT 1`)
+        .first<{ value: string }>();
+      const collOpts: CollectionOption[] = JSON.parse(collRow?.value ?? "[]");
+      const match = collOpts.find(o => o.label === collection_option_label);
+      if (match) {
+        collection_option_cents = match.cents;
+        if (collection_option_cents > 0) {
+          collectionLineItem.push({
+            service_id: null,
+            service_name: `Collection: ${match.label}`,
+            unit_price_cents: collection_option_cents,
+            quantity: 1,
+            line_total_cents: collection_option_cents,
+            service_group: null,
+            turnaround_option: null,
+            pushpull_option: null,
+          });
+          total += collection_option_cents;
+        }
+      }
+    } catch { /* settings may not exist */ }
+  }
+
   const services_summary = orderItems.map((x) => `${x.service_name} x${x.quantity}`).join(", ");
 
   // Generate order ref
@@ -161,9 +189,10 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         (id, order_ref, customer_name, customer_phone, services_summary,
          total_price_cents, status, customer_notes, internal_notes,
          created_at, updated_at, contact_method, customer_email,
-         original_services_summary, original_total_price_cents)
+         original_services_summary, original_total_price_cents,
+         collection_option, collection_option_cents)
       VALUES
-        (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?);
+        (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?, ?, ?);
     `)
     .bind(
       order_id, order_ref,
@@ -173,29 +202,31 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       now, now,
       contact_method,
       customer_email || null,
-      services_summary,  // original snapshot
-      total              // original snapshot
+      services_summary,
+      total,
+      collection_option_label,
+      collection_option_cents
     )
     .run();
 
   // Insert into both order_items (current/mutable) and order_items_original (immutable)
-  for (const oi of [...orderItems, ...discountItems]) {
+  for (const oi of [...orderItems, ...discountItems, ...collectionLineItem]) {
     await db
       .prepare(`
         INSERT INTO order_items
-          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option, collection_option)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
-      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null, oi.collection_option ?? null)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null)
       .run();
 
     await db
       .prepare(`
         INSERT INTO order_items_original
-          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option, collection_option, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
-      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null, oi.collection_option ?? null, now)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null, now)
       .run();
   }
 
@@ -211,6 +242,7 @@ if (botToken && chatId) {
     `👤 ${customer_name}`,
     `📱 <a href="tel:+960${phoneNumber}">+960 ${customer_phone}</a> · ${contact_method}`,
     `📦 ${services_summary}`,
+    collection_option_label ? `🚚 ${collection_option_label}` : null,
     `💰 MVR ${(total / 100).toFixed(2)}`,
     customer_notes ? `📝 <i>${customer_notes}</i>` : null,
     `🔗 <a href="https://darkroom-558.pages.dev/admin/orders/${order_id}">View order</a>`,
@@ -244,7 +276,7 @@ if (botToken && chatId) {
         total_price_cents: total,
         status: "NEW",
       },
-      items: [...orderItems, ...discountItems],
+      items: [...orderItems, ...discountItems, ...collectionLineItem],
     }),
     { headers: { "content-type": "application/json" } }
   );

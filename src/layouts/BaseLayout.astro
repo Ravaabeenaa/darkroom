@@ -1,6 +1,23 @@
 ---
 import "../styles/tailwind.css";
 const { title = "DARKROOM" } = Astro.props;
+
+// Fetch announcement + closed state for all SSR pages
+const db = (Astro.locals as any).runtime?.env?.darkroom_db as D1Database | undefined;
+let announcement = "";
+let shopClosed = false;
+let shopClosedMessage = "We are currently closed. Please check back soon.";
+if (db) {
+  try {
+    const sRes = await db
+      .prepare(`SELECT key, value FROM settings WHERE key IN ('shop_announcement', 'shop_closed', 'shop_closed_message')`)
+      .all<{ key: string; value: string }>();
+    const sm: Record<string, string> = Object.fromEntries((sRes.results ?? []).map(r => [r.key, r.value]));
+    announcement       = sm['shop_announcement']    ?? "";
+    shopClosed         = sm['shop_closed']          === "1";
+    shopClosedMessage  = sm['shop_closed_message']  ?? shopClosedMessage;
+  } catch { /* settings table may not exist yet */ }
+}
 ---
 
 <!doctype html>
@@ -21,25 +38,21 @@ const { title = "DARKROOM" } = Astro.props;
       (function () {
         const CART_KEY = "dr_cart_v2";
 
-        // Composite key: "serviceId" for simple services,
-        // "serviceId~turnaround~pushpull" for services with options.
-        function makeKey(serviceId, turnaround, pushpull, collection) {
-          const t = turnaround  ?? "";
-          const p = pushpull    ?? "";
-          const c = collection  ?? "";
-          if (!t && !p && !c) return serviceId;
-          if (!c) return `${serviceId}~${t}~${p}`;
-          return `${serviceId}~${t}~${p}~${c}`;
+        // Composite key: "serviceId" or "serviceId~turnaround~pushpull"
+        function makeKey(serviceId, turnaround, pushpull) {
+          const t = turnaround ?? "";
+          const p = pushpull   ?? "";
+          if (!t && !p) return serviceId;
+          return `${serviceId}~${t}~${p}`;
         }
 
         function parseKey(key) {
           const parts = key.split("~");
-          if (parts.length === 1) return { serviceId: key, turnaround: null, pushpull: null, collection: null };
+          if (parts.length === 1) return { serviceId: key, turnaround: null, pushpull: null };
           return {
             serviceId:  parts[0] || key,
             turnaround: parts[1] || null,
             pushpull:   parts[2] || null,
-            collection: parts[3] || null,
           };
         }
 
@@ -106,8 +119,18 @@ const { title = "DARKROOM" } = Astro.props;
       })();
     </script>
   </head>
-  <body>
+  <body data-shop-closed={shopClosed ? "1" : ""}>
     <div class="min-h-screen">
+      {shopClosed && (
+        <div class="px-6 py-3 text-sm text-center font-medium" style="background: #1a0000; color: #ED1C24; border-bottom: 1px solid #ED1C2440;">
+          {shopClosedMessage}
+        </div>
+      )}
+      {!shopClosed && announcement && (
+        <div class="px-6 py-2.5 text-sm text-center" style="background: color-mix(in srgb, #FFD200 12%, transparent); color: var(--text); border-bottom: 1px solid color-mix(in srgb, #FFD200 30%, transparent);">
+          {announcement}
+        </div>
+      )}
       <header class="sticky top-0 z-30 px-6 py-4 bg-[var(--red)]">
         <div class="mx-auto flex max-w-[var(--container)] items-center justify-between">
           <a href="/" class="block" aria-label="Darkroom home">
