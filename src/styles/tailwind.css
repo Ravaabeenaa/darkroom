@@ -31,6 +31,10 @@
   --red:    #ED1C24;
   --cream:  #EEE4D2;
   --black:  #000000;
+  --green:  #007A59;
+  --yellow: #FFD200;
+  --blue:   #0047BA;
+  --orange: #FF5200;
 
   /* Semantic theme — dark (default) */
   --bg:     #000000;
@@ -58,7 +62,7 @@
 
 /* ─── Light theme ────────────────────────────────────────────── */
 [data-theme="light"] {
-  --bg:       #F5F0E8;
+  --bg:       var(--cream);
   --panel:    rgba(0, 0, 0, 0.05);
   --panel2:   rgba(0, 0, 0, 0.09);
   --text:     #111111;
