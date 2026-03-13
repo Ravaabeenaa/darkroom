@@ -34,6 +34,26 @@ if (db) {
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{title}</title>
+    <style>
+      .dr-overlay {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      .dr-overlay.is-open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .dr-drawer {
+        transform: translateX(100%);
+        transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+        visibility: hidden;
+      }
+      .dr-drawer.is-open {
+        transform: translateX(0);
+        visibility: visible;
+      }
+    </style>
     <script is:inline>
       /* Apply saved theme before paint to avoid flash */
       (function () {
@@ -129,12 +149,12 @@ if (db) {
   <body data-shop-closed={shopClosed ? "1" : ""}>
     <div class="min-h-screen">
       {shopClosed && (
-        <div class="px-6 py-3 text-sm text-center font-medium" style="background: #1a0000; color: #ED1C24; border-bottom: 1px solid #ED1C2440;">
+        <div class="px-6 py-3 text-sm text-center font-medium" style="background: var(--orange); color: #000000;">
           {shopClosedMessage}
         </div>
       )}
       {!shopClosed && announcement && (
-        <div class="px-6 py-2.5 text-sm text-center" style="background: color-mix(in srgb, #FFD200 12%, transparent); color: var(--text); border-bottom: 1px solid color-mix(in srgb, #FFD200 30%, transparent);">
+        <div class="px-6 py-2.5 text-sm text-center font-medium" style="background: var(--yellow); color: #000000;">
           {announcement}
         </div>
       )}
@@ -213,11 +233,12 @@ if (db) {
     <div id="drToast" class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg" style="display:none;background:var(--text);color:var(--bg);"></div>
 
     <!-- Mobile menu drawer -->
-    <div id="drMenuOverlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" style="display:none" aria-hidden="true"></div>
-    <nav id="drMenuDrawer" class="fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-[var(--bg)] px-8 py-8 shadow-2xl" style="display:none" aria-label="Mobile navigation">
+    <div id="drMenuOverlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm dr-overlay" aria-hidden="true"></div>
+    <nav id="drMenuDrawer" class="fixed inset-y-0 right-0 z-50 flex w-72 flex-col bg-[var(--bg)] px-8 py-8 shadow-2xl dr-drawer" aria-label="Mobile navigation">
       <div class="flex items-center justify-between">
         <a href="/" aria-label="Darkroom home">
-          <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="h-7 w-auto" />
+          <img src="/images/logos/logo-light.png" alt="darkroom by smolbo1" class="logo-for-dark h-7 w-auto" />
+          <img src="/images/logos/logo-dark.png"  alt="darkroom by smolbo1" class="logo-for-light h-7 w-auto" />
         </a>
         <button id="drMenuClose" class="flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none" aria-label="Close menu">×</button>
       </div>
@@ -286,13 +307,13 @@ if (db) {
         const closeBtn = document.getElementById("drMenuClose");
 
         function open() {
-          overlay.style.display = "block";
-          drawer.style.display = "flex";
+          overlay.classList.add("is-open");
+          drawer.classList.add("is-open");
           document.body.style.overflow = "hidden";
         }
         function close() {
-          overlay.style.display = "none";
-          drawer.style.display = "none";
+          overlay.classList.remove("is-open");
+          drawer.classList.remove("is-open");
           document.body.style.overflow = "";
         }
 

@@ -80,7 +80,7 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     </div>
 
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
+      <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1" data-qty-wrap>
         <button type="button" class="h-7 w-7 cursor-pointer rounded-full hover:bg-white/70" data-dec aria-label="Decrease">−</button>
         <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={cartKey}>0</span>
         <button type="button" class="h-7 w-7 cursor-pointer rounded-full hover:bg-white/70" data-inc aria-label="Increase">+</button>
@@ -119,9 +119,13 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
       compareEl.textContent = window.DarkroomCart.formatMVR(Number(compareEl.getAttribute("data-compare-cents") || "0"));
     }
 
+    const qtyWrap = card.querySelector("[data-qty-wrap]");
+
     function render() {
       if (!window.DarkroomCart || !qtyEl) return;
-      qtyEl.textContent = String(window.DarkroomCart.getQty(cartKey));
+      const qty = window.DarkroomCart.getQty(cartKey);
+      qtyEl.textContent = String(qty);
+      if (qtyWrap) qtyWrap.classList.toggle("qty-active", qty > 0);
     }
 
     const shopClosed = document.body.dataset.shopClosed === "1";
@@ -153,3 +157,14 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     render();
   })();
 </script>
+
+<style is:global>
+  [data-qty-wrap].qty-active {
+    border-color: var(--green);
+    transition: border-color 0.25s ease;
+  }
+  [data-qty-wrap].qty-active [data-dr-cart-qty] {
+    color: var(--green);
+    transition: color 0.25s ease;
+  }
+</style>

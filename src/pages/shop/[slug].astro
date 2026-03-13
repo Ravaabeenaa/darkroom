@@ -151,7 +151,7 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
 
       <!-- Cart controls (NO redirect to /cart) -->
       <div class="mt-8 flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1">
+        <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1" id="qtyWrap">
           <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70" id="decBtn">−</button>
           <span id="qtyDisplay" class="w-10 text-center text-base tabular-nums">0</span>
           <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70" id="incBtn">+</button>
@@ -204,10 +204,14 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
         return window.DarkroomCart.makeKey(serviceId, t, p);
       }
 
+      const qtyWrap = document.getElementById("qtyWrap");
+
       function renderAll() {
         if (!window.DarkroomCart) return;
         if (priceEl) priceEl.textContent = window.DarkroomCart.formatMVR(currentUnitPrice());
-        if (qtyEl)   qtyEl.textContent   = String(window.DarkroomCart.getQty(getCurrentKey()));
+        const qty = window.DarkroomCart.getQty(getCurrentKey());
+        if (qtyEl) qtyEl.textContent = String(qty);
+        if (qtyWrap) qtyWrap.classList.toggle("qty-active", qty > 0);
       }
 
       const shopClosed = document.body.dataset.shopClosed === "1";
