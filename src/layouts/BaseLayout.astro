@@ -2,6 +2,13 @@
 import "../styles/tailwind.css";
 const { title = "DARKROOM" } = Astro.props;
 
+// Check admin status server-side (cookie is HttpOnly, not readable by JS)
+const cookieHeader = Astro.request.headers.get("cookie") ?? "";
+const adminCookieMatch = cookieHeader.match(/(?:^|;\s*)dr_admin=([^;]+)/);
+const adminToken = adminCookieMatch ? decodeURIComponent(adminCookieMatch[1]) : "";
+const adminSecret = String((Astro.locals as any).runtime?.env?.ADMIN_COOKIE_SECRET ?? "");
+const isAdmin = !!(adminSecret && adminToken && adminToken === adminSecret);
+
 // Fetch announcement + closed state for all SSR pages
 const db = (Astro.locals as any).runtime?.env?.darkroom_db as D1Database | undefined;
 let announcement = "";
@@ -145,7 +152,7 @@ if (db) {
               <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
             </a>
 
-            <a id="drAdminLink" href="/admin" class="hover:opacity-70" style="display:none">Admin</a>
+            {isAdmin && <a href="/admin" class="hover:opacity-70">Admin</a>}
 
             <!-- Theme switcher (desktop) -->
             <div id="drThemeWrapper" class="relative">
@@ -221,7 +228,7 @@ if (db) {
           Cart
           <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black" style="display:none"></span>
         </a>
-        <a id="drAdminLinkMobile" href="/admin" class="hover:opacity-70" style="display:none">Admin</a>
+        {isAdmin && <a href="/admin" class="hover:opacity-70">Admin</a>}
       </div>
 
       <!-- Mobile theme switcher -->
@@ -292,14 +299,6 @@ if (db) {
         btn?.addEventListener("click", open);
         closeBtn?.addEventListener("click", close);
         overlay?.addEventListener("click", close);
-
-        // Show admin link if dr_admin cookie is set
-        if (document.cookie.split(";").some(c => c.trim().startsWith("dr_admin="))) {
-          const a = document.getElementById("drAdminLink");
-          const b = document.getElementById("drAdminLinkMobile");
-          if (a) a.style.display = "";
-          if (b) b.style.display = "";
-        }
 
         // Keep mobile cart count in sync
         function syncMobileCount() {
