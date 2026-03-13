@@ -127,8 +127,8 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     const shopClosed = document.body.dataset.shopClosed === "1";
 
     if (shopClosed) {
-      if (incBtn) (incBtn as HTMLButtonElement).disabled = true;
-      if (decBtn) (decBtn as HTMLButtonElement).disabled = true;
+      if (incBtn) incBtn.disabled = true;
+      if (decBtn) decBtn.disabled = true;
     } else {
       incBtn?.addEventListener("click", (e) => {
         e.preventDefault();
