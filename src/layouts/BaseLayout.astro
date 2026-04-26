@@ -135,11 +135,13 @@ if (db) {
 
         // also update header cart count when cart changes
         function syncHeaderCount() {
-          const el = document.getElementById("drCartCount");
-          if (!el) return;
           const n = countItems();
-          el.style.display = n > 0 ? "inline-flex" : "none";
-          el.textContent = n > 0 ? String(n) : "";
+          ["drCartCount", "drCartCountHeader"].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = n > 0 ? "inline-flex" : "none";
+            el.textContent = n > 0 ? String(n) : "";
+          });
         }
 
         window.addEventListener("dr-cart-changed", syncHeaderCount);
@@ -190,11 +192,21 @@ if (db) {
             </div>
           </nav>
 
-          <button id="drMenuBtn" class="md:hidden flex flex-col justify-center items-center gap-[5px] w-10 h-10 rounded-xl text-black" aria-label="Open menu">
+          <div class="md:hidden flex items-center gap-2">
+            <a href="/cart" class="relative flex items-center justify-center w-10 h-10 rounded-xl text-black" aria-label="Cart">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+              <span id="drCartCountHeader" class="absolute -top-0.5 -right-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-black px-1 py-0.5 text-[10px] text-white" style="display:none"></span>
+            </a>
+            <button id="drMenuBtn" class="flex flex-col justify-center items-center gap-[5px] w-10 h-10 rounded-xl text-black" aria-label="Open menu">
             <span class="block h-[2px] w-6 bg-current"></span>
             <span class="block h-[2px] w-6 bg-current"></span>
             <span class="block h-[2px] w-6 bg-current"></span>
           </button>
+          </div>
         </div>
       </header>
 
