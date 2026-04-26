@@ -2,7 +2,6 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
-import Accordion from "../components/Accordion.astro";
 import InstagramPost from "../components/InstagramPost.astro";
 import { CONTACT } from "../lib/contact";
 
@@ -64,11 +63,6 @@ const igPosts = (igRes.results ?? []) as IgPost[];
 
 const IG_URL = CONTACT.instagram;
 
-const services = [
-  { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it's unique." },
-  { title: "Intermediate Service", content: "Add a second service tier with key inclusions and turnaround time." },
-  { title: "Advanced Service", content: "Add premium offering details, add-ons, and deliverables." },
-];
 ---
 
 <BaseLayout title="DARKROOM">
@@ -176,12 +170,9 @@ const services = [
         <h2 class="section-heading">Explore our<br/>services</h2>
       </div>
       <p class="section-body">
-        Capture life's joyful moments with our playful photo services that turn ordinary
-        snaps into extraordinary stories.
+        We sell cameras and film, develop and scan your rolls, colour grade your scans, and rent
+        out cameras and other photography equipment - everything you need, start to finish.
       </p>
-      <div class="mt-10">
-        <Accordion items={services} />
-      </div>
       <div class="mt-10">
         <Button href="/services" size="lg">Learn more</Button>
       </div>
