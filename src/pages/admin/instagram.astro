@@ -46,11 +46,6 @@ function imgUrl(key: string) {
           <div class="post-card rounded-2xl border overflow-hidden" style="border-color: var(--line); background: var(--panel);">
             <div class="relative aspect-square">
               <img src={imgUrl(p.image_key)} alt={p.caption ?? ""} class="w-full h-full object-cover" />
-              <div class="absolute top-2 left-2">
-                <span class={`rounded-full px-2 py-0.5 text-xs font-medium ${p.active ? 'bg-green-500 text-white' : 'bg-[var(--line)] text-[var(--muted)]'}`}>
-                  {p.active ? "Active" : "Hidden"}
-                </span>
-              </div>
             </div>
             <div class="p-3">
               {p.caption && (
@@ -64,16 +59,12 @@ function imgUrl(key: string) {
                     value={p.sort_order}
                     data-id={p.id}
                     class="sort-input w-14 rounded-lg border px-2 py-1 text-xs outline-none"
-                    style="border-color: var(--line); background: var(--input-bg, #fff);"
+                    style="border-color: var(--line); background: var(--bg);"
                   />
                 </div>
                 <div class="flex gap-2">
                   <a href={p.instagram_url} target="_blank" rel="noopener noreferrer" class="text-xs underline" style="color: var(--muted);">View</a>
-                  <button
-                    class="delete-btn text-xs"
-                    data-id={p.id}
-                    style="color: var(--red);"
-                  >Delete</button>
+                  <button class="delete-btn text-xs" data-id={p.id} style="color: var(--red);">Delete</button>
                 </div>
               </div>
             </div>
@@ -86,179 +77,273 @@ function imgUrl(key: string) {
       </div>
     )}
 
-    <!-- Add new post form -->
+    <!-- Add new post -->
     <div class="mt-14 rounded-3xl border p-8" style="border-color: var(--line); background: var(--panel);">
       <h2 class="text-2xl mb-6" style="font-family: var(--font-serif);">Add a post</h2>
 
-      <div id="addError" class="hidden mb-4 rounded-xl px-4 py-3 text-sm" style="background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red);"></div>
-      <div id="addSuccess" class="hidden mb-4 rounded-xl px-4 py-3 text-sm" style="background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a;"></div>
+      <div id="msg" class="hidden mb-5 rounded-xl px-4 py-3 text-sm"></div>
 
-      <form id="addForm" class="grid gap-5">
-        <div>
-          <label class="text-sm font-medium">Preview image <span style="color: var(--red);">*</span></label>
-          <p class="text-xs mt-0.5 mb-2" style="color: var(--muted);">Screenshot or export from Instagram. JPG, PNG, or WEBP, max 12MB.</p>
+      <!-- Step 1: URL input -->
+      <div id="step1">
+        <label for="igUrlInput" class="text-sm font-medium">Instagram post URL</label>
+        <div class="mt-2 flex gap-3">
           <input
-            id="fileInput"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            required
-            class="mt-1 block w-full rounded-2xl border px-4 py-3 text-sm outline-none"
-            style="border-color: var(--line); background: var(--bg);"
-          />
-          <div id="imgPreview" class="hidden mt-3">
-            <img id="imgPreviewEl" src="" alt="" class="max-h-48 rounded-xl object-cover" />
-          </div>
-        </div>
-
-        <div>
-          <label for="igUrl" class="text-sm font-medium">Instagram post URL <span style="color: var(--red);">*</span></label>
-          <input
-            id="igUrl"
+            id="igUrlInput"
             type="url"
-            required
             placeholder="https://www.instagram.com/p/..."
-            class="mt-2 block w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+            class="flex-1 rounded-2xl border px-4 py-3 text-sm outline-none"
             style="border-color: var(--line); background: var(--bg);"
           />
-        </div>
-
-        <div>
-          <label for="igCaption" class="text-sm font-medium">Caption <span class="font-normal" style="color: var(--muted);">(optional)</span></label>
-          <input
-            id="igCaption"
-            type="text"
-            placeholder="Short description of the post"
-            class="mt-2 block w-full rounded-2xl border px-4 py-3 text-sm outline-none"
-            style="border-color: var(--line); background: var(--bg);"
-          />
-        </div>
-
-        <div>
-          <label for="igOrder" class="text-sm font-medium">Sort order</label>
-          <p class="text-xs mt-0.5 mb-2" style="color: var(--muted);">Lower numbers appear first. Max 4 active posts shown on home page.</p>
-          <input
-            id="igOrder"
-            type="number"
-            value="0"
-            min="0"
-            class="mt-1 w-28 rounded-2xl border px-4 py-3 text-sm outline-none"
-            style="border-color: var(--line); background: var(--bg);"
-          />
-        </div>
-
-        <div>
           <button
-            type="submit"
-            id="submitBtn"
-            class="rounded-full px-8 py-3 text-sm font-medium"
+            id="fetchBtn"
+            class="shrink-0 rounded-full px-6 py-3 text-sm font-medium"
             style="background: var(--btn); color: var(--btnText);"
           >
-            Add post
+            Fetch post
           </button>
         </div>
-      </form>
+      </div>
+
+      <!-- Step 2: image selection + confirm (hidden until fetch succeeds) -->
+      <div id="step2" class="hidden mt-6">
+        <div class="mb-5 pb-5 border-b" style="border-color: var(--line);">
+          <div class="text-xs uppercase tracking-widest mb-3" style="color: var(--muted);">
+            Select image to use as preview
+          </div>
+          <div id="imageGrid" class="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4"></div>
+          <p id="carouselNote" class="hidden mt-3 text-xs" style="color: var(--muted);">
+            Multiple images found — click one to select it as the preview.
+          </p>
+        </div>
+
+        <div class="grid gap-5">
+          <div>
+            <label for="igCaption" class="text-sm font-medium">Caption <span class="font-normal" style="color: var(--muted);">(optional)</span></label>
+            <textarea
+              id="igCaption"
+              rows="3"
+              placeholder="Caption from the post"
+              class="mt-2 block w-full rounded-2xl border px-4 py-3 text-sm outline-none resize-none"
+              style="border-color: var(--line); background: var(--bg);"
+            ></textarea>
+          </div>
+
+          <div>
+            <label for="igOrder" class="text-sm font-medium">Sort order</label>
+            <p class="text-xs mt-0.5 mb-2" style="color: var(--muted);">Lower numbers appear first. Max 4 posts shown on home page.</p>
+            <input
+              id="igOrder"
+              type="number"
+              value="0"
+              min="0"
+              class="w-28 rounded-2xl border px-4 py-3 text-sm outline-none"
+              style="border-color: var(--line); background: var(--bg);"
+            />
+          </div>
+
+          <div class="flex gap-3">
+            <button
+              id="backBtn"
+              class="rounded-full border px-6 py-3 text-sm font-medium"
+              style="border-color: var(--line);"
+            >
+              ← Back
+            </button>
+            <button
+              id="confirmBtn"
+              class="rounded-full px-8 py-3 text-sm font-medium"
+              style="background: var(--btn); color: var(--btnText);"
+            >
+              Add post
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </BaseLayout>
 
 <script>
-  // Image preview
-  const fileInput = document.getElementById("fileInput") as HTMLInputElement;
-  const imgPreview = document.getElementById("imgPreview") as HTMLDivElement;
-  const imgPreviewEl = document.getElementById("imgPreviewEl") as HTMLImageElement;
+  // ── State ──────────────────────────────────────────────────────────────────
+  let fetchedImages: string[] = [];
+  let selectedImageUrl: string | null = null;
+  let currentPostUrl = "";
 
-  fileInput?.addEventListener("change", () => {
-    const file = fileInput.files?.[0];
-    if (!file) { imgPreview.classList.add("hidden"); return; }
-    imgPreviewEl.src = URL.createObjectURL(file);
-    imgPreview.classList.remove("hidden");
+  // ── Elements ───────────────────────────────────────────────────────────────
+  const step1 = document.getElementById("step1") as HTMLDivElement;
+  const step2 = document.getElementById("step2") as HTMLDivElement;
+  const msg = document.getElementById("msg") as HTMLDivElement;
+  const igUrlInput = document.getElementById("igUrlInput") as HTMLInputElement;
+  const fetchBtn = document.getElementById("fetchBtn") as HTMLButtonElement;
+  const imageGrid = document.getElementById("imageGrid") as HTMLDivElement;
+  const carouselNote = document.getElementById("carouselNote") as HTMLParagraphElement;
+  const igCaption = document.getElementById("igCaption") as HTMLTextAreaElement;
+  const igOrder = document.getElementById("igOrder") as HTMLInputElement;
+  const backBtn = document.getElementById("backBtn") as HTMLButtonElement;
+  const confirmBtn = document.getElementById("confirmBtn") as HTMLButtonElement;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function showMsg(text: string, type: "error" | "success" | "info") {
+    msg.textContent = text;
+    msg.className = "mb-5 rounded-xl px-4 py-3 text-sm";
+    if (type === "error") {
+      msg.style.cssText = "background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red);";
+    } else if (type === "success") {
+      msg.style.cssText = "background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a;";
+    } else {
+      msg.style.cssText = "background: var(--panel); color: var(--muted);";
+    }
+    msg.classList.remove("hidden");
+  }
+
+  function hideMsg() { msg.classList.add("hidden"); }
+
+  function setSelectedImage(url: string) {
+    selectedImageUrl = url;
+    imageGrid.querySelectorAll<HTMLButtonElement>(".ig-img-btn").forEach(btn => {
+      const isSelected = btn.dataset.src === url;
+      btn.style.outline = isSelected ? "3px solid var(--red)" : "none";
+      btn.style.outlineOffset = "2px";
+    });
+  }
+
+  function buildImageGrid(images: string[]) {
+    imageGrid.innerHTML = "";
+    images.forEach((src) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ig-img-btn relative aspect-square overflow-hidden rounded-xl";
+      btn.dataset.src = src;
+      btn.style.cssText = "border: none; padding: 0; cursor: pointer;";
+
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = "";
+      img.style.cssText = "width: 100%; height: 100%; object-fit: cover; display: block;";
+      btn.appendChild(img);
+
+      btn.addEventListener("click", () => setSelectedImage(src));
+      imageGrid.appendChild(btn);
+    });
+
+    if (images.length > 0) setSelectedImage(images[0]);
+    carouselNote.classList.toggle("hidden", images.length <= 1);
+  }
+
+  // ── Step 1: Fetch post ─────────────────────────────────────────────────────
+  fetchBtn.addEventListener("click", async () => {
+    const url = igUrlInput.value.trim();
+    if (!url) { showMsg("Please enter an Instagram post URL.", "error"); return; }
+
+    hideMsg();
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = "Fetching…";
+
+    try {
+      const res = await fetch(`/api/admin/instagram/fetch?url=${encodeURIComponent(url)}`);
+      const data = await res.json() as any;
+
+      if (!data.ok) {
+        showMsg(data.error ?? "Failed to fetch post.", "error");
+        return;
+      }
+
+      fetchedImages = data.images as string[];
+      currentPostUrl = url;
+
+      // Pre-fill caption
+      igCaption.value = data.caption ?? "";
+
+      // Show step 2
+      buildImageGrid(fetchedImages);
+      step1.classList.add("hidden");
+      step2.classList.remove("hidden");
+      hideMsg();
+    } catch (e: any) {
+      showMsg(e?.message ?? "Network error.", "error");
+    } finally {
+      fetchBtn.disabled = false;
+      fetchBtn.textContent = "Fetch post";
+    }
   });
 
-  // Add form submit
-  const form = document.getElementById("addForm") as HTMLFormElement;
-  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
-  const addError = document.getElementById("addError") as HTMLDivElement;
-  const addSuccess = document.getElementById("addSuccess") as HTMLDivElement;
+  // Allow pressing Enter in the URL input
+  igUrlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); fetchBtn.click(); }
+  });
 
-  function showError(msg: string) {
-    addError.textContent = msg;
-    addError.classList.remove("hidden");
-    addSuccess.classList.add("hidden");
-  }
+  // ── Back button ────────────────────────────────────────────────────────────
+  backBtn.addEventListener("click", () => {
+    step2.classList.add("hidden");
+    step1.classList.remove("hidden");
+    hideMsg();
+    selectedImageUrl = null;
+  });
 
-  function showSuccess(msg: string) {
-    addSuccess.textContent = msg;
-    addSuccess.classList.remove("hidden");
-    addError.classList.add("hidden");
-  }
+  // ── Step 2: Confirm ────────────────────────────────────────────────────────
+  confirmBtn.addEventListener("click", async () => {
+    if (!selectedImageUrl) { showMsg("Please select an image.", "error"); return; }
 
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    addError.classList.add("hidden");
-    addSuccess.classList.add("hidden");
+    hideMsg();
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Downloading image…";
 
-    const file = fileInput.files?.[0];
-    const igUrl = (document.getElementById("igUrl") as HTMLInputElement).value.trim();
-    const caption = (document.getElementById("igCaption") as HTMLInputElement).value.trim();
-    const sortOrder = parseInt((document.getElementById("igOrder") as HTMLInputElement).value, 10) || 0;
+    // Download from Instagram CDN → upload to R2
+    const dlRes = await fetch("/api/admin/instagram/download", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ src_url: selectedImageUrl }),
+    });
+    const dlData = await dlRes.json() as any;
 
-    if (!file) { showError("Please select an image."); return; }
-    if (!igUrl) { showError("Please enter the Instagram post URL."); return; }
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Uploading image…";
-
-    // Step 1: upload image
-    const uploadForm = new FormData();
-    uploadForm.append("file", file);
-
-    const uploadRes = await fetch("/api/admin/instagram/upload", { method: "POST", body: uploadForm });
-    const uploadData = await uploadRes.json() as any;
-
-    if (!uploadData.ok) {
-      showError(uploadData.error ?? "Image upload failed.");
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Add post";
+    if (!dlData.ok) {
+      showMsg(dlData.error ?? "Image download failed.", "error");
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Add post";
       return;
     }
 
-    submitBtn.textContent = "Saving…";
+    confirmBtn.textContent = "Saving…";
 
-    // Step 2: save post record
+    const caption = igCaption.value.trim() || null;
+    const sortOrder = parseInt(igOrder.value, 10) || 0;
+
     const saveRes = await fetch("/api/admin/instagram/save", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ image_key: uploadData.image_key, instagram_url: igUrl, caption: caption || null, sort_order: sortOrder }),
+      body: JSON.stringify({
+        image_key: dlData.image_key,
+        instagram_url: currentPostUrl,
+        caption,
+        sort_order: sortOrder,
+      }),
     });
     const saveData = await saveRes.json() as any;
 
     if (!saveData.ok) {
-      showError(saveData.error ?? "Save failed.");
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Add post";
+      showMsg(saveData.error ?? "Save failed.", "error");
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Add post";
       return;
     }
 
-    showSuccess("Post added. Reloading…");
+    showMsg("Post added! Reloading…", "success");
     setTimeout(() => location.reload(), 800);
   });
 
-  // Delete buttons
+  // ── Existing posts: delete + sort order ───────────────────────────────────
   document.querySelectorAll<HTMLButtonElement>(".delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
       if (!id || !confirm("Delete this post?")) return;
-
       btn.disabled = true;
       btn.textContent = "Deleting…";
-
       const res = await fetch("/api/admin/instagram/delete", {
         method: "DELETE",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id }),
       });
       const data = await res.json() as any;
-
       if (data.ok) {
         btn.closest(".post-card")?.remove();
       } else {
@@ -269,7 +354,6 @@ function imgUrl(key: string) {
     });
   });
 
-  // Sort order update on blur
   document.querySelectorAll<HTMLInputElement>(".sort-input").forEach((input) => {
     input.addEventListener("change", async () => {
       const id = input.dataset.id;
