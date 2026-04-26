@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Accordion from "../components/Accordion.astro";
+import InstagramPost from "../components/InstagramPost.astro";
 
 export const prerender = false;
 
@@ -46,6 +47,21 @@ const featuredRes = await db
   .all();
 
 const featured = (featuredRes.results ?? []) as FeaturedRow[];
+
+type IgPost = {
+  id: string;
+  image_key: string;
+  instagram_url: string;
+  caption: string | null;
+};
+
+const igRes = await db
+  .prepare(`SELECT id, image_key, instagram_url, caption FROM instagram_posts WHERE active = 1 ORDER BY sort_order ASC, created_at DESC LIMIT 4`)
+  .all();
+
+const igPosts = (igRes.results ?? []) as IgPost[];
+
+const IG_URL = "https://www.instagram.com/darkroom.bysmolbo1/";
 
 const services = [
   { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it's unique." },
@@ -227,7 +243,7 @@ const services = [
         </div>
       </div>
       <div class="pt-2">
-        <a href="#" aria-label="Follow us on Instagram" class="ig-btn">
+        <a href={IG_URL} target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram" class="ig-btn">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
             <circle cx="12" cy="12" r="4"/>
@@ -238,24 +254,22 @@ const services = [
       </div>
     </div>
 
-    <div class="gallery-grid mt-10 reveal-stagger">
-      <div class="gallery-a reveal gallery-wrap">
-        <img class="gallery-img" src="https://picsum.photos/900/700?g1" alt="Gallery 1" loading="lazy" />
-        <div class="gallery-overlay" aria-hidden="true"></div>
+    {igPosts.length > 0 ? (
+      <div class="gallery-grid mt-10 reveal-stagger">
+        {igPosts.map((post, i) => (
+          <InstagramPost
+            imageUrl={imgUrl(post.image_key) ?? ""}
+            instagramUrl={post.instagram_url}
+            caption={post.caption}
+            class={`reveal gallery-${["a","b","c","d"][i] ?? "d"}`}
+          />
+        ))}
       </div>
-      <div class="gallery-b reveal gallery-wrap">
-        <img class="gallery-img" src="https://picsum.photos/900/700?g2" alt="Gallery 2" loading="lazy" />
-        <div class="gallery-overlay" aria-hidden="true"></div>
+    ) : (
+      <div class="mt-10 rounded-3xl border p-10 text-center text-sm" style="border-color: var(--line); color: var(--muted);">
+        Follow us on <a href={IG_URL} target="_blank" rel="noopener noreferrer" class="underline" style="color: var(--text);">Instagram</a> to see our work.
       </div>
-      <div class="gallery-c reveal gallery-wrap">
-        <img class="gallery-img" src="https://picsum.photos/900/700?g3" alt="Gallery 3" loading="lazy" />
-        <div class="gallery-overlay" aria-hidden="true"></div>
-      </div>
-      <div class="gallery-d reveal gallery-wrap">
-        <img class="gallery-img" src="https://picsum.photos/900/700?g4" alt="Gallery 4" loading="lazy" />
-        <div class="gallery-overlay" aria-hidden="true"></div>
-      </div>
-    </div>
+    )}
   </section>
 
   <style>

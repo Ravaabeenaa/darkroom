@@ -6,9 +6,32 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   <section id="contact" class="mt-20 rounded-[24px] p-10" style="background: var(--panel);">
     <h2 class="text-4xl md:text-5xl">Contact us</h2>
-    <p class="mt-4 max-w-xl" style="color: var(--muted);">
-      This will be the contact section (not a separate page). Footer “Contact” will jump here.
-    </p>
+    <div class="mt-8 grid gap-6 md:grid-cols-3">
+      <div>
+        <div class="text-xs tracking-widest uppercase mb-2" style="color: var(--muted);">Email</div>
+        <a href="mailto:hello@darkroom.mv" class="text-sm hover:underline">hello@darkroom.mv</a>
+      </div>
+      <div>
+        <div class="text-xs tracking-widest uppercase mb-2" style="color: var(--muted);">Phone</div>
+        <span class="text-sm" style="color: var(--muted);">+960 000-0000</span>
+      </div>
+      <div>
+        <div class="text-xs tracking-widest uppercase mb-2" style="color: var(--muted);">Instagram</div>
+        <a
+          href="https://www.instagram.com/darkroom.bysmolbo1/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 text-sm hover:underline"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+          </svg>
+          @darkroom.bysmolbo1
+        </a>
+      </div>
+    </div>
   </section>
 
 </BaseLayout>

@@ -1,0 +1,284 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const env = Astro.locals.runtime.env as any;
+const db = env.darkroom_db as D1Database;
+const base = String(env.PUBLIC_R2_BASE_URL ?? "").replace(/\/+$/, "");
+
+type PostRow = {
+  id: string;
+  image_key: string;
+  instagram_url: string;
+  caption: string | null;
+  sort_order: number;
+  active: number;
+};
+
+const res = await db
+  .prepare(`SELECT id, image_key, instagram_url, caption, sort_order, active FROM instagram_posts ORDER BY sort_order ASC, created_at DESC`)
+  .all<PostRow>();
+
+const posts = res.results ?? [];
+
+function imgUrl(key: string) {
+  return base ? `${base}/${key}` : `/${key}`;
+}
+---
+
+<BaseLayout title="Instagram Posts — Admin">
+  <section class="mx-auto mt-12 max-w-5xl">
+    <div class="flex items-center justify-between gap-4 border-b pb-4" style="border-color: var(--line);">
+      <div>
+        <h1 class="text-4xl" style="font-family: var(--font-serif);">Instagram Posts</h1>
+        <p class="mt-1 text-sm" style="color: var(--muted);">
+          Curate which posts appear in the Follow Us section on the home page.
+        </p>
+      </div>
+      <a href="/admin" class="text-sm" style="color: var(--muted);">← Admin</a>
+    </div>
+
+    <!-- Existing posts -->
+    {posts.length > 0 ? (
+      <div class="mt-10 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {posts.map((p) => (
+          <div class="post-card rounded-2xl border overflow-hidden" style="border-color: var(--line); background: var(--panel);">
+            <div class="relative aspect-square">
+              <img src={imgUrl(p.image_key)} alt={p.caption ?? ""} class="w-full h-full object-cover" />
+              <div class="absolute top-2 left-2">
+                <span class={`rounded-full px-2 py-0.5 text-xs font-medium ${p.active ? 'bg-green-500 text-white' : 'bg-[var(--line)] text-[var(--muted)]'}`}>
+                  {p.active ? "Active" : "Hidden"}
+                </span>
+              </div>
+            </div>
+            <div class="p-3">
+              {p.caption && (
+                <p class="text-xs mb-2 line-clamp-2" style="color: var(--muted);">{p.caption}</p>
+              )}
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1 text-xs" style="color: var(--muted);">
+                  <span>Order:</span>
+                  <input
+                    type="number"
+                    value={p.sort_order}
+                    data-id={p.id}
+                    class="sort-input w-14 rounded-lg border px-2 py-1 text-xs outline-none"
+                    style="border-color: var(--line); background: var(--input-bg, #fff);"
+                  />
+                </div>
+                <div class="flex gap-2">
+                  <a href={p.instagram_url} target="_blank" rel="noopener noreferrer" class="text-xs underline" style="color: var(--muted);">View</a>
+                  <button
+                    class="delete-btn text-xs"
+                    data-id={p.id}
+                    style="color: var(--red);"
+                  >Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class="mt-10 rounded-3xl border p-10 text-center text-sm" style="border-color: var(--line); color: var(--muted);">
+        No posts yet. Add one below.
+      </div>
+    )}
+
+    <!-- Add new post form -->
+    <div class="mt-14 rounded-3xl border p-8" style="border-color: var(--line); background: var(--panel);">
+      <h2 class="text-2xl mb-6" style="font-family: var(--font-serif);">Add a post</h2>
+
+      <div id="addError" class="hidden mb-4 rounded-xl px-4 py-3 text-sm" style="background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red);"></div>
+      <div id="addSuccess" class="hidden mb-4 rounded-xl px-4 py-3 text-sm" style="background: color-mix(in srgb, #22c55e 15%, transparent); color: #16a34a;"></div>
+
+      <form id="addForm" class="grid gap-5">
+        <div>
+          <label class="text-sm font-medium">Preview image <span style="color: var(--red);">*</span></label>
+          <p class="text-xs mt-0.5 mb-2" style="color: var(--muted);">Screenshot or export from Instagram. JPG, PNG, or WEBP, max 12MB.</p>
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            required
+            class="mt-1 block w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+            style="border-color: var(--line); background: var(--bg);"
+          />
+          <div id="imgPreview" class="hidden mt-3">
+            <img id="imgPreviewEl" src="" alt="" class="max-h-48 rounded-xl object-cover" />
+          </div>
+        </div>
+
+        <div>
+          <label for="igUrl" class="text-sm font-medium">Instagram post URL <span style="color: var(--red);">*</span></label>
+          <input
+            id="igUrl"
+            type="url"
+            required
+            placeholder="https://www.instagram.com/p/..."
+            class="mt-2 block w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+            style="border-color: var(--line); background: var(--bg);"
+          />
+        </div>
+
+        <div>
+          <label for="igCaption" class="text-sm font-medium">Caption <span class="font-normal" style="color: var(--muted);">(optional)</span></label>
+          <input
+            id="igCaption"
+            type="text"
+            placeholder="Short description of the post"
+            class="mt-2 block w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+            style="border-color: var(--line); background: var(--bg);"
+          />
+        </div>
+
+        <div>
+          <label for="igOrder" class="text-sm font-medium">Sort order</label>
+          <p class="text-xs mt-0.5 mb-2" style="color: var(--muted);">Lower numbers appear first. Max 4 active posts shown on home page.</p>
+          <input
+            id="igOrder"
+            type="number"
+            value="0"
+            min="0"
+            class="mt-1 w-28 rounded-2xl border px-4 py-3 text-sm outline-none"
+            style="border-color: var(--line); background: var(--bg);"
+          />
+        </div>
+
+        <div>
+          <button
+            type="submit"
+            id="submitBtn"
+            class="rounded-full px-8 py-3 text-sm font-medium"
+            style="background: var(--btn); color: var(--btnText);"
+          >
+            Add post
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // Image preview
+  const fileInput = document.getElementById("fileInput") as HTMLInputElement;
+  const imgPreview = document.getElementById("imgPreview") as HTMLDivElement;
+  const imgPreviewEl = document.getElementById("imgPreviewEl") as HTMLImageElement;
+
+  fileInput?.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    if (!file) { imgPreview.classList.add("hidden"); return; }
+    imgPreviewEl.src = URL.createObjectURL(file);
+    imgPreview.classList.remove("hidden");
+  });
+
+  // Add form submit
+  const form = document.getElementById("addForm") as HTMLFormElement;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const addError = document.getElementById("addError") as HTMLDivElement;
+  const addSuccess = document.getElementById("addSuccess") as HTMLDivElement;
+
+  function showError(msg: string) {
+    addError.textContent = msg;
+    addError.classList.remove("hidden");
+    addSuccess.classList.add("hidden");
+  }
+
+  function showSuccess(msg: string) {
+    addSuccess.textContent = msg;
+    addSuccess.classList.remove("hidden");
+    addError.classList.add("hidden");
+  }
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    addError.classList.add("hidden");
+    addSuccess.classList.add("hidden");
+
+    const file = fileInput.files?.[0];
+    const igUrl = (document.getElementById("igUrl") as HTMLInputElement).value.trim();
+    const caption = (document.getElementById("igCaption") as HTMLInputElement).value.trim();
+    const sortOrder = parseInt((document.getElementById("igOrder") as HTMLInputElement).value, 10) || 0;
+
+    if (!file) { showError("Please select an image."); return; }
+    if (!igUrl) { showError("Please enter the Instagram post URL."); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Uploading image…";
+
+    // Step 1: upload image
+    const uploadForm = new FormData();
+    uploadForm.append("file", file);
+
+    const uploadRes = await fetch("/api/admin/instagram/upload", { method: "POST", body: uploadForm });
+    const uploadData = await uploadRes.json() as any;
+
+    if (!uploadData.ok) {
+      showError(uploadData.error ?? "Image upload failed.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add post";
+      return;
+    }
+
+    submitBtn.textContent = "Saving…";
+
+    // Step 2: save post record
+    const saveRes = await fetch("/api/admin/instagram/save", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ image_key: uploadData.image_key, instagram_url: igUrl, caption: caption || null, sort_order: sortOrder }),
+    });
+    const saveData = await saveRes.json() as any;
+
+    if (!saveData.ok) {
+      showError(saveData.error ?? "Save failed.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add post";
+      return;
+    }
+
+    showSuccess("Post added. Reloading…");
+    setTimeout(() => location.reload(), 800);
+  });
+
+  // Delete buttons
+  document.querySelectorAll<HTMLButtonElement>(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.id;
+      if (!id || !confirm("Delete this post?")) return;
+
+      btn.disabled = true;
+      btn.textContent = "Deleting…";
+
+      const res = await fetch("/api/admin/instagram/delete", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json() as any;
+
+      if (data.ok) {
+        btn.closest(".post-card")?.remove();
+      } else {
+        alert(data.error ?? "Delete failed.");
+        btn.disabled = false;
+        btn.textContent = "Delete";
+      }
+    });
+  });
+
+  // Sort order update on blur
+  document.querySelectorAll<HTMLInputElement>(".sort-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.dataset.id;
+      if (!id) return;
+      await fetch("/api/admin/instagram/save", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id, sort_order: parseInt(input.value, 10) || 0 }),
+      });
+    });
+  });
+</script>
