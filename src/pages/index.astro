@@ -4,6 +4,7 @@ import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Accordion from "../components/Accordion.astro";
 import InstagramPost from "../components/InstagramPost.astro";
+import { CONTACT } from "../lib/contact";
 
 export const prerender = false;
 
@@ -61,7 +62,7 @@ const igRes = await db
 
 const igPosts = (igRes.results ?? []) as IgPost[];
 
-const IG_URL = "https://www.instagram.com/darkroom.bysmolbo1/";
+const IG_URL = CONTACT.instagram;
 
 const services = [
   { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it's unique." },

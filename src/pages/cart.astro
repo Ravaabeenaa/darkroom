@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { CONTACT } from "../lib/contact";
 
 export const prerender = false;
 
@@ -162,6 +163,8 @@ function imgUrl(key: string | null) {
     })),
     collectionOptionsData: collectionOptions,
     isShopClosed: shopClosed,
+    contactEmail: CONTACT.email,
+    contactPhone: CONTACT.phone,
   }}>
     const services = servicesJson;
     const byId = new Map(services.map(s => [s.id, s]));
@@ -538,7 +541,7 @@ function imgUrl(key: string | null) {
       ].filter(Boolean);
 
       drawInfoBlock(PAD, "BILLED TO", billedLines);
-      drawInfoBlock(col2X, "FROM", ["Darkroom", "hello@darkroom.mv", "+960 000-0000"]);
+      drawInfoBlock(col2X, "FROM", ["Darkroom", contactEmail, contactPhone]);
 
       // bottom border of info section
       const infoBottomY = HEADER_H + STRIP_H + INFO_H;
@@ -630,7 +633,7 @@ function imgUrl(key: string | null) {
       ctx.font = "400 9px 'JetBrains Mono', monospace";
       ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.textAlign = "left";
-      ctx.fillText("hello@darkroom.mv  ·  +960 000-0000", PAD, y + 26);
+      ctx.fillText(`${contactEmail}  ·  ${contactPhone}`, PAD, y + 26);
       ctx.fillText("TELEGRAM  ·  VIBER  ·  WHATSAPP", PAD, y + 44);
 
       ctx.textAlign = "right";

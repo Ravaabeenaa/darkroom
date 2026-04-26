@@ -24,3 +24,7 @@ pnpm-debug.log*
 .idea/
 
 folder_tree.txt
+
+# internal docs
+migration.md
+to-do.md
