@@ -167,11 +167,13 @@ if (db) {
 
           <nav class="hidden gap-8 text-sm font-medium text-black md:flex items-center">
             <a href="/shop" class="hover:opacity-70">Shop</a>
-            <a href="/about" class="hover:opacity-70">About</a>
             <a href="/cart" class="relative flex items-center hover:opacity-70">
               Cart
               <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
             </a>
+            <a href="/services" class="hover:opacity-70">Services</a>
+            <a href="/about" class="hover:opacity-70">About us</a>
+            <a href="/about#contact" class="hover:opacity-70">Contact</a>
 
             {isAdmin && <a href="/admin" class="hover:opacity-70">Admin</a>}
 
@@ -211,12 +213,11 @@ if (db) {
             </div>
 
             <div class="text-sm">
-              <div class="mb-3 font-medium">Explore</div>
               <div class="grid gap-2">
-                <a href="/about">About us</a>
-                <a href="/about#contact">Contact</a>
                 <a href="/shop">Shop</a>
                 <a href="/services">Services</a>
+                <a href="/about">About us</a>
+                <a href="/about#contact">Contact</a>
               </div>
             </div>
 
@@ -245,11 +246,13 @@ if (db) {
       </div>
       <div class="mt-12 flex flex-col gap-6 text-xl">
         <a href="/shop" class="hover:opacity-70">Shop</a>
-        <a href="/about" class="hover:opacity-70">About</a>
         <a href="/cart" class="relative flex items-center gap-3 hover:opacity-70">
           Cart
           <span id="drCartCountMobile" class="inline-flex min-w-[22px] items-center justify-center rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black" style="display:none"></span>
         </a>
+        <a href="/services" class="hover:opacity-70">Services</a>
+        <a href="/about" class="hover:opacity-70">About us</a>
+        <a href="/about#contact" class="hover:opacity-70">Contact</a>
         {isAdmin && <a href="/admin" class="hover:opacity-70">Admin</a>}
       </div>
 
