@@ -223,12 +223,12 @@ export const prerender = false;
       font-size: 12px;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--muted);
-      transition: color 0.2s ease;
+      color: var(--red);
+      transition: opacity 0.2s ease;
       user-select: none;
     }
     .read-more-btn:hover {
-      color: var(--text);
+      opacity: 0.7;
     }
     .read-more-btn::after {
       content: "↓";
@@ -237,9 +237,6 @@ export const prerender = false;
     }
     details[open] .read-more-btn::after {
       transform: rotate(180deg);
-    }
-    details[open] .read-more-btn {
-      color: var(--text);
     }
   </style>
 </BaseLayout>
