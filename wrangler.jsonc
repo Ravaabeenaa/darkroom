@@ -7,10 +7,6 @@
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
-	"assets": {
-		"binding": "ASSETS",
-		"directory": "./dist"
-	},
 	"observability": {
 		"enabled": true
 	},
@@ -18,8 +14,7 @@
 		{
 			"binding": "darkroom_db",
 			"database_name": "darkroom-db",
-			"database_id": "5d797876-7649-4278-b4b6-bc34a7a0ddda",
-			"remote": true
+			"database_id": "5d797876-7649-4278-b4b6-bc34a7a0ddda"
 		}
 	],
 	"r2_buckets": [
