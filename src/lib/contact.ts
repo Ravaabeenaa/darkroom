@@ -1,3 +1,4 @@
+// contact info
 export const CONTACT = {
   email: "hello@darkroom.mv",
   phone: "+960 749 6670",
