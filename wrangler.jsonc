@@ -1,11 +1,15 @@
 {
+	"main": "dist/_worker.js/index.js",
 	"name": "darkroom",
-	"pages_build_output_dir": "./dist",
 	"compatibility_date": "2026-02-18",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist"
+	},
 	"observability": {
 		"enabled": true
 	},
@@ -13,7 +17,8 @@
 		{
 			"binding": "darkroom_db",
 			"database_name": "darkroom-db",
-			"database_id": "5d797876-7649-4278-b4b6-bc34a7a0ddda"
+			"database_id": "5d797876-7649-4278-b4b6-bc34a7a0ddda",
+			"remote": true
 		}
 	],
 	"r2_buckets": [
