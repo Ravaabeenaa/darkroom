@@ -121,8 +121,8 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
         <div class="mt-6 rounded-2xl border px-4 py-3 text-sm" style="border-color: color-mix(in srgb, var(--red) 40%, transparent); background: color-mix(in srgb, var(--red) 8%, transparent);">
           <span style="color: var(--red);">{service.bulk_discount_percent ?? 5}% bulk discount</span>
           {service.bulk_discount_eligible === 1
-            ? <span style="color: var(--muted);"> — order 5 or more from the {service.service_group ?? "same group"} group.</span>
-            : <span style="color: var(--muted);"> — order 5 or more of this service with the same options.</span>
+            ? <span style="color: var(--muted);"> Order 5 or more from the {service.service_group ?? "same group"} group.</span>
+            : <span style="color: var(--muted);"> Order 5 or more of this service with the same options.</span>
           }
         </div>
       )}
