@@ -1,0 +1,46 @@
+---
+interface Props {
+  url: string;
+}
+const { url } = Astro.props;
+
+// Normalise to bare post URL (strip any existing query params)
+const embedUrl = url.split("?")[0].replace(/\/?$/, "/");
+const permalink = `${embedUrl}?utm_source=ig_embed&utm_campaign=loading`;
+---
+
+<div class="ig-post-wrap">
+  <blockquote
+    class="instagram-media"
+    data-instgrm-captioned
+    data-instgrm-permalink={permalink}
+    data-instgrm-version="14"
+    style="background:#FFF;border:0;border-radius:3px;box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15);margin:0;padding:0;width:100%;min-width:280px;">
+  </blockquote>
+  <div class="ig-overlay" aria-hidden="true"></div>
+</div>
+
+<style>
+  .ig-post-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: 3px;
+    transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  .ig-post-wrap:hover {
+    transform: scale(1.02);
+  }
+  .ig-overlay {
+    position: absolute;
+    inset: 0;
+    border: 2px solid transparent;
+    border-radius: 3px;
+    transition: border-color 0.3s ease;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .ig-post-wrap:hover .ig-overlay {
+    border-color: color-mix(in srgb, #ED1C24 50%, transparent);
+  }
+</style>

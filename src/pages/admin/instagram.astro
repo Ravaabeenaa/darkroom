@@ -1,0 +1,118 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+
+type PostRow = { id: string; url: string; sort_order: number; created_at: string };
+const res = await db
+  .prepare("SELECT id, url, sort_order, created_at FROM instagram_posts WHERE active = 1 ORDER BY sort_order ASC")
+  .all<PostRow>();
+const posts = res.results ?? [];
+
+const saved = Astro.url.searchParams.get("saved") === "1";
+const errorKey = Astro.url.searchParams.get("error") ?? "";
+const errorMessages: Record<string, string> = {
+  missing_url: "Please enter a URL.",
+  invalid_url: "URL must be an instagram.com/p/ or instagram.com/reel/ link.",
+  duplicate: "That post is already in the list.",
+  missing_id: "Post not found.",
+};
+const errorMsg = errorMessages[errorKey] ?? (errorKey ? "An error occurred." : "");
+---
+
+<BaseLayout title="Instagram Posts — Admin">
+  <section class="mx-auto mt-12 max-w-2xl px-6 pb-24">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-4xl" style="font-family: var(--font-serif);">Instagram Posts</h1>
+        <p class="mt-2 text-sm" style="color: var(--muted);">
+          Manage the posts shown in the Follow Us section of the home page.
+        </p>
+      </div>
+      <a class="rounded-[999px] border border-[var(--line)] px-4 py-3 text-sm hover:bg-[var(--panel)]" href="/admin">
+        &larr; Admin
+      </a>
+    </div>
+
+    {saved && (
+      <div class="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4 text-sm">Saved.</div>
+    )}
+    {errorMsg && (
+      <div class="mt-6 rounded-2xl border border-red-400/40 bg-red-50/80 p-4 text-sm text-red-700">{errorMsg}</div>
+    )}
+
+    <!-- Add form -->
+    <form method="post" action="/api/admin/instagram/add" class="mt-8">
+      <label class="block text-sm font-medium mb-2">Add Instagram post URL</label>
+      <div class="flex gap-3">
+        <input
+          type="url"
+          name="url"
+          placeholder="https://www.instagram.com/p/ABC123/"
+          required
+          class="flex-1 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-sm outline-none focus:border-[var(--red)]"
+        />
+        <button
+          type="submit"
+          class="rounded-[999px] bg-[var(--btn)] px-6 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90"
+        >
+          Add
+        </button>
+      </div>
+      <p class="mt-2 text-xs" style="color: var(--muted);">
+        Paste the post URL only — no need to copy the embed code.
+      </p>
+    </form>
+
+    <!-- Post list -->
+    <div class="mt-10 space-y-3">
+      {posts.length === 0 ? (
+        <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-8 text-center text-sm" style="color: var(--muted);">
+          No posts added yet.
+        </div>
+      ) : posts.map((post, i) => (
+        <div class="flex items-center gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-5 py-4">
+          <!-- Reorder -->
+          <div class="flex flex-col gap-1">
+            <form method="post" action="/api/admin/instagram/reorder">
+              <input type="hidden" name="id" value={post.id} />
+              <input type="hidden" name="direction" value="up" />
+              <button type="submit" disabled={i === 0}
+                class="block rounded p-0.5 hover:bg-[var(--bg)] disabled:opacity-20"
+                aria-label="Move up">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 11V3M3 7l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </form>
+            <form method="post" action="/api/admin/instagram/reorder">
+              <input type="hidden" name="id" value={post.id} />
+              <input type="hidden" name="direction" value="down" />
+              <button type="submit" disabled={i === posts.length - 1}
+                class="block rounded p-0.5 hover:bg-[var(--bg)] disabled:opacity-20"
+                aria-label="Move down">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </form>
+          </div>
+
+          <!-- URL -->
+          <a href={post.url} target="_blank" rel="noopener noreferrer"
+            class="flex-1 min-w-0 text-sm truncate hover:underline">
+            {post.url}
+          </a>
+
+          <!-- Delete -->
+          <form method="post" action="/api/admin/instagram/delete">
+            <input type="hidden" name="id" value={post.id} />
+            <button type="submit"
+              class="rounded-xl border border-[var(--line)] px-3 py-1.5 text-xs hover:border-red-400 hover:text-red-500"
+              onclick="return confirm('Remove this post?')">
+              Remove
+            </button>
+          </form>
+        </div>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

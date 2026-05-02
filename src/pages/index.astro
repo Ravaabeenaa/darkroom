@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
+import InstagramPost from "../components/InstagramPost.astro";
 import { contact } from "../lib/contact";
 
 export const prerender = false;
@@ -46,6 +47,12 @@ const featuredRes = await db
   .all();
 
 const featured = (featuredRes.results ?? []) as FeaturedRow[];
+
+type IgPost = { id: string; url: string };
+const igRes = await db
+  .prepare("SELECT id, url FROM instagram_posts WHERE active = 1 ORDER BY sort_order ASC")
+  .all<IgPost>();
+const igPosts = igRes.results ?? [];
 
 ---
 
@@ -230,13 +237,18 @@ const featured = (featuredRes.results ?? []) as FeaturedRow[];
       </div>
     </div>
 
-    <div class="mt-10 flex justify-center reveal">
-      <div class="ig-post-wrap gallery-wrap">
-        <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="https://www.instagram.com/p/DWOkkFFgcIq/?utm_source=ig_embed&utm_campaign=loading" data-instgrm-version="14" style="background:#FFF;border:0;border-radius:3px;box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15);margin:0;padding:0;width:100%;"></blockquote>
-        <div class="gallery-overlay" aria-hidden="true"></div>
+    {igPosts.length > 0 ? (
+      <div class="mt-10 ig-grid reveal-stagger">
+        {igPosts.map((post: IgPost) => (
+          <div class="reveal">
+            <InstagramPost url={post.url} />
+          </div>
+        ))}
       </div>
-    </div>
-    <script is:inline async src="//www.instagram.com/embed.js"></script>
+    ) : (
+      <div class="mt-10 text-sm text-center" style="color: var(--muted);">No posts yet.</div>
+    )}
+    {igPosts.length > 0 && <script is:inline async src="//www.instagram.com/embed.js"></script>}
   </section>
 
   <style>
@@ -524,15 +536,14 @@ const featured = (featuredRes.results ?? []) as FeaturedRow[];
     }
     .ig-btn:hover { opacity: 0.85; transform: translateY(-2px); }
 
-    .ig-post-wrap {
-      width: 100%;
-      max-width: 540px;
-      border-radius: 3px;
-      transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-      will-change: transform;
+    .ig-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+      justify-items: center;
     }
-    .ig-post-wrap:hover {
-      transform: scale(1.02);
+    @media (min-width: 640px) {
+      .ig-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 540px)); }
     }
 
     /* ─── SHARED GALLERY HOVER (applied to all content images) ── */
