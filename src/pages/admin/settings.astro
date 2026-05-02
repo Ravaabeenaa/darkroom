@@ -15,14 +15,10 @@ const error = Astro.url.searchParams.get("error") ?? "";
 
 <BaseLayout title="Settings — Admin">
   <section class="mx-auto mt-12 max-w-2xl px-6">
-    <div class="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="text-4xl" style="font-family: var(--font-serif);">Settings</h1>
-        <p class="mt-2 text-sm" style="color: var(--muted);">Global shop configuration.</p>
-      </div>
-      <a class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-3 text-sm hover:bg-white/80" href="/admin">
-        ← Admin
-      </a>
+    <div>
+      <a href="/admin" class="text-sm hover:opacity-70" style="color: var(--muted);">← Admin</a>
+      <h1 class="mt-2 text-4xl" style="font-family: var(--font-serif);">Settings</h1>
+      <p class="mt-2 text-sm" style="color: var(--muted);">Global shop configuration.</p>
     </div>
 
     {saved && (
