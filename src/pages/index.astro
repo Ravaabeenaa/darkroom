@@ -2,7 +2,6 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
-import Accordion from "../components/Accordion.astro";
 
 export const prerender = false;
 
@@ -47,11 +46,6 @@ const featuredRes = await db
 
 const featured = (featuredRes.results ?? []) as FeaturedRow[];
 
-const services = [
-  { title: "Basic Service", content: "Describe important details like price, value, length of service, and why it's unique." },
-  { title: "Intermediate Service", content: "Add a second service tier with key inclusions and turnaround time." },
-  { title: "Advanced Service", content: "Add premium offering details, add-ons, and deliverables." },
-];
 ---
 
 <BaseLayout title="DARKROOM">
@@ -159,12 +153,9 @@ const services = [
         <h2 class="section-heading">Explore our<br/>services</h2>
       </div>
       <p class="section-body">
-        Capture life's joyful moments with our playful photo services that turn ordinary
-        snaps into extraordinary stories.
+        Everything you need for analogue photography — from the camera in your hands to
+        the finished scan on your screen.
       </p>
-      <div class="mt-10">
-        <Accordion items={services} />
-      </div>
       <div class="mt-10">
         <Button href="/services" size="lg">Learn more</Button>
       </div>
