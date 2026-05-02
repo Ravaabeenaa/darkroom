@@ -1,5 +1,6 @@
 ---
 import "../styles/tailwind.css";
+import { contact } from "../lib/contact";
 const { title = "DARKROOM" } = Astro.props;
 
 // Check admin status server-side (cookie is HttpOnly, not readable by JS)
@@ -145,6 +146,9 @@ if (db) {
         window.addEventListener("DOMContentLoaded", syncHeaderCount);
       })();
     </script>
+    <script is:inline define:vars={{ contact }}>
+      window.DARKROOM_CONTACT = contact;
+    </script>
   </head>
   <body data-shop-closed={shopClosed ? "1" : ""}>
     <div class="min-h-screen">
@@ -222,8 +226,8 @@ if (db) {
             <div class="text-sm">
               <div class="mb-3 font-medium">Contact</div>
               <div class="grid gap-2" style="color: var(--muted);">
-                <div>Email: hello@darkroom.mv</div>
-                <div>Phone: +960 000-0000</div>
+                <div>Email: {contact.email}</div>
+                <div>Phone: {contact.phone}</div>
               </div>
             </div>
           </div>

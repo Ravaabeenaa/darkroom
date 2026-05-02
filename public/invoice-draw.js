@@ -125,7 +125,8 @@
     ].filter(Boolean);
 
     drawInfoBlock(PAD, "BILLED TO", billedLines);
-    drawInfoBlock(col2X, "FROM", ["Darkroom", "hello@darkroom.mv", "+960 000-0000"]);
+    var c = window.DARKROOM_CONTACT || {};
+    drawInfoBlock(col2X, "FROM", ["Darkroom", c.email || "", c.phone || ""]);
 
     var infoBottomY = HEADER_H + STRIP_H + INFO_H;
     hline(infoBottomY);
@@ -206,8 +207,8 @@
     ctx.font = "400 9px 'JetBrains Mono', monospace";
     ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.textAlign = "left";
-    ctx.fillText("hello@darkroom.mv  ·  +960 000-0000", PAD, y + 26);
-    ctx.fillText("TELEGRAM  ·  VIBER  ·  WHATSAPP", PAD, y + 44);
+    ctx.fillText((c.email || "") + "  ·  " + (c.phone || ""), PAD, y + 26);
+    ctx.fillText("TELEGRAM  ·  INSTAGRAM", PAD, y + 44);
 
     ctx.textAlign = "right";
     ctx.fillText("Thank you for choosing", W - PAD, y + 26);
