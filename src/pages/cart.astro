@@ -93,18 +93,18 @@ function imgUrl(key: string | null) {
 
       <div class="mt-8 space-y-4">
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Name *</span>
+          <span class="text-sm font-medium">Name</span>
           <input id="custName" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" />
         </label>
 
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Phone (digits only) *</span>
+          <span class="text-sm font-medium">Phone</span>
           <input id="custPhone" inputmode="numeric" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" placeholder="9607xxxxxx" />
-          <div id="phoneErr" class="mt-2 text-xs" style="color:#b91c1c;display:none;">Phone must contain digits only.</div>
+          <div id="phoneErr" class="mt-2 text-sm" style="color:#b91c1c;display:none;">Phone must contain digits only.</div>
         </label>
 
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Preferred contact method *</span>
+          <span class="text-sm font-medium">Preferred contact method</span>
           <select id="custMethod" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
             <option value="">Select…</option>
             <option value="Telegram">Telegram</option>
@@ -114,12 +114,18 @@ function imgUrl(key: string | null) {
         </label>
 
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Email (optional)</span>
+          <div class="flex items-baseline gap-2">
+            <span class="text-sm font-medium">Email</span>
+            <span class="text-xs" style="color: var(--muted);">optional</span>
+          </div>
           <input id="custEmail" type="email" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" />
         </label>
 
         <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Notes (optional)</span>
+          <div class="flex items-baseline gap-2">
+            <span class="text-sm font-medium">Notes</span>
+            <span class="text-xs" style="color: var(--muted);">optional</span>
+          </div>
           <textarea id="custNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none"></textarea>
         </label>
 
@@ -332,15 +338,15 @@ function imgUrl(key: string | null) {
             <div class="mt-1 text-xs" style="color: var(--muted);">${window.DarkroomCart.formatMVR(unit)} each</div>
 
             <div class="mt-3 flex items-center gap-2">
-              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-dec="${it.key}">−</button>
+              <button class="h-10 w-10 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70 active:bg-white/70" data-dec="${it.key}">−</button>
               <span class="w-10 text-center text-sm tabular-nums" data-dr-cart-qty="${it.key}">${window.DarkroomCart.getQty(it.key)}</span>
-              <button class="h-8 w-8 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70" data-inc="${it.key}">+</button>
+              <button class="h-10 w-10 cursor-pointer rounded-full border border-[var(--line)] bg-white/40 hover:bg-white/70 active:bg-white/70" data-inc="${it.key}">+</button>
             </div>
           </div>
 
           <div class="text-right">
             <div class="text-sm font-semibold">${window.DarkroomCart.formatMVR(line)}</div>
-            <button class="mt-3 text-xs underline hover:opacity-70" data-remove="${it.key}">Remove</button>
+            <button class="mt-3 rounded-lg px-2 py-1.5 text-sm hover:opacity-70 active:opacity-70" style="color:var(--muted);" data-remove="${it.key}">Remove</button>
           </div>
         `;
 

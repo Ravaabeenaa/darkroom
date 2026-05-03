@@ -27,8 +27,25 @@ const permalink = `${embedUrl}?utm_source=ig_embed&utm_campaign=loading`;
     border-radius: 3px;
     transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
+    /* Dark placeholder while embed.js hasn't fired yet */
+    background: var(--panel);
+    min-height: 320px;
   }
-  .ig-post-wrap:hover {
+  /* Once Instagram replaces the blockquote with an iframe, remove placeholder */
+  .ig-post-wrap:has(iframe) {
+    min-height: 0;
+    background: transparent;
+  }
+  /* Subtle pulse on the placeholder */
+  .ig-post-wrap:not(:has(iframe)) {
+    animation: igLoad 1.6s ease-in-out infinite;
+  }
+  @keyframes igLoad {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .ig-post-wrap:hover,
+  .ig-post-wrap:active {
     transform: scale(1.02);
   }
   .ig-overlay {
@@ -40,7 +57,8 @@ const permalink = `${embedUrl}?utm_source=ig_embed&utm_campaign=loading`;
     pointer-events: none;
     z-index: 2;
   }
-  .ig-post-wrap:hover .ig-overlay {
+  .ig-post-wrap:hover .ig-overlay,
+  .ig-post-wrap:active .ig-overlay {
     border-color: color-mix(in srgb, #ED1C24 50%, transparent);
   }
 </style>

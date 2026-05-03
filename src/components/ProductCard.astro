@@ -55,9 +55,9 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     <div class="min-w-0 flex-1">
       <div class="flex items-start gap-2">
         {badge && (
-          <span class="mt-0.5 shrink-0 rounded-full bg-[var(--red)] px-2 py-0.5 text-[11px] text-black">{badge}</span>
+          <span class="mt-0.5 shrink-0 rounded-full bg-[var(--red)] px-2 py-0.5 text-xs text-black">{badge}</span>
         )}
-        <a href={href} class="text-sm font-semibold leading-snug hover:opacity-70">{name}</a>
+        <a href={href} class="line-clamp-2 text-sm font-semibold leading-snug hover:opacity-70 active:opacity-70">{name}</a>
       </div>
 
       <div class="mt-1 text-sm">
@@ -71,7 +71,7 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
       {defaultLabels.length > 0 && (
         <div class="mt-2 flex flex-wrap gap-1">
           {defaultLabels.map(label => (
-            <span class="rounded-full border border-[var(--line)] px-2 py-0.5 text-[10px] leading-tight" style="color: var(--muted);">
+            <span class="rounded-full border border-[var(--line)] px-2 py-0.5 text-xs leading-tight" style="color: var(--muted);">
               {label}
             </span>
           ))}
@@ -80,14 +80,14 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     </div>
 
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1" data-qty-wrap>
-        <button type="button" class="h-7 w-7 cursor-pointer rounded-full hover:bg-white/70" data-dec aria-label="Decrease">−</button>
+      <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-1.5 py-1" data-qty-wrap>
+        <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-dec aria-label="Decrease">−</button>
         <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={cartKey}>0</span>
-        <button type="button" class="h-7 w-7 cursor-pointer rounded-full hover:bg-white/70" data-inc aria-label="Increase">+</button>
+        <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-inc aria-label="Increase">+</button>
       </div>
 
       {hasOptions ? (
-        <a href={href} class="text-[11px] hover:opacity-70 underline underline-offset-2" style="color: var(--muted);">
+        <a href={href} class="px-1 py-1 text-xs hover:opacity-70 active:opacity-70 underline underline-offset-2" style="color: var(--muted);">
           Customise →
         </a>
       ) : (

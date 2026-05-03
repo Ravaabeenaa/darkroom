@@ -158,7 +158,7 @@ export const prerender = false;
         { n: "02", title: "Drop off your film", body: "We'll contact you on your preferred messaging app to arrange a convenient drop-off time." },
         { n: "03", title: "Pick up your scans", body: "Once processed, we'll notify you. Your digital scans will be delivered or ready for collection." },
       ].map(step => (
-        <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-8">
+        <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-5 md:p-8">
           <div class="font-mono text-4xl" style="color: var(--red);">{step.n}</div>
           <div class="mt-4 text-lg font-semibold">{step.title}</div>
           <p class="mt-2 text-sm leading-6" style="color: var(--muted);">{step.body}</p>

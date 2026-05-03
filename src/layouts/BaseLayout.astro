@@ -32,7 +32,9 @@ if (db) {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#ED1C24" />
+    <meta name="color-scheme" content="dark light" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{title}</title>
     <style>
@@ -173,12 +175,12 @@ if (db) {
               Cart
               <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>
             </a>
-            <a href="/shop" class="hover:opacity-70">Shop</a>
-            <a href="/services" class="hover:opacity-70">Services</a>
-            <a href="/about" class="hover:opacity-70">About Us</a>
-            <a href="/about#contact" class="hover:opacity-70">Contact</a>
+            <a href="/shop" class="hover:opacity-70 active:opacity-70">Shop</a>
+            <a href="/services" class="hover:opacity-70 active:opacity-70">Services</a>
+            <a href="/about" class="hover:opacity-70 active:opacity-70">About Us</a>
+            <a href="/about#contact" class="hover:opacity-70 active:opacity-70">Contact</a>
 
-            {isAdmin && <a href="/admin" class="hover:opacity-70">Admin</a>}
+            {isAdmin && <a href="/admin" class="hover:opacity-70 active:opacity-70">Admin</a>}
 
             <!-- Theme switcher (desktop) -->
             <div id="drThemeWrapper" class="relative">
@@ -223,9 +225,9 @@ if (db) {
 
             <div class="text-sm">
               <div class="grid gap-2">
-                <a href="/shop" class="hover:opacity-70">Shop</a>
-                <a href="/services" class="hover:opacity-70">Services</a>
-                <a href="/about" class="hover:opacity-70">About Us</a>
+                <a href="/shop" class="hover:opacity-70 active:opacity-70">Shop</a>
+                <a href="/services" class="hover:opacity-70 active:opacity-70">Services</a>
+                <a href="/about" class="hover:opacity-70 active:opacity-70">About Us</a>
               </div>
             </div>
 
@@ -253,11 +255,11 @@ if (db) {
         <button id="drMenuClose" class="flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none" aria-label="Close menu">×</button>
       </div>
       <div class="mt-12 flex flex-col gap-6 text-xl">
-        <a href="/shop" class="hover:opacity-70">Shop</a>
-        <a href="/services" class="hover:opacity-70">Services</a>
-        <a href="/about" class="hover:opacity-70">About Us</a>
-        <a href="/about#contact" class="hover:opacity-70">Contact</a>
-        {isAdmin && <a href="/admin" class="hover:opacity-70">Admin</a>}
+        <a href="/shop" class="hover:opacity-70 active:opacity-70">Shop</a>
+        <a href="/services" class="hover:opacity-70 active:opacity-70">Services</a>
+        <a href="/about" class="hover:opacity-70 active:opacity-70">About Us</a>
+        <a href="/about#contact" class="hover:opacity-70 active:opacity-70">Contact</a>
+        {isAdmin && <a href="/admin" class="hover:opacity-70 active:opacity-70">Admin</a>}
       </div>
 
       <!-- Mobile theme switcher -->
