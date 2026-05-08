@@ -247,7 +247,7 @@ if (botToken && chatId) {
     collection_option_label ? `🚚 ${collection_option_label}` : null,
     `💰 MVR ${(total / 100).toFixed(2)}`,
     customer_notes ? `📝 <i>${customer_notes}</i>` : null,
-    `🔗 <a href="https://darkroom-558.pages.dev/admin/orders/${order_id}">View order</a>`,
+    `🔗 <a href="https://darkroombysmolbo1.shop/admin/orders/${order_id}">View order</a>`,
   ].filter(Boolean).join("\n");
 
   const tgFetch = fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
