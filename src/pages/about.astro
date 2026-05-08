@@ -1,18 +1,50 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { contact } from "../lib/contact";
+
+export const prerender = false;
+
+const r2Base = String(Astro.locals.runtime.env.PUBLIC_R2_BASE_URL ?? "").replace(/\/+$/, "");
 ---
 <BaseLayout title="About - DARKROOM">
-  <h1 class="text-5xl md:text-6xl mt-10">Who we are</h1>
 
-  <section id="contact" class="mt-20 rounded-[24px] p-6 md:p-14" style="background: var(--panel);">
+  <section class="mt-10 md:mt-16">
+    <h1 class="text-5xl md:text-6xl">Who we are</h1>
+
+    <div class="mt-10 grid gap-10 md:grid-cols-2 md:gap-16 items-start">
+      <div class="space-y-5 text-sm leading-7" style="color: var(--muted);">
+        <p>
+          Film photography in the Maldives has been difficult to keep up with for too long.
+          With no easy local option for developing and scanning, rolls often had to be sent
+          overseas, making the whole process slow, expensive, and uncertain.
+        </p>
+        <p>
+          This service was started to help change that. It's a small, self-run film developing
+          and scanning service, and currently the only one of its kind in the Maldives. Every
+          roll is handled carefully, whether it's someone's first film, old family memories,
+          travel photos, or personal work. The goal is simple: to make film accessible here
+          again, and to give people a local option they can trust.
+        </p>
+      </div>
+      <div class="overflow-hidden rounded-2xl">
+        <img
+          src={`${r2Base}/services/inspecting.jpg`}
+          alt="Inspecting film"
+          class="w-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="mt-20 overflow-hidden rounded-[24px] p-6 md:p-14" style="background: var(--panel);">
     <h2 class="text-4xl md:text-5xl">Contact us</h2>
     <p class="mt-4 max-w-lg text-sm leading-7" style="color: var(--muted);">
       Reach us through any of the channels below. We're happy to answer questions
       about orders, services, or anything film-related.
     </p>
 
-    <div class="mt-10 grid gap-4 sm:grid-cols-2 max-w-xl">
+    <div class="mt-10 grid w-full gap-4 sm:grid-cols-2">
 
       <a href={`mailto:${contact.email}`}
         class="flex items-center gap-4 rounded-2xl border p-5 hover:bg-[var(--bg)] active:bg-[var(--bg)] transition-colors"
