@@ -1,0 +1,332 @@
+---
+interface Slide {
+  url: string;
+  label: string;
+}
+interface Props {
+  slides: Slide[];
+}
+const { slides } = Astro.props;
+const total = slides.length;
+---
+
+<div class="hc" id="hc">
+
+  <!-- image stage -->
+  <div class="hc-stage" id="hcStage">
+
+    {slides.map((s, i) => (
+      <div class={`hc-slide${i === 0 ? ' is-active' : ''}`} data-idx={i}>
+        <img
+          src={s.url}
+          alt={s.label}
+          class="hc-img"
+          loading={i === 0 ? 'eager' : 'lazy'}
+          decoding="async"
+        />
+      </div>
+    ))}
+
+    <!-- vignette -->
+    <div class="hc-vignette" aria-hidden="true"></div>
+
+    <!-- frame counter (top-right, film-stamp style) -->
+    {total > 1 && (
+      <div class="hc-stamp" aria-hidden="true">
+        <span id="hcNum">01</span><span class="hc-stamp-sep">/</span><span>{String(total).padStart(2, '0')}</span>
+      </div>
+    )}
+
+    <!-- arrow controls -->
+    {total > 1 && (
+      <>
+        <button class="hc-arrow hc-arrow-l" id="hcPrev" aria-label="Previous photo">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 2 4 7l5 5"/>
+          </svg>
+        </button>
+        <button class="hc-arrow hc-arrow-r" id="hcNext" aria-label="Next photo">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 2l5 5-5 5"/>
+          </svg>
+        </button>
+      </>
+    )}
+  </div>
+
+  <!-- caption bar -->
+  <div class="hc-bar" aria-hidden="true">
+    <div class="hc-caption">
+      <span class="hc-bullet" aria-hidden="true"></span>
+      <span class="hc-label" id="hcLabel">{slides[0]?.label ?? ''}</span>
+    </div>
+    {total > 1 && (
+      <div class="hc-pips" role="presentation">
+        {slides.map((_, i) => (
+          <button class={`hc-pip${i === 0 ? ' is-active' : ''}`} data-pip={i} aria-label={`Slide ${i + 1}`}></button>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <!-- progress track -->
+  {total > 1 && (
+    <div class="hc-progress" aria-hidden="true">
+      <div class="hc-progress-fill" id="hcFill"></div>
+    </div>
+  )}
+
+</div>
+
+<style>
+  /* ── STAGE ─────────────────────────────────────────────────── */
+  .hc-stage {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    background: #0a0a0a;
+  }
+  @media (min-width: 768px) {
+    .hc-stage {
+      aspect-ratio: unset;
+      height: 520px;
+    }
+  }
+
+  /* ── SLIDES ─────────────────────────────────────────────────── */
+  .hc-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.65s ease;
+  }
+  .hc-slide.is-active { opacity: 1; }
+
+  .hc-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    will-change: opacity;
+  }
+
+  /* ── VIGNETTE ─────────────────────────────────────────────── */
+  .hc-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ── STAMP (frame counter) ─────────────────────────────────── */
+  .hc-stamp {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 3;
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: rgba(238, 228, 210, 0.55);
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 3px 7px;
+    border-radius: 2px;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .hc-stamp-sep { opacity: 0.4; }
+
+  /* ── ARROWS ─────────────────────────────────────────────────── */
+  .hc-arrow {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(238, 228, 210, 0.14);
+    color: rgba(238, 228, 210, 0.9);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.22s ease, background 0.2s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .hc-arrow-l { left: 10px; }
+  .hc-arrow-r { right: 10px; }
+
+  .hc-stage:hover .hc-arrow,
+  .hc-stage:focus-within .hc-arrow { opacity: 1; }
+  .hc-arrow:hover,
+  .hc-arrow:active  { background: rgba(0, 0, 0, 0.72); }
+
+  /* always visible on touch devices */
+  @media (hover: none) {
+    .hc-arrow { opacity: 0.7 !important; }
+  }
+
+  /* ── CAPTION BAR ─────────────────────────────────────────────── */
+  .hc-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 8px;
+    margin-top: 5px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .hc-caption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .hc-bullet {
+    flex-shrink: 0;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .hc-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.22s ease;
+  }
+  .hc-label.is-fading { opacity: 0; }
+
+  /* ── PIPS ─────────────────────────────────────────────────────── */
+  .hc-pips {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .hc-pip {
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--line);
+    cursor: pointer;
+    transition: background 0.2s ease, width 0.2s ease;
+    padding: 0;
+    border: none;
+  }
+  .hc-pip.is-active {
+    background: var(--red);
+    width: 24px;
+  }
+  .hc-pip:hover { background: var(--muted); }
+
+  /* ── PROGRESS LINE ─────────────────────────────────────────────── */
+  .hc-progress {
+    height: 1px;
+    margin-top: 5px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .hc-progress-fill {
+    height: 100%;
+    width: 0;
+    background: var(--red);
+  }
+  .hc-progress-fill.is-running {
+    animation: hcFill var(--hc-dur, 5000ms) linear forwards;
+  }
+  @keyframes hcFill {
+    from { width: 0; }
+    to   { width: 100%; }
+  }
+</style>
+
+<script is:inline define:vars={{ hcLabels: slides.map(s => s.label), hcInterval: 5000 }}>
+  (function () {
+    const stage    = document.getElementById('hcStage');
+    const slideEls = stage ? stage.querySelectorAll('.hc-slide') : [];
+    const labelEl  = document.getElementById('hcLabel');
+    const numEl    = document.getElementById('hcNum');
+    const fill     = document.getElementById('hcFill');
+    const prevBtn  = document.getElementById('hcPrev');
+    const nextBtn  = document.getElementById('hcNext');
+    const pipBtns  = document.querySelectorAll('#hc .hc-pip');
+
+    if (!slideEls.length) return;
+
+    const total = slideEls.length;
+    var cur = 0;
+    var tmr = null;
+
+    function goTo(idx) {
+      var next = ((idx % total) + total) % total;
+
+      slideEls[cur].classList.remove('is-active');
+      if (pipBtns[cur]) pipBtns[cur].classList.remove('is-active');
+
+      cur = next;
+
+      slideEls[cur].classList.add('is-active');
+      if (pipBtns[cur]) pipBtns[cur].classList.add('is-active');
+
+      if (numEl) numEl.textContent = String(cur + 1).padStart(2, '0');
+
+      if (labelEl) {
+        labelEl.classList.add('is-fading');
+        setTimeout(function () {
+          labelEl.textContent = hcLabels[cur] || '';
+          labelEl.classList.remove('is-fading');
+        }, 200);
+      }
+
+      if (fill) {
+        fill.classList.remove('is-running');
+        fill.style.setProperty('--hc-dur', hcInterval + 'ms');
+        void fill.offsetWidth;
+        fill.classList.add('is-running');
+      }
+    }
+
+    function start() {
+      clearInterval(tmr);
+      if (total > 1) tmr = setInterval(function () { goTo(cur + 1); }, hcInterval);
+    }
+
+    function stop() { clearInterval(tmr); tmr = null; }
+
+    goTo(0);
+    start();
+
+    prevBtn && prevBtn.addEventListener('click', function () { stop(); goTo(cur - 1); start(); });
+    nextBtn && nextBtn.addEventListener('click', function () { stop(); goTo(cur + 1); start(); });
+
+    pipBtns.forEach(function (pip, i) {
+      pip.addEventListener('click', function () { stop(); goTo(i); start(); });
+    });
+
+    stage && stage.addEventListener('mouseenter', stop);
+    stage && stage.addEventListener('mouseleave', start);
+
+    var _tx = 0;
+    if (stage) {
+      stage.addEventListener('touchstart', function (e) { _tx = e.touches[0].clientX; }, { passive: true });
+      stage.addEventListener('touchend', function (e) {
+        var dx = e.changedTouches[0].clientX - _tx;
+        if (Math.abs(dx) > 44) { stop(); goTo(cur + (dx < 0 ? 1 : -1)); start(); }
+      }, { passive: true });
+    }
+  })();
+</script>
