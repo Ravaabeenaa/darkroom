@@ -156,8 +156,8 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       {items.length === 0 ? (
         <p class="mt-4 text-sm" style="color: var(--muted);">No items recorded.</p>
       ) : (
-        <div class="mt-4 overflow-hidden rounded-2xl border border-[var(--line)]">
-          <table class="w-full text-left text-sm" id="itemsTable">
+        <div class="mt-4 overflow-x-auto rounded-2xl border border-[var(--line)]">
+          <table class="w-full min-w-[480px] text-left text-sm" id="itemsTable">
             <thead class="bg-white/5">
               <tr>
                 <th class="px-4 py-3">Service</th>
@@ -241,8 +241,8 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
         {discounts.length === 0 ? (
           <p id="noDiscountsMsg" class="text-sm" style="color: var(--muted);">No manual discounts applied.</p>
         ) : (
-          <div class="overflow-hidden rounded-2xl border border-[var(--line)]" id="discountsTable">
-            <table class="w-full text-left text-sm">
+          <div class="overflow-x-auto rounded-2xl border border-[var(--line)]" id="discountsTable">
+            <table class="w-full min-w-[360px] text-left text-sm">
               <tbody>
                 {discounts.map((d) => (
                   <tr class="border-t border-[var(--line)] first:border-0" data-discount-id={d.id}>
@@ -330,8 +330,8 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
           <p class="mb-4 text-xs" style="color: var(--muted);">
             Immutable snapshot taken at the time the order was placed. Never changes.
           </p>
-          <div class="overflow-hidden rounded-2xl border border-[var(--line)]">
-            <table class="w-full text-left text-sm">
+          <div class="overflow-x-auto rounded-2xl border border-[var(--line)]">
+            <table class="w-full min-w-[360px] text-left text-sm">
               <thead class="bg-white/5">
                 <tr>
                   <th class="px-4 py-3">Service</th>
