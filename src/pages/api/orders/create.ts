@@ -278,7 +278,7 @@ if (botToken && chatId) {
         total_price_cents: total,
         status: "NEW",
       },
-      items: [...orderItems, ...discountItems, ...collectionLineItem],
+      items: [...orderItems, ...collectionLineItem, ...discountItems],
     }),
     { headers: { "content-type": "application/json" } }
   );
