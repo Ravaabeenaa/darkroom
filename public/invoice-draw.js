@@ -23,12 +23,11 @@
     const ROW_H       = 52;
     const TABLE_PAD_TOP = 28;
     const TOTAL_H     = 64;
-    const CONTACT_H   = 52;
     const FOOTER_H    = 72;
 
     const H = HEADER_H + STRIP_H + INFO_H
             + TABLE_PAD_TOP + COL_LABEL_H + items.length * ROW_H
-            + TOTAL_H + CONTACT_H + FOOTER_H;
+            + TOTAL_H + FOOTER_H;
 
     const SCALE = 2; // 2× resolution for crisp output
     const canvas = document.createElement("canvas");
@@ -190,25 +189,14 @@
     ctx.fillText("MVR  " + mvr(order.total_price_cents), W - PAD, y + TOTAL_H / 2 + 12);
 
     y += TOTAL_H;
-
-    // 6. CONTACT MESSAGE
-    ctx.font = "400 11px 'JetBrains Mono', monospace";
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.textAlign = "left";
-    ctx.fillText(
-      "smolbo1 will contact you on " + (order.contact_method || "your preferred method") + " soon.",
-      PAD, y + CONTACT_H / 2 + 4
-    );
-
-    y += CONTACT_H;
     hline(y, 0.08);
 
-    // 7. FOOTER
+    // 6. FOOTER
     ctx.font = "400 9px 'JetBrains Mono', monospace";
     ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.textAlign = "left";
     ctx.fillText((c.email || "") + "  ·  " + (c.phone || ""), PAD, y + 26);
-    ctx.fillText("TELEGRAM  ·  INSTAGRAM", PAD, y + 44);
+    ctx.fillText("TELEGRAM: " + (c.phone || "") + "  ·  INSTAGRAM: " + (c.instagram_handle || "@darkroom.bysmolbo1"), PAD, y + 44);
 
     ctx.textAlign = "right";
     ctx.fillText("Thank you for choosing", W - PAD, y + 26);
