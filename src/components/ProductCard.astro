@@ -160,11 +160,12 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
 
 <style is:global>
   [data-qty-wrap].qty-active {
-    border-color: var(--green);
+    border-color: var(--red);
     transition: border-color 0.25s ease;
   }
   [data-qty-wrap].qty-active [data-dr-cart-qty] {
-    color: var(--green);
+    color: var(--red);
+    font-weight: 700;
     transition: color 0.25s ease;
   }
 </style>
