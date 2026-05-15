@@ -694,7 +694,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
         const ptW = img.naturalWidth  / 2 * 72 / 96;
         const ptH = img.naturalHeight / 2 * 72 / 96;
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ unit: "pt", format: [ptW, ptH], orientation: "portrait" });
+        const pdf = new jsPDF({ unit: "pt", format: [ptW, ptH] });
         pdf.addImage(png, "PNG", 0, 0, ptW, ptH);
         pdf.save(`${orderRef}.pdf`);
       } catch (e) {
