@@ -666,11 +666,11 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
         const img = new Image();
         img.src = png;
         await new Promise((r) => { img.onload = r; });
-        const W = img.naturalWidth / 2;
-        const H = img.naturalHeight / 2;
+        const ptW = img.naturalWidth  / 2 * 72 / 96;
+        const ptH = img.naturalHeight / 2 * 72 / 96;
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ unit: "px", format: [W, H], orientation: "portrait" });
-        pdf.addImage(png, "PNG", 0, 0, W, H);
+        const pdf = new jsPDF({ unit: "pt", format: [ptW, ptH], orientation: "portrait" });
+        pdf.addImage(png, "PNG", 0, 0, ptW, ptH);
         pdf.save(`${orderRef}.pdf`);
       } catch (e) {
         alert("Invoice failed: " + e.message);

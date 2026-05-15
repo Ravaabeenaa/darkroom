@@ -148,8 +148,17 @@ const statusColour: Record<string, string> = {
                       class="dr-invoice-btn cursor-pointer rounded-[999px] bg-[var(--btn)] px-4 py-2 text-xs text-[var(--btnText)] hover:opacity-90"
                       data-order-id={o.id}
                       data-order-ref={o.order_ref}
+                      data-format="png"
                     >
-                      Invoice ↓
+                      PNG ↓
+                    </button>
+                    <button
+                      class="dr-invoice-btn cursor-pointer rounded-[999px] border border-[var(--line)] bg-white/10 px-4 py-2 text-xs hover:bg-white/20"
+                      data-order-id={o.id}
+                      data-order-ref={o.order_ref}
+                      data-format="pdf"
+                    >
+                      PDF ↓
                     </button>
                   </div>
                 </td>
@@ -172,6 +181,7 @@ const statusColour: Record<string, string> = {
   </section>
 
   <script is:inline src="/invoice-draw.js"></script>
+  <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script is:inline>
     // ── Format totals ────────────────────────────────────────────
     document.querySelectorAll("[data-total-cents]").forEach((td) => {
@@ -250,6 +260,7 @@ const statusColour: Record<string, string> = {
       btn.addEventListener("click", async function () {
         const orderId  = this.getAttribute("data-order-id");
         const orderRef = this.getAttribute("data-order-ref");
+        const format   = this.getAttribute("data-format") || "png";
         const orig = this.textContent;
         this.textContent = "…";
         this.disabled = true;
@@ -260,10 +271,23 @@ const statusColour: Record<string, string> = {
           if (!data.ok) throw new Error(data.error || "Failed");
 
           const png = await window.darkroomDrawInvoice(data.order, data.items);
-          const a   = document.createElement("a");
-          a.href     = png;
-          a.download = `${orderRef}.png`;
-          a.click();
+
+          if (format === "pdf") {
+            const img = new Image();
+            img.src = png;
+            await new Promise((r) => { img.onload = r; });
+            const ptW = img.naturalWidth  / 2 * 72 / 96;
+            const ptH = img.naturalHeight / 2 * 72 / 96;
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: "pt", format: [ptW, ptH], orientation: "portrait" });
+            pdf.addImage(png, "PNG", 0, 0, ptW, ptH);
+            pdf.save(`${orderRef}.pdf`);
+          } else {
+            const a   = document.createElement("a");
+            a.href     = png;
+            a.download = `${orderRef}.png`;
+            a.click();
+          }
         } catch (e) {
           alert("Invoice failed: " + e.message);
         } finally {
