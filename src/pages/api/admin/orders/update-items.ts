@@ -24,8 +24,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     if (!item.id || typeof item.qty !== "number" || typeof item.unit_price_cents !== "number") {
       return new Response(JSON.stringify({ ok: false, error: "Invalid item data" }), { status: 400 });
     }
-    if (item.qty < 0 || item.unit_price_cents < 0) {
-      return new Response(JSON.stringify({ ok: false, error: "Negative values not allowed" }), { status: 400 });
+    if (item.qty < 0) {
+      return new Response(JSON.stringify({ ok: false, error: "Negative quantity not allowed" }), { status: 400 });
     }
   }
 
