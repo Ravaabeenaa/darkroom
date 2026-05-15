@@ -83,13 +83,14 @@ const total = slides.length;
   .hc-stage {
     position: relative;
     overflow: hidden;
-    aspect-ratio: 4 / 3;
     background: #0a0a0a;
+    height: 75vw;
+    max-height: 480px;
   }
   @media (min-width: 768px) {
     .hc-stage {
-      aspect-ratio: unset;
       height: 520px;
+      max-height: none;
     }
   }
 
