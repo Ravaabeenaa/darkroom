@@ -7,6 +7,7 @@ const {
   priceCents,
   compareAtCents,
   badge,
+  outOfStock = false,
   turnaroundOptions = [],
   turnaroundPrices  = [],
   pushpullOptions   = [],
@@ -40,7 +41,7 @@ const displayPrice = priceCents
 const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as string[];
 ---
 
-<article data-dr-product-card data-id={cartKey} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col">
+<article data-dr-product-card data-id={cartKey} data-out-of-stock={outOfStock ? "1" : ""} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col">
   <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
     {image ? (
       <img src={image} alt={name} class="aspect-[4/3] w-full object-cover" loading="lazy" />
@@ -79,21 +80,29 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
       )}
     </div>
 
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-1.5 py-1" data-qty-wrap>
-        <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-dec aria-label="Decrease">−</button>
-        <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={cartKey}>0</span>
-        <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-inc aria-label="Increase">+</button>
+    {outOfStock ? (
+      <div class="flex items-center gap-2">
+        <span class="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium" style="color: var(--muted);">
+          Out of stock
+        </span>
       </div>
+    ) : (
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-1.5 py-1" data-qty-wrap>
+          <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-dec aria-label="Decrease">−</button>
+          <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={cartKey}>0</span>
+          <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-inc aria-label="Increase">+</button>
+        </div>
 
-      {hasOptions ? (
-        <a href={href} class="px-1 py-1 text-xs hover:opacity-70 active:opacity-70 underline underline-offset-2" style="color: var(--muted);">
-          Customise →
-        </a>
-      ) : (
-        <span class="text-base" style="color: var(--muted);">🛒</span>
-      )}
-    </div>
+        {hasOptions ? (
+          <a href={href} class="px-1 py-1 text-xs hover:opacity-70 active:opacity-70 underline underline-offset-2" style="color: var(--muted);">
+            Customise →
+          </a>
+        ) : (
+          <span class="text-base" style="color: var(--muted);">🛒</span>
+        )}
+      </div>
+    )}
   </div>
 </article>
 
@@ -129,8 +138,9 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     }
 
     const shopClosed = document.body.dataset.shopClosed === "1";
+    const isOutOfStock = card.dataset.outOfStock === "1";
 
-    if (shopClosed) {
+    if (shopClosed || isOutOfStock) {
       if (incBtn) incBtn.disabled = true;
       if (decBtn) decBtn.disabled = true;
     } else {

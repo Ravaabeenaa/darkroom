@@ -67,6 +67,20 @@ const items = currentRes.results ?? [];
 const originalItems = originalRes.results ?? [];
 const discounts = discountsRes.results ?? [];
 
+// Fetch current stock for all service items so we can warn when qty > stock
+const serviceIds = [...new Set(items.filter(it => it.service_id).map(it => it.service_id!))] as string[];
+const stockMap: Record<string, number> = {};
+if (serviceIds.length > 0) {
+  const placeholders = serviceIds.map(() => "?").join(",");
+  const stockRes = await db
+    .prepare(`SELECT id, stock FROM services WHERE id IN (${placeholders})`)
+    .bind(...serviceIds)
+    .all<{ id: string; stock: number }>();
+  for (const row of stockRes.results ?? []) {
+    stockMap[row.id] = row.stock;
+  }
+}
+
 const serviceGroups = [...new Set(items.map(it => it.service_group).filter(Boolean))] as string[];
 const itemsList = items.filter(it => it.service_id !== null).map(it => ({ id: it.id, name: it.service_name }));
 
@@ -186,6 +200,17 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
                       {it.service_group && (
                         <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
                       )}
+                      {it.service_id && stockMap[it.service_id] !== undefined && (() => {
+                        const stock = stockMap[it.service_id!];
+                        const isUnlimited = stock === -1;
+                        const overStock = !isUnlimited && it.quantity > stock;
+                        return (
+                          <div class="mt-1 text-xs" style={overStock ? "color: var(--orange);" : "color: var(--muted);"}>
+                            {isUnlimited ? "∞ in stock" : `${stock} in stock`}
+                            {overStock && <span> — ⚠ qty exceeds stock</span>}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td class="px-4 py-2 text-right">
                       <input

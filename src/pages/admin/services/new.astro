@@ -59,6 +59,17 @@ const msg = Astro.url.searchParams.get("msg") || "";
           <input type="checkbox" name="active" checked />
           Active (visible in shop)
         </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Stock quantity</span>
+          <input name="stock" type="number" step="1" value="-1" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+          <p class="mt-1 text-xs" style="color: var(--muted);">-1 = unlimited (services that don't deplete stock)</p>
+        </label>
+
+        <label class="flex items-center gap-2 text-sm" style="color: var(--muted);">
+          <input type="checkbox" name="out_of_stock" />
+          Display as "Out of stock" to customers
+        </label>
       </div>
 
       <label class="block">

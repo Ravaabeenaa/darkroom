@@ -82,6 +82,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const bulk_discount_percent = Math.min(100, Math.max(1, parseInt(String(form.get("bulk_discount_percent") ?? "5"), 10) || 5));
   const tags = String(form.get("tags") ?? "").trim() || null;
   const notes = String(form.get("notes") ?? "").trim() || null;
+  const stock = parseInt(String(form.get("stock") ?? "-1"), 10);
+  const stockVal = Number.isFinite(stock) ? stock : -1;
+  const out_of_stock = toInt01(form.get("out_of_stock"));
 
   const primary_image_key = String(form.get("primary_image_key") ?? "").trim() || null;
 
@@ -114,9 +117,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .prepare(
       `
       INSERT INTO services
-        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, updated_at)
+        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stock, out_of_stock, updated_at)
       VALUES
-        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              datetime('now'))
+        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              ?,     ?,            datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         service_group=excluded.service_group,
@@ -134,10 +137,12 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         turnaround_prices=excluded.turnaround_prices,
         pushpull_options=excluded.pushpull_options,
         pushpull_prices=excluded.pushpull_prices,
+        stock=excluded.stock,
+        out_of_stock=excluded.out_of_stock,
         updated_at=datetime('now');
     `
     )
-    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices)
+    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stockVal, out_of_stock)
     .run();
 
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);
