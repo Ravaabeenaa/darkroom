@@ -129,6 +129,13 @@ function imgUrl(key: string | null) {
           <textarea id="custNotes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none"></textarea>
         </label>
 
+        <div id="deliveryAddrWrap" style="display:none;">
+          <label class="block">
+            <span class="text-sm font-medium">Delivery address</span>
+            <textarea id="deliveryAddr" rows="2" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" placeholder="Street, building, apartment, island…"></textarea>
+          </label>
+        </div>
+
         <button
           id="checkoutBtn"
           type="button"
@@ -195,7 +202,22 @@ function imgUrl(key: string | null) {
     const phoneErr = document.getElementById("phoneErr");
     const checkoutBtn = document.getElementById("checkoutBtn");
     const checkoutStatus = document.getElementById("checkoutStatus");
+    const deliveryAddrEl = document.getElementById("deliveryAddr");
+    const deliveryAddrWrap = document.getElementById("deliveryAddrWrap");
     const CUSTOMER_KEY = "dr_customer_v1";
+
+    function isDeliverySelected() {
+      const sel = document.getElementById("collectionSelect");
+      if (!sel) return false;
+      return sel.value.toLowerCase().includes("delivery");
+    }
+
+    function toggleDeliveryAddr() {
+      if (!deliveryAddrWrap) return;
+      const show = isDeliverySelected();
+      deliveryAddrWrap.style.display = show ? "block" : "none";
+      if (!show && deliveryAddrEl) deliveryAddrEl.value = "";
+    }
 
     
 
@@ -412,6 +434,7 @@ function imgUrl(key: string | null) {
       if (!phone || !onlyDigits(phone)) ok = false;
       if (!method) ok = false;
       if (!items.length) ok = false;
+      if (isDeliverySelected() && !(deliveryAddrEl?.value.trim())) ok = false;
 
       phoneErr.style.display = (phone && !onlyDigits(phone)) ? "block" : "none";
       checkoutBtn.disabled = !ok;
@@ -678,6 +701,7 @@ function imgUrl(key: string | null) {
         customer_email: emailEl.value.trim() || null,
         customer_notes: notesEl.value.trim() || null,
         collection_option: collectionLabel,
+        delivery_address: isDeliverySelected() ? (deliveryAddrEl?.value.trim() || null) : null,
         cart: getCartItems().map(it => ({
           service_id: it.id,
           qty: it.qty,
@@ -746,6 +770,7 @@ function imgUrl(key: string | null) {
 
     // initial
     renderCart();
+    toggleDeliveryAddr();
     validate();
 
     // react to cart changes
@@ -754,11 +779,15 @@ function imgUrl(key: string | null) {
       validate();
     });
 
-    // update total when collection changes
+    // update total + delivery address field when collection changes
     document.getElementById("collectionSelect")?.addEventListener("change", () => {
       const items = getCartItems();
       cartTotalEl.textContent = window.DarkroomCart.formatMVR(calcTotal(items));
+      toggleDeliveryAddr();
+      validate();
     });
+
+    deliveryAddrEl?.addEventListener("input", validate);
 
     // enforce digits-only phone
     nameEl.addEventListener("input", () => {

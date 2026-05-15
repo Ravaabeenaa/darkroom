@@ -32,6 +32,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const customer_email = String(body?.customer_email ?? "").trim();
   const customer_notes = String(body?.customer_notes ?? "").trim();
   const collection_option_label = String(body?.collection_option ?? "").trim() || null;
+  const delivery_address = String(body?.delivery_address ?? "").trim() || null;
   const cart = body?.cart && typeof body.cart === "object" ? body.cart : null;
 
   if (!customer_name)
@@ -157,7 +158,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
             unit_price_cents: collection_option_cents,
             quantity: 1,
             line_total_cents: collection_option_cents,
-            service_group: null,
+            service_group: delivery_address,
             turnaround_option: null,
             pushpull_option: null,
           });

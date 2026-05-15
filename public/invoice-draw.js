@@ -145,11 +145,12 @@
     hline(y);
 
     for (var j = 0; j < items.length; j++) {
-      var it         = items[j];
-      var name       = String(it.service_name || it.name || "");
-      var group      = String(it.service_group || "");
-      var isDiscount = (it.line_total_cents < 0);
-      var qty        = isDiscount ? "" : String(it.quantity || it.qty || 0);
+      var it           = items[j];
+      var name         = String(it.service_name || it.name || "");
+      var group        = String(it.service_group || "");
+      var isDiscount   = (it.line_total_cents < 0);
+      var isCollection = (it.service_id == null && it.line_total_cents > 0);
+      var qty          = isDiscount ? "" : String(it.quantity || it.qty || 0);
       var absCents   = Math.abs(it.line_total_cents);
       var amt        = isDiscount ? ("−MVR " + mvr(absCents)) : ("MVR " + mvr(it.line_total_cents));
 
@@ -161,7 +162,7 @@
       if (group && !isDiscount) {
         ctx.font = "400 10px 'JetBrains Mono', monospace";
         ctx.fillStyle = MUTED_DARK;
-        ctx.fillText(group.toUpperCase(), PAD, y + 36);
+        ctx.fillText(isCollection ? group : group.toUpperCase(), PAD, y + 36);
       }
 
       ctx.font = "400 13px 'JetBrains Mono', monospace";
