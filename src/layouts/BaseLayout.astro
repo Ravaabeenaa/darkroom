@@ -164,13 +164,13 @@ if (db) {
           {announcement}
         </div>
       )}
-      <header class="sticky top-0 z-30 px-6 py-4 bg-[var(--red)]">
+      <header class="sticky top-0 z-30 pl-4 pr-6 bg-[var(--red)] dr-header">
         <div class="mx-auto flex max-w-[var(--container)] items-center justify-between">
           <a href="/" class="block" aria-label="Darkroom home">
-            <img src="/images/logos/logo-dark.png" alt="darkroom by smolbo1" class="h-8 w-auto" />
+            <img src="/images/logos/logo-dark.png" alt="darkroom by smolbo1" class="dr-header-logo" />
           </a>
 
-          <nav class="hidden gap-8 text-sm font-medium text-black md:flex items-center">
+          <nav class="hidden gap-8 font-medium text-black md:flex items-center dr-header-nav">
             <a href="/cart" class="relative flex items-center hover:opacity-70">
               Cart
               <span id="drCartCount" class="ml-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-black px-2 py-0.5 text-xs text-white" style="display:none"></span>

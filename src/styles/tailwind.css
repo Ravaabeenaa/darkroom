@@ -54,11 +54,31 @@
   --container:   1200px;
   --gap:         24px;
 
+  /* Header */
+  --header-py:       1rem;
+  --header-logo-h:   32px;
+  --header-nav-size: 0.8125rem;
+
   /* Fonts */
   --font-display: 'League Gothic', 'Arial Narrow', sans-serif;
   --font-serif:   'League Gothic', 'Arial Narrow', sans-serif;
   --font-sans:    'JetBrains Mono', monospace;
 }
+
+@media (min-width: 768px) {
+  :root {
+    --header-py:       1.625rem;
+    --header-logo-h:   46px;
+    --header-nav-size: 0.9375rem;
+  }
+}
+
+.dr-header {
+  padding-top:    var(--header-py);
+  padding-bottom: var(--header-py);
+}
+.dr-header-logo { height: var(--header-logo-h); width: auto; }
+.dr-header-nav  { font-size: var(--header-nav-size); }
 
 /* ─── Light theme ────────────────────────────────────────────── */
 [data-theme="light"] {
