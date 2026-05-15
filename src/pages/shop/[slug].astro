@@ -150,29 +150,37 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
         </div>
       )}
 
-      <!-- Cart controls (NO redirect to /cart) -->
-      <div class="mt-8 flex flex-wrap items-center gap-4">
+      <!-- Cart controls -->
+      <div class="mt-8">
         {service.out_of_stock === 1 ? (
-          <>
-            <span class="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-medium" style="color: var(--muted);">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="rounded-full border border-[var(--line)] px-4 py-2.5 text-sm font-medium" style="color: var(--muted);">
               Out of stock
             </span>
-            <a class="rounded-[999px] border border-[var(--line)] bg-white/40 px-5 py-2 text-sm hover:bg-white/70" href="/shop">
+            <a class="rounded-[999px] border border-[var(--line)] bg-white/40 px-5 py-2.5 text-sm hover:bg-white/70" href="/shop">
               Back to shop
             </a>
-          </>
+          </div>
         ) : (
           <>
-            <div class="flex items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/40 px-2 py-1" id="qtyWrap">
-              <button type="button" class="h-11 w-11 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" id="decBtn">−</button>
-              <span id="qtyDisplay" class="w-10 text-center text-base tabular-nums">0</span>
-              <button type="button" class="h-11 w-11 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" id="incBtn">+</button>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="flex items-center rounded-[999px] border border-[var(--line)] bg-white/40 px-1.5 py-1" id="qtyWrap">
+                <button type="button" class="h-11 w-11 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70 text-lg" id="decBtn">−</button>
+                <span id="qtyDisplay" class="w-10 text-center text-base tabular-nums">1</span>
+                <button type="button" class="h-11 w-11 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70 text-lg" id="incBtn">+</button>
+              </div>
+
+              <button type="button" class="cursor-pointer rounded-[999px] bg-[var(--btn)] px-7 py-2.5 text-sm font-medium text-[var(--btnText)] hover:opacity-90 active:opacity-90" id="addToCartBtn">
+                Add to cart
+              </button>
+
+              <a class="rounded-[999px] border border-[var(--line)] bg-white/40 px-5 py-2.5 text-sm hover:bg-white/70" href="/cart">
+                View cart
+              </a>
             </div>
 
-            <span class="text-base" style="color: var(--muted);">🛒</span>
-
-            <a class="rounded-[999px] border border-[var(--line)] bg-white/40 px-5 py-2 text-sm hover:bg-white/70" href="/shop">
-              Back to shop
+            <a class="mt-3 block text-xs hover:opacity-70" style="color: var(--muted);" href="/shop">
+              ← Back to shop
             </a>
           </>
         )}
@@ -191,18 +199,19 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
 
   <script define:vars={{ serviceId: service.id, basePriceCents: service.price_cents }}>
     (function () {
-      const priceEl      = document.getElementById("priceMvr");
-      const qtyEl        = document.getElementById("qtyDisplay");
-      const incBtn       = document.getElementById("incBtn");
-      const decBtn       = document.getElementById("decBtn");
-      const turnaroundEl = document.getElementById("turnaroundSelect");
-      const pushpullEl   = document.getElementById("pushpullSelect");
+      var priceEl      = document.getElementById("priceMvr");
+      var qtyEl        = document.getElementById("qtyDisplay");
+      var incBtn       = document.getElementById("incBtn");
+      var decBtn       = document.getElementById("decBtn");
+      var addToCartBtn = document.getElementById("addToCartBtn");
+      var turnaroundEl = document.getElementById("turnaroundSelect");
+      var pushpullEl   = document.getElementById("pushpullSelect");
 
       function selectedOptionPrice(selectEl) {
         if (!selectEl) return 0;
-        const opt = selectEl.options[selectEl.selectedIndex];
-        const raw = opt?.getAttribute("data-price") ?? "+0";
-        const n = parseFloat(raw.replace(/^\+/, "")) || 0;
+        var opt = selectEl.options[selectEl.selectedIndex];
+        var raw = opt ? (opt.getAttribute("data-price") || "+0") : "+0";
+        var n = parseFloat(raw.replace(/^\+/, "")) || 0;
         return Math.round(n * 100);
       }
 
@@ -213,48 +222,51 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
       }
 
       function getCurrentKey() {
-        const t = turnaroundEl?.value || null;
-        const p = pushpullEl?.value   || null;
+        var t = turnaroundEl ? turnaroundEl.value || null : null;
+        var p = pushpullEl   ? pushpullEl.value   || null : null;
         return window.DarkroomCart.makeKey(serviceId, t, p);
       }
 
-      const qtyWrap = document.getElementById("qtyWrap");
+      var pending = 1;
 
       function renderAll() {
         if (!window.DarkroomCart) return;
         if (priceEl) priceEl.textContent = window.DarkroomCart.formatMVR(currentUnitPrice());
-        const qty = window.DarkroomCart.getQty(getCurrentKey());
-        if (qtyEl) qtyEl.textContent = String(qty);
-        if (qtyWrap) qtyWrap.classList.toggle("qty-active", qty > 0);
+        if (qtyEl) qtyEl.textContent = String(pending);
       }
 
-      const shopClosed = document.body.dataset.shopClosed === "1";
+      var shopClosed = document.body.dataset.shopClosed === "1";
 
       if (!shopClosed) {
-        incBtn?.addEventListener("click", (e) => {
+        incBtn && incBtn.addEventListener("click", function (e) {
           e.preventDefault();
-          window.DarkroomCart.inc(getCurrentKey());
-          window.DarkroomCart.toast("Added to cart");
+          pending++;
           renderAll();
         });
 
-        decBtn?.addEventListener("click", (e) => {
+        decBtn && decBtn.addEventListener("click", function (e) {
           e.preventDefault();
-          const key = getCurrentKey();
-          const before = window.DarkroomCart.getQty(key);
-          window.DarkroomCart.dec(key);
-          const after = window.DarkroomCart.getQty(key);
-          if (before > 0 && after < before) window.DarkroomCart.toast("Removed from cart");
+          if (pending > 1) { pending--; renderAll(); }
+        });
+
+        addToCartBtn && addToCartBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          if (!window.DarkroomCart) return;
+          var key = getCurrentKey();
+          var current = window.DarkroomCart.getQty(key);
+          window.DarkroomCart.setQty(key, current + pending);
+          window.DarkroomCart.toast("Added to cart");
+          pending = 1;
           renderAll();
         });
       } else {
         if (incBtn) incBtn.disabled = true;
         if (decBtn) decBtn.disabled = true;
+        if (addToCartBtn) addToCartBtn.disabled = true;
       }
 
-      turnaroundEl?.addEventListener("change", renderAll);
-      pushpullEl?.addEventListener("change", renderAll);
-      window.addEventListener("dr-cart-changed", renderAll);
+      turnaroundEl && turnaroundEl.addEventListener("change", renderAll);
+      pushpullEl   && pushpullEl.addEventListener("change", renderAll);
       renderAll();
     })();
   </script>

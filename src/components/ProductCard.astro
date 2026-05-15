@@ -81,25 +81,25 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
     </div>
 
     {outOfStock ? (
-      <div class="flex items-center gap-2">
-        <span class="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium" style="color: var(--muted);">
-          Out of stock
-        </span>
-      </div>
+      <span class="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-medium self-start" style="color: var(--muted);">
+        Out of stock
+      </span>
     ) : (
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div class="flex items-center gap-1 rounded-[999px] border border-[var(--line)] bg-white/40 px-1.5 py-1" data-qty-wrap>
-          <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-dec aria-label="Decrease">−</button>
-          <span class="w-6 text-center text-sm tabular-nums" data-dr-cart-qty={cartKey}>0</span>
-          <button type="button" class="h-9 w-9 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70" data-inc aria-label="Increase">+</button>
+      <div class="space-y-2">
+        <div class="flex gap-2">
+          <div class="flex items-center rounded-[999px] border border-[var(--line)] bg-white/40 px-1 py-1" data-qty-wrap>
+            <button type="button" class="h-8 w-8 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70 text-base" data-dec aria-label="Decrease">−</button>
+            <span class="w-7 text-center text-sm tabular-nums" data-pending-qty>1</span>
+            <button type="button" class="h-8 w-8 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70 text-base" data-inc aria-label="Increase">+</button>
+          </div>
+          <button type="button" class="flex-1 cursor-pointer rounded-[999px] bg-[var(--btn)] px-3 py-2 text-sm font-medium text-[var(--btnText)] hover:opacity-90 active:opacity-90" data-add-to-cart>
+            Add to cart
+          </button>
         </div>
-
-        {hasOptions ? (
-          <a href={href} class="px-1 py-1 text-xs hover:opacity-70 active:opacity-70 underline underline-offset-2" style="color: var(--muted);">
-            Customise →
+        {hasOptions && (
+          <a href={href} class="block text-xs underline underline-offset-2 hover:opacity-70 active:opacity-70" style="color: var(--muted);">
+            Customise options →
           </a>
-        ) : (
-          <span class="text-base" style="color: var(--muted);">🛒</span>
         )}
       </div>
     )}
@@ -108,74 +108,63 @@ const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as st
 
 <script is:inline>
   (function () {
-    const card = document.currentScript?.previousElementSibling;
+    var card = document.currentScript?.previousElementSibling;
     if (!card) return;
 
-    const cartKey = card.getAttribute("data-id");
+    var cartKey = card.getAttribute("data-id");
     if (!cartKey) return;
 
-    const incBtn  = card.querySelector("[data-inc]");
-    const decBtn  = card.querySelector("[data-dec]");
-    const qtyEl   = card.querySelector(`[data-dr-cart-qty="${CSS.escape(cartKey)}"]`);
+    var incBtn    = card.querySelector("[data-inc]");
+    var decBtn    = card.querySelector("[data-dec]");
+    var pendingEl = card.querySelector("[data-pending-qty]");
+    var addBtn    = card.querySelector("[data-add-to-cart]");
 
     // Price formatting
-    const priceEl = card.querySelector("[data-price-cents]");
+    var priceEl = card.querySelector("[data-price-cents]");
     if (priceEl && window.DarkroomCart) {
       priceEl.textContent = window.DarkroomCart.formatMVR(Number(priceEl.getAttribute("data-price-cents") || "0"));
     }
-    const compareEl = card.querySelector("[data-compare-cents]");
+    var compareEl = card.querySelector("[data-compare-cents]");
     if (compareEl && window.DarkroomCart) {
       compareEl.textContent = window.DarkroomCart.formatMVR(Number(compareEl.getAttribute("data-compare-cents") || "0"));
     }
 
-    const qtyWrap = card.querySelector("[data-qty-wrap]");
+    var pending = 1;
 
-    function render() {
-      if (!window.DarkroomCart || !qtyEl) return;
-      const qty = window.DarkroomCart.getQty(cartKey);
-      qtyEl.textContent = String(qty);
-      if (qtyWrap) qtyWrap.classList.toggle("qty-active", qty > 0);
+    function renderPending() {
+      if (pendingEl) pendingEl.textContent = String(pending);
     }
 
-    const shopClosed = document.body.dataset.shopClosed === "1";
-    const isOutOfStock = card.dataset.outOfStock === "1";
+    var shopClosed  = document.body.dataset.shopClosed === "1";
+    var isOutOfStock = card.dataset.outOfStock === "1";
 
     if (shopClosed || isOutOfStock) {
       if (incBtn) incBtn.disabled = true;
       if (decBtn) decBtn.disabled = true;
+      if (addBtn) addBtn.disabled = true;
     } else {
-      incBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        window.DarkroomCart?.inc(cartKey);
-        window.DarkroomCart?.toast("Added to cart");
-        render();
+      incBtn && incBtn.addEventListener("click", function (e) {
+        e.preventDefault(); e.stopPropagation();
+        pending++;
+        renderPending();
       });
 
-      decBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const before = window.DarkroomCart?.getQty(cartKey) || 0;
-        window.DarkroomCart?.dec(cartKey);
-        const after  = window.DarkroomCart?.getQty(cartKey) || 0;
-        if (before > 0 && after < before) window.DarkroomCart?.toast("Removed from cart");
-        render();
+      decBtn && decBtn.addEventListener("click", function (e) {
+        e.preventDefault(); e.stopPropagation();
+        if (pending > 1) { pending--; renderPending(); }
+      });
+
+      addBtn && addBtn.addEventListener("click", function (e) {
+        e.preventDefault(); e.stopPropagation();
+        if (!window.DarkroomCart) return;
+        var current = window.DarkroomCart.getQty(cartKey);
+        window.DarkroomCart.setQty(cartKey, current + pending);
+        window.DarkroomCart.toast("Added to cart");
+        pending = 1;
+        renderPending();
       });
     }
 
-    window.addEventListener("dr-cart-changed", render);
-    render();
+    renderPending();
   })();
 </script>
-
-<style is:global>
-  [data-qty-wrap].qty-active {
-    border-color: var(--red);
-    transition: border-color 0.25s ease;
-  }
-  [data-qty-wrap].qty-active [data-dr-cart-qty] {
-    color: var(--red);
-    font-weight: 700;
-    transition: color 0.25s ease;
-  }
-</style>
