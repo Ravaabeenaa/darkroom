@@ -76,9 +76,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const placeholders = ids.map(() => "?").join(",");
 
   const svcRes = await db
-    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
+    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
     .bind(...ids)
-    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null }>();
+    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; bulk_discount_min: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null }>();
 
   const svcs = new Map((svcRes.results ?? []).map((s) => [s.id, s]));
   const missing = norm.filter((x) => !svcs.has(x.id));
@@ -109,28 +109,30 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   // ── Bulk discount logic ───────────────────────────────────────────────────
   const discountItems: { service_id: null; service_name: string; unit_price_cents: number; quantity: number; line_total_cents: number; service_group: null }[] = [];
 
-  // Mode 1: group-level — eligible=1, aggregate by service_group, qty ≥ 5
-  const groupMap = new Map<string, { totalQty: number; totalCents: number; minPct: number }>();
+  // Mode 1: group-level — eligible=1, aggregate by service_group, qty ≥ bulk_discount_min
+  const groupMap = new Map<string, { totalQty: number; totalCents: number; minPct: number; minQty: number }>();
   for (const oi of orderItems) {
     const svc = svcs.get(oi.service_id);
     if (!svc || svc.bulk_discount_eligible !== 1 || !svc.service_group) continue;
     const g   = svc.service_group;
     const pct = svc.bulk_discount_percent ?? 5;
-    const prev = groupMap.get(g) ?? { totalQty: 0, totalCents: 0, minPct: pct };
-    groupMap.set(g, { totalQty: prev.totalQty + oi.quantity, totalCents: prev.totalCents + oi.line_total_cents, minPct: Math.min(prev.minPct, pct) });
+    const min = svc.bulk_discount_min ?? 5;
+    const prev = groupMap.get(g) ?? { totalQty: 0, totalCents: 0, minPct: pct, minQty: min };
+    groupMap.set(g, { totalQty: prev.totalQty + oi.quantity, totalCents: prev.totalCents + oi.line_total_cents, minPct: Math.min(prev.minPct, pct), minQty: Math.min(prev.minQty, min) });
   }
-  for (const [group, { totalQty, totalCents, minPct }] of groupMap) {
-    if (totalQty >= 5) {
+  for (const [group, { totalQty, totalCents, minPct, minQty }] of groupMap) {
+    if (totalQty >= minQty) {
       const unitCents = -Math.round(totalCents * 0.01); // -1% of group total
       discountItems.push({ service_id: null, service_name: `Bulk discount (${group})`, unit_price_cents: unitCents, quantity: minPct, line_total_cents: unitCents * minPct, service_group: null });
     }
   }
 
-  // Mode 2: item-level — eligible=2, same service + same options, qty ≥ 5
+  // Mode 2: item-level — eligible=2, same service + same options, qty ≥ bulk_discount_min
   for (const oi of orderItems) {
     const svc = svcs.get(oi.service_id);
     if (!svc || svc.bulk_discount_eligible !== 2) continue;
-    if (oi.quantity >= 5) {
+    const min = svc.bulk_discount_min ?? 5;
+    if (oi.quantity >= min) {
       const pct = svc.bulk_discount_percent ?? 5;
       const unitCents = -Math.round(oi.line_total_cents * 0.01); // -1% of item line total
       discountItems.push({ service_id: null, service_name: `Bulk discount (${svc.name})`, unit_price_cents: unitCents, quantity: pct, line_total_cents: unitCents * pct, service_group: null });

@@ -80,6 +80,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const featured = toInt01(form.get("featured"));
   const bulk_discount_eligible = Math.min(2, Math.max(0, parseInt(String(form.get("bulk_discount_eligible") ?? "0"), 10) || 0));
   const bulk_discount_percent = Math.min(100, Math.max(1, parseInt(String(form.get("bulk_discount_percent") ?? "5"), 10) || 5));
+  const bulk_discount_min = Math.max(2, parseInt(String(form.get("bulk_discount_min") ?? "5"), 10) || 5);
   const tags = String(form.get("tags") ?? "").trim() || null;
   const notes = String(form.get("notes") ?? "").trim() || null;
   const stock = parseInt(String(form.get("stock") ?? "-1"), 10);
@@ -117,9 +118,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .prepare(
       `
       INSERT INTO services
-        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stock, out_of_stock, updated_at)
+        (id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stock, out_of_stock, updated_at)
       VALUES
-        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              ?,     ?,            datetime('now'))
+        (?,  ?,   ?,            ?,    ?,           ?,          ?,      ?,        ?,                      ?,                    ?,                ?,    ?,     ?,               ?,                  ?,                 ?,               ?,              ?,     ?,            datetime('now'))
       ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         service_group=excluded.service_group,
@@ -130,6 +131,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         featured=excluded.featured,
         bulk_discount_eligible=excluded.bulk_discount_eligible,
         bulk_discount_percent=excluded.bulk_discount_percent,
+        bulk_discount_min=excluded.bulk_discount_min,
         tags=excluded.tags,
         notes=excluded.notes,
         primary_image_key=excluded.primary_image_key,
@@ -142,7 +144,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         updated_at=datetime('now');
     `
     )
-    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stockVal, out_of_stock)
+    .bind(id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stockVal, out_of_stock)
     .run();
 
   return Response.redirect(new URL(`/admin/services/${encodeURIComponent(id)}?saved=1`, request.url), 302);

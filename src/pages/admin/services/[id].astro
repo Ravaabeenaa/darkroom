@@ -16,6 +16,7 @@ type ServiceRow = {
   featured: number;
   bulk_discount_eligible: number;
   bulk_discount_percent: number;
+  bulk_discount_min: number;
   tags: string | null;
   turnaround_prices: string | null;
   pushpull_prices: string | null;
@@ -38,7 +39,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stock, out_of_stock
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stock, out_of_stock
   FROM services
   WHERE slug = ? OR id = ?
   LIMIT 1;
@@ -249,6 +250,18 @@ function imgUrl(key: string) {
             max="100"
             step="1"
             value={service.bulk_discount_percent ?? 5}
+            class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
+          />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Bulk discount min qty <span class="text-xs">(minimum items to qualify, default 5)</span></span>
+          <input
+            name="bulk_discount_min"
+            type="number"
+            min="2"
+            step="1"
+            value={service.bulk_discount_min ?? 5}
             class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
           />
         </label>

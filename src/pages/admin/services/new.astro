@@ -70,6 +70,25 @@ const msg = Astro.url.searchParams.get("msg") || "";
           <input type="checkbox" name="out_of_stock" />
           Display as "Out of stock" to customers
         </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Bulk discount eligibility</span>
+          <select name="bulk_discount_eligible" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">
+            <option value="0" selected>0 — Not eligible</option>
+            <option value="1">1 — N+ of same group</option>
+            <option value="2">2 — N+ of same item & options</option>
+          </select>
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Bulk discount % <span class="text-xs">(default 5)</span></span>
+          <input name="bulk_discount_percent" type="number" min="1" max="100" step="1" value="5" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Bulk discount min qty <span class="text-xs">(minimum items to qualify, default 5)</span></span>
+          <input name="bulk_discount_min" type="number" min="2" step="1" value="5" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
       </div>
 
       <label class="block">
