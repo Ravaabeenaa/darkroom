@@ -114,9 +114,13 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
       <div class="mt-3 text-xl font-medium" id="priceMvr"></div>
 
       {service.description && (
-        <p class="mt-5 max-w-prose text-sm md:text-base" style="color: var(--muted);">
-          {service.description}
-        </p>
+        <div class="mt-5 max-w-prose text-sm md:text-base space-y-3" style="color: var(--muted);">
+          {service.description.split(/\n\n+/).map((para: string) => (
+            <p>{para.split(/\n/).map((line: string, i: number, arr: string[]) => (
+              <>{line}{i < arr.length - 1 && <br />}</>
+            ))}</p>
+          ))}
+        </div>
       )}
 
       {service.bulk_discount_eligible > 0 && (
