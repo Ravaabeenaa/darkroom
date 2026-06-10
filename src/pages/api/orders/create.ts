@@ -1,5 +1,13 @@
 export const prerender = false;
 
+// ── Delivery waiver policy ────────────────────────────────────────────────────
+// Set WAIVE_DELIVERY_ON_BULK to false to re-enable delivery fees for bulk orders.
+// Edit isDeliveryOption to change which collection options count as "delivery".
+const WAIVE_DELIVERY_ON_BULK = true;
+function isDeliveryOption(label: string): boolean {
+  return /delivery/i.test(label);
+}
+
 type Env = { darkroom_db: D1Database };
 type CollectionOption = { label: string; price: number };
 
@@ -155,6 +163,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       const match = collOpts.find(o => o.label === collection_option_label);
       if (match) {
         collection_option_cents = Math.round((match.price ?? 0) * 100);
+        if (WAIVE_DELIVERY_ON_BULK && discountItems.length > 0 && isDeliveryOption(match.label)) {
+          collection_option_cents = 0;
+        }
         if (collection_option_cents > 0) {
           collectionLineItem.push({
             service_id: null,

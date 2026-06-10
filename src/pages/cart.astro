@@ -196,6 +196,14 @@ function imgUrl(key: string | null) {
     const byId = new Map(services.map(s => [s.id, s]));
     const collectionOptions = collectionOptionsData;
 
+    // ── Delivery waiver policy ─────────────────────────────────────────────
+    // Set WAIVE_DELIVERY_ON_BULK = false to re-enable delivery fees for bulk orders.
+    // Edit isDeliveryOption to change which collection options count as "delivery".
+    const WAIVE_DELIVERY_ON_BULK = true;
+    function isDeliveryOption(label) {
+      return /delivery/i.test(label ?? "");
+    }
+
     const cartList = document.getElementById("cartList");
     const cartEmpty = document.getElementById("cartEmpty");
     const cartTotalEl = document.getElementById("cartTotal");
@@ -284,12 +292,30 @@ function imgUrl(key: string | null) {
         + getOptionPriceCents(svc.film_size_options,  svc.film_size_prices,  it.filmSize);
     }
 
-    function getSelectedCollection() {
+    function getSelectedCollection(isBulk) {
       const sel = document.getElementById("collectionSelect");
       if (!sel || !collectionOptions.length) return { label: null, cents: 0 };
       const idx = sel.selectedIndex;
       const opt = collectionOptions[idx] ?? collectionOptions[0];
-      return { label: opt?.label ?? null, cents: Math.round((opt?.price ?? 0) * 100) };
+      const rawCents = Math.round((opt?.price ?? 0) * 100);
+      const waived = WAIVE_DELIVERY_ON_BULK && isBulk && isDeliveryOption(opt?.label);
+      return { label: opt?.label ?? null, cents: waived ? 0 : rawCents };
+    }
+
+    function updateCollectionLabels(isBulk) {
+      const sel = document.getElementById("collectionSelect");
+      if (!sel) return;
+      Array.from(sel.options).forEach(function(option, i) {
+        const opt = collectionOptions[i];
+        if (!opt) return;
+        if (WAIVE_DELIVERY_ON_BULK && isBulk && isDeliveryOption(opt.label)) {
+          option.textContent = opt.label + " (Free delivery for bulk order)";
+        } else {
+          option.textContent = opt.price > 0
+            ? opt.label + " (+MVR " + Number(opt.price).toFixed(2) + ")"
+            : opt.label;
+        }
+      });
     }
 
     function calcDiscounts(items) {
@@ -341,7 +367,7 @@ function imgUrl(key: string | null) {
       }
       const discounts = calcDiscounts(items);
       t += discounts.reduce((s, d) => s + d.cents, 0);
-      t += getSelectedCollection().cents;
+      t += getSelectedCollection(discounts.length > 0).cents;
       return t;
     }
 
@@ -395,6 +421,7 @@ function imgUrl(key: string | null) {
 
       // discount line items
       const discounts = calcDiscounts(items);
+      const isBulk = discounts.length > 0;
       for (const disc of discounts) {
         const row = document.createElement("div");
         row.className = "flex items-center justify-between gap-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3";
@@ -404,6 +431,7 @@ function imgUrl(key: string | null) {
         `;
         cartList.appendChild(row);
       }
+      updateCollectionLabels(isBulk);
 
       // bind buttons
       cartList.querySelectorAll("[data-inc]").forEach(btn => {
@@ -702,7 +730,8 @@ function imgUrl(key: string | null) {
         return;
       }
 
-      const { label: collectionLabel, cents: collectionCents } = getSelectedCollection();
+      const cartItemsForSubmit = getCartItems();
+      const { label: collectionLabel } = getSelectedCollection(calcDiscounts(cartItemsForSubmit).length > 0);
 
       const payload = {
         customer_name: nameEl.value.trim(),
@@ -712,7 +741,7 @@ function imgUrl(key: string | null) {
         customer_notes: notesEl.value.trim() || null,
         collection_option: collectionLabel,
         delivery_address: isDeliverySelected() ? (deliveryAddrEl?.value.trim() || null) : null,
-        cart: getCartItems().map(it => ({
+        cart: cartItemsForSubmit.map(it => ({
           service_id: it.id,
           qty: it.qty,
           turnaround_option: it.turnaround || null,
