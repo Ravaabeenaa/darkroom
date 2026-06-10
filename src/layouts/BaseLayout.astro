@@ -68,21 +68,23 @@ if (db) {
       (function () {
         const CART_KEY = "dr_cart_v2";
 
-        // Composite key: "serviceId" or "serviceId~turnaround~pushpull"
-        function makeKey(serviceId, turnaround, pushpull) {
+        // Composite key: "serviceId" or "serviceId~turnaround~pushpull~filmSize"
+        function makeKey(serviceId, turnaround, pushpull, filmSize) {
           const t = turnaround ?? "";
           const p = pushpull   ?? "";
-          if (!t && !p) return serviceId;
-          return `${serviceId}~${t}~${p}`;
+          const f = filmSize   ?? "";
+          if (!t && !p && !f) return serviceId;
+          return `${serviceId}~${t}~${p}~${f}`;
         }
 
         function parseKey(key) {
           const parts = key.split("~");
-          if (parts.length === 1) return { serviceId: key, turnaround: null, pushpull: null };
+          if (parts.length === 1) return { serviceId: key, turnaround: null, pushpull: null, filmSize: null };
           return {
             serviceId:  parts[0] || key,
             turnaround: parts[1] || null,
             pushpull:   parts[2] || null,
+            filmSize:   parts[3] || null,
           };
         }
 

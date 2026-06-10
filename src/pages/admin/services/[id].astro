@@ -20,6 +20,8 @@ type ServiceRow = {
   tags: string | null;
   turnaround_prices: string | null;
   pushpull_prices: string | null;
+  film_size_options: string | null;
+  film_size_prices: string | null;
   notes: string | null;
   primary_image_key: string | null;
   turnaround_options: string | null;
@@ -39,7 +41,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, stock, out_of_stock
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices, stock, out_of_stock
   FROM services
   WHERE slug = ? OR id = ?
   LIMIT 1;
@@ -318,6 +320,17 @@ function imgUrl(key: string) {
           <span class="text-sm" style="color: var(--muted);">Push/Pull prices (MVR, must match count)</span>
           <input id="f_pushpull_prices" name="pushpull_prices" value={service.pushpull_prices ?? ""} placeholder='e.g. ["+0","+30","+60","+30"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
           <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no push/pull selector.</span>
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Film size options (JSON array)</span>
+          <input id="f_film_size_options" name="film_size_options" value={service.film_size_options ?? ""} placeholder='e.g. ["35mm","120","Large Format"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Film size prices (MVR, must match count)</span>
+          <input id="f_film_size_prices" name="film_size_prices" value={service.film_size_prices ?? ""} placeholder='e.g. ["+0","+50","+100"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no film size selector.</span>
         </label>
 
       </div>

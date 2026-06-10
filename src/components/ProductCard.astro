@@ -12,6 +12,8 @@ const {
   turnaroundPrices  = [],
   pushpullOptions   = [],
   pushpullPrices    = [],
+  filmSizeOptions   = [],
+  filmSizePrices    = [],
 } = Astro.props;
 
 if (!id) throw new Error("ProductCard requires prop: id");
@@ -19,16 +21,18 @@ if (!id) throw new Error("ProductCard requires prop: id");
 // ── Default option values (first item of each array) ──────────────
 const defaultTurnaround = turnaroundOptions[0] ?? null;
 const defaultPushpull   = pushpullOptions[0]   ?? null;
-const hasOptions        = !!(defaultTurnaround || defaultPushpull);
+const defaultFilmSize   = filmSizeOptions[0]   ?? null;
+const hasOptions        = !!(defaultTurnaround || defaultPushpull || defaultFilmSize);
 
 // ── Composite cart key with defaults baked in ─────────────────────
-function makeKey(t: string | null, p: string | null): string {
+function makeKey(t: string | null, p: string | null, f: string | null): string {
   const tv = t ?? "";
   const pv = p ?? "";
-  if (!tv && !pv) return id;
-  return `${id}~${tv}~${pv}`;
+  const fv = f ?? "";
+  if (!tv && !pv && !fv) return id;
+  return `${id}~${tv}~${pv}~${fv}`;
 }
-const cartKey = makeKey(defaultTurnaround, defaultPushpull);
+const cartKey = makeKey(defaultTurnaround, defaultPushpull, defaultFilmSize);
 
 // ── Display price = base + default option prices ──────────────────
 function parseOptCents(str: string): number {
@@ -36,9 +40,10 @@ function parseOptCents(str: string): number {
 }
 const displayPrice = priceCents
   + (turnaroundPrices[0] ? parseOptCents(turnaroundPrices[0]) : 0)
-  + (pushpullPrices[0]   ? parseOptCents(pushpullPrices[0])   : 0);
+  + (pushpullPrices[0]   ? parseOptCents(pushpullPrices[0])   : 0)
+  + (filmSizePrices[0]   ? parseOptCents(filmSizePrices[0])   : 0);
 
-const defaultLabels = [defaultTurnaround, defaultPushpull].filter(Boolean) as string[];
+const defaultLabels = [defaultTurnaround, defaultPushpull, defaultFilmSize].filter(Boolean) as string[];
 ---
 
 <article data-dr-product-card data-id={cartKey} data-out-of-stock={outOfStock ? "1" : ""} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col">

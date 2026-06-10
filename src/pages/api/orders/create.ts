@@ -54,6 +54,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       qty: Math.max(0, Math.floor(Number(item.qty ?? 0))),
       turnaround_option: String(item.turnaround_option ?? "").trim() || null,
       pushpull_option: String(item.pushpull_option ?? "").trim() || null,
+      film_size_option: String(item.film_size_option ?? "").trim() || null,
     }))
     .filter((it) => it.id && it.qty > 0);
 
@@ -76,9 +77,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const placeholders = ids.map(() => "?").join(",");
 
   const svcRes = await db
-    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
+    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
     .bind(...ids)
-    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; bulk_discount_min: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null }>();
+    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; bulk_discount_min: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null; film_size_options: string | null; film_size_prices: string | null }>();
 
   const svcs = new Map((svcRes.results ?? []).map((s) => [s.id, s]));
   const missing = norm.filter((x) => !svcs.has(x.id));
@@ -91,7 +92,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     const s = svcs.get(it.id)!;
     const unitPrice = s.price_cents
       + getOptionCents(s.turnaround_options, s.turnaround_prices, it.turnaround_option)
-      + getOptionCents(s.pushpull_options, s.pushpull_prices, it.pushpull_option);
+      + getOptionCents(s.pushpull_options, s.pushpull_prices, it.pushpull_option)
+      + getOptionCents(s.film_size_options, s.film_size_prices, it.film_size_option);
     const line = unitPrice * it.qty;
     total += line;
     orderItems.push({

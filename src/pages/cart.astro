@@ -22,11 +22,13 @@ type ServiceRow = {
   turnaround_prices: string | null;
   pushpull_options: string | null;
   pushpull_prices: string | null;
+  film_size_options: string | null;
+  film_size_prices: string | null;
 };
 
 const [svcRes, settingsRes] = await Promise.all([
   db.prepare(`
-    SELECT id, slug, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
+    SELECT id, slug, name, price_cents, primary_image_key, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices
     FROM services
     WHERE active = 1;
   `).all(),
@@ -179,6 +181,8 @@ function imgUrl(key: string | null) {
       bulk_discount_eligible: s.bulk_discount_eligible,
       bulk_discount_percent: s.bulk_discount_percent ?? 5,
       bulk_discount_min: s.bulk_discount_min ?? 5,
+      film_size_options: s.film_size_options ? JSON.parse(s.film_size_options) : [],
+      film_size_prices: s.film_size_prices ? JSON.parse(s.film_size_prices) : [],
       turnaround_options: s.turnaround_options ? JSON.parse(s.turnaround_options) : [],
       turnaround_prices: s.turnaround_prices ? JSON.parse(s.turnaround_prices) : [],
       pushpull_options: s.pushpull_options ? JSON.parse(s.pushpull_options) : [],
@@ -259,8 +263,8 @@ function imgUrl(key: string | null) {
       const cart = getCart();
       return Object.entries(cart)
         .map(([key, qty]) => {
-          const { serviceId, turnaround, pushpull } = window.DarkroomCart.parseKey(key);
-          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull };
+          const { serviceId, turnaround, pushpull, filmSize } = window.DarkroomCart.parseKey(key);
+          return { key, id: serviceId, qty: Number(qty) || 0, turnaround, pushpull, filmSize };
         })
         .filter(x => x.qty > 0);
     }
@@ -276,7 +280,8 @@ function imgUrl(key: string | null) {
     function unitPriceCents(svc, it) {
       return svc.price_cents
         + getOptionPriceCents(svc.turnaround_options, svc.turnaround_prices, it.turnaround)
-        + getOptionPriceCents(svc.pushpull_options,   svc.pushpull_prices,   it.pushpull);
+        + getOptionPriceCents(svc.pushpull_options,   svc.pushpull_prices,   it.pushpull)
+        + getOptionPriceCents(svc.film_size_options,  svc.film_size_prices,  it.filmSize);
     }
 
     function getSelectedCollection() {
@@ -712,6 +717,7 @@ function imgUrl(key: string | null) {
           qty: it.qty,
           turnaround_option: it.turnaround || null,
           pushpull_option: it.pushpull || null,
+          film_size_option: it.filmSize || null,
         })),
       };
 

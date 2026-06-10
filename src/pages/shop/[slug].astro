@@ -29,6 +29,8 @@ type ServiceRow = {
   turnaround_prices: string | null;
   pushpull_options: string | null;
   pushpull_prices: string | null;
+  film_size_options: string | null;
+  film_size_prices: string | null;
 };
 
 type ImgRow = {
@@ -46,7 +48,7 @@ function imgUrl(key: string) {
 let service = await db
   .prepare(
     `
-  SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
+  SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
@@ -59,7 +61,7 @@ if (!service) {
   const byId = await db
     .prepare(
       `
-    SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices
+    SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
@@ -94,6 +96,8 @@ const turnaroundOpts = parseOpts(service.turnaround_options);
 const turnaroundPrices = parseOpts(service.turnaround_prices);
 const pushpullOpts = parseOpts(service.pushpull_options);
 const pushpullPrices = parseOpts(service.pushpull_prices);
+const filmSizeOpts = parseOpts(service.film_size_options);
+const filmSizePrices = parseOpts(service.film_size_prices);
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -130,6 +134,17 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
             ? <span style="color: var(--muted);"> Order {service.bulk_discount_min ?? 5} or more from the {service.service_group ?? "same group"} group.</span>
             : <span style="color: var(--muted);"> Order {service.bulk_discount_min ?? 5} or more of this service with the same options.</span>
           }
+        </div>
+      )}
+
+      {filmSizeOpts.length > 0 && (
+        <div class="mt-6">
+          <label class="block text-sm" style="color: var(--muted);">Film size</label>
+          <select id="filmSizeSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
+            {filmSizeOpts.map((opt: string, i: number) => (
+              <option value={opt} data-price={filmSizePrices[i] ?? "+0"}>{opt}{filmSizePrices[i] && filmSizePrices[i] !== "+0" ? ` (+MVR ${filmSizePrices[i].replace(/^\+/, "")})` : ""}</option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -211,6 +226,7 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
       var addToCartBtn = document.getElementById("addToCartBtn");
       var turnaroundEl = document.getElementById("turnaroundSelect");
       var pushpullEl   = document.getElementById("pushpullSelect");
+      var filmSizeEl   = document.getElementById("filmSizeSelect");
 
       function selectedOptionPrice(selectEl) {
         if (!selectEl) return 0;
@@ -223,13 +239,15 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
       function currentUnitPrice() {
         return basePriceCents
           + selectedOptionPrice(turnaroundEl)
-          + selectedOptionPrice(pushpullEl);
+          + selectedOptionPrice(pushpullEl)
+          + selectedOptionPrice(filmSizeEl);
       }
 
       function getCurrentKey() {
         var t = turnaroundEl ? turnaroundEl.value || null : null;
         var p = pushpullEl   ? pushpullEl.value   || null : null;
-        return window.DarkroomCart.makeKey(serviceId, t, p);
+        var f = filmSizeEl   ? filmSizeEl.value   || null : null;
+        return window.DarkroomCart.makeKey(serviceId, t, p, f);
       }
 
       var pending = 1;
@@ -272,6 +290,7 @@ const pushpullPrices = parseOpts(service.pushpull_prices);
 
       turnaroundEl && turnaroundEl.addEventListener("change", renderAll);
       pushpullEl   && pushpullEl.addEventListener("change", renderAll);
+      filmSizeEl   && filmSizeEl.addEventListener("change", renderAll);
       renderAll();
     })();
   </script>

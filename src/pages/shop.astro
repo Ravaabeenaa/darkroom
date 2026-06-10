@@ -22,13 +22,15 @@ type ServiceRow = {
   turnaround_prices: string | null;
   pushpull_options: string | null;
   pushpull_prices: string | null;
+  film_size_options: string | null;
+  film_size_prices: string | null;
   collection_options: string | null;
   collection_prices: string | null;
 };
 
 const res = await db.prepare(`
   SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, tags, primary_image_key,
-         turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, collection_options, collection_prices
+         turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices, collection_options, collection_prices
   FROM services
   WHERE active = 1
   ORDER BY service_group ASC, name ASC;
@@ -70,6 +72,8 @@ function parseOpts(raw: string | null): string[] {
           turnaroundPrices={parseOpts(s.turnaround_prices)}
           pushpullOptions={parseOpts(s.pushpull_options)}
           pushpullPrices={parseOpts(s.pushpull_prices)}
+          filmSizeOptions={parseOpts(s.film_size_options)}
+          filmSizePrices={parseOpts(s.film_size_prices)}
         />
       ))}
     </div>
