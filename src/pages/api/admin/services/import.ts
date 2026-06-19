@@ -15,6 +15,7 @@ function coerceForBind(
   resolved: Resolved
 ): { ok: true; value: string | number | null } | { ok: false; error: string } {
   if (resolved.isNull) return { ok: true, value: null };
+  if (resolved.isBlank) return { ok: true, value: "" }; // unused downstream — blank skips/NULLs by mode, never coerced
   if (col.type === "integer") {
     const t = resolved.value.trim();
     if (!/^-?\d+$/.test(t)) return { ok: false, error: `"${col.key}" is not a valid integer ("${resolved.value}")` };
