@@ -22,6 +22,7 @@ type OrderRow = {
   internal_notes: string | null;
   created_at: string | null;
   updated_at: string | null;
+  stock_applied: number;
 };
 
 type ItemRow = {
@@ -49,7 +50,7 @@ const order = await db
     SELECT id, order_ref, customer_name, customer_phone, customer_email, contact_method,
            services_summary, original_services_summary,
            total_price_cents, original_total_price_cents,
-           status, customer_notes, internal_notes, created_at, updated_at
+           status, customer_notes, internal_notes, created_at, updated_at, stock_applied
     FROM orders WHERE id = ? LIMIT 1;
   `)
   .bind(id)
@@ -425,7 +426,7 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
     </div>
   </section>
 
-  <script define:vars={{ orderId: order.id }}>
+  <script define:vars={{ orderId: order.id, stockApplied: order.stock_applied === 1 }}>
     // ── Status / notes save ──────────────────────────────────────
     const saveBtn = document.getElementById("saveBtn");
     const statusSel = document.getElementById("statusSel");
@@ -433,6 +434,17 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
     const saveStatus = document.getElementById("saveStatus");
 
     saveBtn?.addEventListener("click", async () => {
+      const newStatus = statusSel?.value;
+      let syncStock = false;
+
+      if (newStatus === "COMPLETED" && !stockApplied) {
+        syncStock = confirm(
+          "Update stock and bookkeeping for this order?\n\n" +
+          "This will reduce stock for the ordered items (skipping untracked items) and log this order as income.\n\n" +
+          "Click Cancel to just update the status without these changes."
+        );
+      }
+
       saveBtn.textContent = "Saving…";
       saveBtn.disabled = true;
 
@@ -441,8 +453,9 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           order_id: orderId,
-          status: statusSel?.value,
+          status: newStatus,
           internal_notes: notesEl?.value ?? "",
+          sync_stock: syncStock,
         }),
       });
 
@@ -451,13 +464,27 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
       saveBtn.disabled = false;
 
       if (!res.ok || !data?.ok) {
-        saveStatus.textContent = data?.error || "Failed to save";
+        if (data?.error === "insufficient_stock" && Array.isArray(data.shortages)) {
+          const lines = data.shortages
+            .map((s) => `• ${s.name}: ordered ${s.requested}, only ${s.available} in stock`)
+            .join("\n");
+          alert(
+            "Cannot complete this order — insufficient stock:\n\n" + lines +
+            "\n\nFix the stock count on /admin/stock or adjust the order quantities, then try again."
+          );
+        } else {
+          saveStatus.textContent = data?.error || "Failed to save";
+        }
         return;
       }
 
-      saveStatus.textContent = "Saved";
+      saveStatus.textContent = data.stockApplied ? "Saved — stock & bookkeeping updated" : "Saved";
       window.DarkroomCart?.toast("Order updated");
-      setTimeout(() => (saveStatus.textContent = ""), 3000);
+      if (data.stockApplied) {
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        setTimeout(() => (saveStatus.textContent = ""), 3000);
+      }
     });
 
     // ── Item editing ─────────────────────────────────────────────

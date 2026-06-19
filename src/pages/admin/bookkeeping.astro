@@ -1,0 +1,223 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+
+type EntryRow = {
+  id: string;
+  type: string;
+  service_id: string | null;
+  name: string;
+  amount_cents: number;
+  quantity: number;
+  total_cents: number;
+  order_id: string | null;
+  notes: string | null;
+  occurred_at: string;
+};
+
+const [entriesRes, sumsRes, servicesRes] = await Promise.all([
+  db.prepare(`
+    SELECT id, type, service_id, name, amount_cents, quantity, total_cents, order_id, notes, occurred_at
+    FROM bookkeeping
+    ORDER BY occurred_at DESC, created_at DESC
+    LIMIT 300;
+  `).all<EntryRow>(),
+  db.prepare(`SELECT type, SUM(total_cents) as sum FROM bookkeeping GROUP BY type;`).all<{ type: string; sum: number }>(),
+  db.prepare(`SELECT id, name FROM services ORDER BY name ASC;`).all<{ id: string; name: string }>(),
+]);
+
+const entries = entriesRes.results ?? [];
+const sums = sumsRes.results ?? [];
+const services = servicesRes.results ?? [];
+
+const incomeTotal = sums.find((s) => s.type === "income")?.sum ?? 0;
+const expenseTotal = sums.find((s) => s.type === "expense")?.sum ?? 0;
+const net = incomeTotal - expenseTotal;
+
+function money(cents: number) {
+  return `MVR ${(cents / 100).toFixed(2)}`;
+}
+---
+
+<BaseLayout title="Bookkeeping — Admin">
+  <section class="mx-auto mt-12 max-w-5xl px-6 pb-24">
+    <a href="/admin" class="text-sm hover:opacity-70" style="color: var(--muted);">← Admin</a>
+    <h1 class="mt-2 text-4xl" style="font-family: var(--font-serif);">Bookkeeping</h1>
+    <p class="mt-2 text-sm" style="color: var(--muted);">
+      Income rows are added automatically when an order is marked COMPLETED. Use the form below mainly for expenses.
+    </p>
+
+    <!-- Summary -->
+    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Total income</div>
+        <div class="mt-1 text-2xl font-semibold">{money(incomeTotal)}</div>
+      </div>
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Total expense</div>
+        <div class="mt-1 text-2xl font-semibold">{money(expenseTotal)}</div>
+      </div>
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Net</div>
+        <div class="mt-1 text-2xl font-semibold">{money(net)}</div>
+      </div>
+    </div>
+
+    <!-- Add entry -->
+    <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/40 p-6">
+      <h2 class="text-lg font-semibold">Add entry</h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Type</span>
+          <select id="entryType" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">
+            <option value="expense" selected>Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Service ID <span class="text-xs">(optional — restocks this service if given)</span></span>
+          <input id="entryServiceId" type="text" list="serviceList" placeholder="e.g. 35mm-color-film" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
+          <datalist id="serviceList">
+            {services.map((s) => <option value={s.id}>{s.name}</option>)}
+          </datalist>
+        </label>
+        <label class="block sm:col-span-2">
+          <span class="text-sm" style="color: var(--muted);">Name</span>
+          <input id="entryName" type="text" placeholder="e.g. Bought 10 rolls of 35mm film" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Amount (MVR, per unit)</span>
+          <input id="entryAmount" type="number" min="0" step="0.01" placeholder="0.00" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Quantity</span>
+          <input id="entryQty" type="number" min="1" step="1" value="1" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Date</span>
+          <input id="entryDate" type="date" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Notes <span class="text-xs">(optional)</span></span>
+          <input id="entryNotes" type="text" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+      </div>
+      <div class="mt-5 flex items-center gap-4">
+        <button id="addEntryBtn" class="rounded-[999px] bg-[var(--btn)] px-5 py-2.5 text-sm font-medium text-[var(--btnText)] hover:opacity-90">
+          Add entry
+        </button>
+        <span id="addEntryStatus" class="text-sm" style="color: var(--muted);"></span>
+      </div>
+    </div>
+
+    <!-- Ledger -->
+    <div class="mt-8 overflow-x-auto rounded-3xl border border-[var(--line)]">
+      <table class="w-full min-w-[720px] text-left text-sm bg-white/40">
+        <thead class="bg-white/40">
+          <tr>
+            <th class="px-4 py-3">Date</th>
+            <th class="px-4 py-3">Type</th>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3 text-right">Amount</th>
+            <th class="px-4 py-3 text-right">Qty</th>
+            <th class="px-4 py-3 text-right">Total</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.length === 0 ? (
+            <tr><td class="px-4 py-10 text-sm" colspan="7" style="color: var(--muted);">No entries yet.</td></tr>
+          ) : entries.map((e) => (
+            <tr class="border-t border-[var(--line)]" data-id={e.id}>
+              <td class="px-4 py-3 whitespace-nowrap">{e.occurred_at}</td>
+              <td class="px-4 py-3">
+                <span class={`rounded-full px-2.5 py-1 text-xs font-medium ${e.type === "income" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"}`}>
+                  {e.type}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <div>{e.name}</div>
+                {e.service_id && <div class="mt-0.5 font-mono text-xs" style="color: var(--muted);">{e.service_id}</div>}
+                {e.order_id && (
+                  <a href={`/admin/orders/${e.order_id}`} class="mt-0.5 block text-xs underline" style="color: var(--muted);">
+                    View order →
+                  </a>
+                )}
+                {e.notes && <div class="mt-0.5 text-xs" style="color: var(--muted);">{e.notes}</div>}
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums">{money(e.amount_cents)}</td>
+              <td class="px-4 py-3 text-right tabular-nums">{e.quantity}</td>
+              <td class="px-4 py-3 text-right tabular-nums font-medium">{money(e.total_cents)}</td>
+              <td class="px-4 py-3 text-right">
+                <button class="delete-entry-btn rounded-full border border-[var(--line)] px-3 py-1.5 text-xs hover:opacity-80" style="color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, transparent);">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script is:inline>
+  (function () {
+    var dateInput = document.getElementById("entryDate");
+    if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+
+    document.getElementById("addEntryBtn")?.addEventListener("click", async function () {
+      var btn = this;
+      var statusEl = document.getElementById("addEntryStatus");
+      var name = document.getElementById("entryName").value.trim();
+      if (!name) { statusEl.textContent = "Name is required."; return; }
+
+      var payload = {
+        type: document.getElementById("entryType").value,
+        service_id: document.getElementById("entryServiceId").value.trim() || null,
+        name: name,
+        amount: parseFloat(document.getElementById("entryAmount").value || "0"),
+        quantity: parseInt(document.getElementById("entryQty").value || "1", 10),
+        occurred_at: document.getElementById("entryDate").value,
+        notes: document.getElementById("entryNotes").value.trim() || null,
+      };
+
+      btn.disabled = true;
+      statusEl.textContent = "Saving…";
+
+      var res = await fetch("/api/admin/bookkeeping/save", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      var data = await res.json();
+
+      if (data.ok) {
+        window.location.reload();
+      } else {
+        statusEl.textContent = data.error || "Failed to save.";
+        btn.disabled = false;
+      }
+    });
+
+    document.querySelectorAll(".delete-entry-btn").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Delete this entry? This does not reverse any related stock changes.")) return;
+        var row = btn.closest("tr[data-id]");
+        var id = row.getAttribute("data-id");
+        btn.disabled = true;
+        var res = await fetch("/api/admin/bookkeeping/delete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ id: id }),
+        });
+        var data = await res.json();
+        if (data.ok) window.location.reload();
+        else btn.disabled = false;
+      });
+    });
+  })();
+  </script>
+</BaseLayout>
