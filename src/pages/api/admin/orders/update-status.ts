@@ -89,10 +89,10 @@ export async function POST({ request, locals }: { request: Request; locals: any 
         .run();
     }
 
-    // One income row per order line item (services, discounts, collection fees — anything with a non-zero total)
+    // One income row per order line item (services, discounts, collection fees) — including
+    // zero-value lines, so the order is always traceable in the ledger even if it was free.
     const today = new Date().toISOString().slice(0, 10);
     for (const it of items) {
-      if (!it.line_total_cents) continue;
       await db
         .prepare(`
           INSERT INTO bookkeeping (id, type, service_id, name, amount_cents, quantity, total_cents, order_id, notes, occurred_at, created_at, updated_at)
