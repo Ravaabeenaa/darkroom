@@ -1,0 +1,341 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+
+const monthParam = Astro.url.searchParams.get("month"); // "YYYY-MM" | "all" | null
+const now = new Date();
+const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+const isAllTime = monthParam === "all";
+const selectedMonth = !isAllTime ? (monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : defaultMonth) : null;
+
+function monthBounds(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  const start = `${ym}-01`;
+  const endDate = new Date(y, m, 1); // m is 1-indexed -> JS month index m = next month, day 1
+  const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-01`;
+  return { start, end };
+}
+
+function prevMonth(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+type Totals = { income: number; incomeCount: number; expense: number; expenseCount: number };
+
+async function getTotals(start: string | null, end: string | null): Promise<Totals> {
+  const where = start && end ? `WHERE occurred_at >= ? AND occurred_at < ?` : "";
+  const binds = start && end ? [start, end] : [];
+  const res = await db
+    .prepare(`SELECT type, COALESCE(SUM(total_cents),0) as sum, COUNT(*) as cnt FROM bookkeeping ${where} GROUP BY type`)
+    .bind(...binds)
+    .all<{ type: string; sum: number; cnt: number }>();
+  const rows = res.results ?? [];
+  const income = rows.find((r) => r.type === "income");
+  const expense = rows.find((r) => r.type === "expense");
+  return {
+    income: income?.sum ?? 0,
+    incomeCount: income?.cnt ?? 0,
+    expense: expense?.sum ?? 0,
+    expenseCount: expense?.cnt ?? 0,
+  };
+}
+
+async function getOrderStats(start: string | null, end: string | null) {
+  const where = start && end ? `WHERE order_id IS NOT NULL AND occurred_at >= ? AND occurred_at < ?` : `WHERE order_id IS NOT NULL`;
+  const binds = start && end ? [start, end] : [];
+  const row = await db
+    .prepare(`SELECT COUNT(DISTINCT order_id) as order_count, COALESCE(SUM(total_cents),0) as revenue FROM bookkeeping ${where}`)
+    .bind(...binds)
+    .first<{ order_count: number; revenue: number }>();
+  return { orderCount: row?.order_count ?? 0, orderRevenue: row?.revenue ?? 0 };
+}
+
+let periodStart: string | null = null;
+let periodEnd: string | null = null;
+if (selectedMonth) {
+  const b = monthBounds(selectedMonth);
+  periodStart = b.start;
+  periodEnd = b.end;
+}
+
+const totals = await getTotals(periodStart, periodEnd);
+const orderStats = await getOrderStats(periodStart, periodEnd);
+
+let prevTotals: Totals | null = null;
+if (selectedMonth) {
+  const b = monthBounds(prevMonth(selectedMonth));
+  prevTotals = await getTotals(b.start, b.end);
+}
+
+function pctDelta(curr: number, prev: number): number | null {
+  if (prev === 0) return curr === 0 ? 0 : null; // null = no baseline to compare against
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
+
+const net = totals.income - totals.expense;
+const prevNet = prevTotals ? prevTotals.income - prevTotals.expense : null;
+const deltaIncome = prevTotals ? pctDelta(totals.income, prevTotals.income) : null;
+const deltaExpense = prevTotals ? pctDelta(totals.expense, prevTotals.expense) : null;
+const deltaNet = prevTotals && prevNet !== null ? pctDelta(net, prevNet) : null;
+
+function deltaBadge(delta: number | null, invert = false) {
+  if (delta === null) return { text: "—", color: "var(--muted)" };
+  const isUp = delta > 0;
+  const good = invert ? !isUp : isUp;
+  const color = delta === 0 ? "var(--muted)" : good ? "#007A59" : "#ED1C24";
+  const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "−";
+  return { text: `${arrow} ${Math.abs(delta).toFixed(1)}%`, color };
+}
+
+// ── Trend: daily within a selected month, monthly across all-time ──────────
+type TrendRow = { bucket: string; type: string; sum: number };
+let trendLabels: string[] = [];
+let trendIncome: number[] = [];
+let trendExpense: number[] = [];
+
+if (selectedMonth && periodStart && periodEnd) {
+  const res = await db
+    .prepare(`SELECT occurred_at as bucket, type, SUM(total_cents) as sum FROM bookkeeping WHERE occurred_at >= ? AND occurred_at < ? GROUP BY occurred_at, type ORDER BY occurred_at ASC`)
+    .bind(periodStart, periodEnd)
+    .all<TrendRow>();
+  const rows = res.results ?? [];
+  const map = new Map<string, { income: number; expense: number }>();
+  const [y, m] = selectedMonth.split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    map.set(`${selectedMonth}-${String(d).padStart(2, "0")}`, { income: 0, expense: 0 });
+  }
+  for (const r of rows) {
+    const entry = map.get(r.bucket) ?? { income: 0, expense: 0 };
+    if (r.type === "income") entry.income = r.sum;
+    else if (r.type === "expense") entry.expense = r.sum;
+    map.set(r.bucket, entry);
+  }
+  trendLabels = [...map.keys()].map((k) => k.slice(8));
+  trendIncome = [...map.values()].map((v) => v.income / 100);
+  trendExpense = [...map.values()].map((v) => v.expense / 100);
+} else {
+  const res = await db
+    .prepare(`SELECT substr(occurred_at,1,7) as bucket, type, SUM(total_cents) as sum FROM bookkeeping GROUP BY bucket, type ORDER BY bucket ASC`)
+    .all<TrendRow>();
+  const rows = res.results ?? [];
+  const map = new Map<string, { income: number; expense: number }>();
+  for (const r of rows) {
+    const entry = map.get(r.bucket) ?? { income: 0, expense: 0 };
+    if (r.type === "income") entry.income = r.sum;
+    else if (r.type === "expense") entry.expense = r.sum;
+    map.set(r.bucket, entry);
+  }
+  trendLabels = [...map.keys()];
+  trendIncome = [...map.values()].map((v) => v.income / 100);
+  trendExpense = [...map.values()].map((v) => v.expense / 100);
+}
+
+// ── Top services by revenue ──────────────────────────────────────────────
+type TopServiceRow = { service_id: string; name: string; revenue: number; qty: number };
+const topServicesWhere = selectedMonth
+  ? `WHERE type='income' AND service_id IS NOT NULL AND occurred_at >= ? AND occurred_at < ?`
+  : `WHERE type='income' AND service_id IS NOT NULL`;
+const topServicesBinds = selectedMonth ? [periodStart, periodEnd] : [];
+const topServicesRes = await db
+  .prepare(`SELECT service_id, MAX(name) as name, SUM(total_cents) as revenue, SUM(quantity) as qty FROM bookkeeping ${topServicesWhere} GROUP BY service_id ORDER BY revenue DESC LIMIT 8`)
+  .bind(...topServicesBinds)
+  .all<TopServiceRow>();
+const topServices = topServicesRes.results ?? [];
+
+// ── Expense breakdown ────────────────────────────────────────────────────
+type ExpenseRow = { name: string; total: number; qty: number };
+const expenseWhere = selectedMonth ? `WHERE type='expense' AND occurred_at >= ? AND occurred_at < ?` : `WHERE type='expense'`;
+const expenseBinds = selectedMonth ? [periodStart, periodEnd] : [];
+const expenseRes = await db
+  .prepare(`SELECT name, SUM(total_cents) as total, SUM(quantity) as qty FROM bookkeeping ${expenseWhere} GROUP BY name ORDER BY total DESC LIMIT 8`)
+  .bind(...expenseBinds)
+  .all<ExpenseRow>();
+const expenseBreakdown = expenseRes.results ?? [];
+
+function money(cents: number) {
+  return `MVR ${(cents / 100).toFixed(2)}`;
+}
+
+const avgOrderValue = orderStats.orderCount > 0 ? orderStats.orderRevenue / orderStats.orderCount : 0;
+
+const incomeBadge = prevTotals ? deltaBadge(deltaIncome) : null;
+const expenseBadge = prevTotals ? deltaBadge(deltaExpense, true) : null;
+const netBadge = prevTotals ? deltaBadge(deltaNet) : null;
+---
+
+<BaseLayout title="Stats — Bookkeeping — Admin">
+  <section class="mx-auto mt-12 max-w-6xl px-6 pb-24">
+    <a href="/admin/bookkeeping" class="text-sm hover:opacity-70" style="color: var(--muted);">← Bookkeeping</a>
+
+    <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-4xl" style="font-family: var(--font-serif);">Business Stats</h1>
+        <p class="mt-2 text-sm" style="color: var(--muted);">
+          {selectedMonth ? `Showing ${selectedMonth}` : "Showing all-time data"}
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <form method="get" class="flex items-center gap-3">
+          <input type="month" name="month" value={selectedMonth ?? ""} class="rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+          <button type="submit" class="rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-3 text-sm hover:bg-white/80">Apply</button>
+        </form>
+        <a
+          href="/admin/bookkeeping/stats?month=all"
+          class={`rounded-[999px] border px-4 py-3 text-sm hover:opacity-90 ${isAllTime ? "bg-[var(--btn)] text-[var(--btnText)] border-transparent" : "border-[var(--line)] bg-white/60"}`}
+        >
+          All time
+        </a>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Income</div>
+        <div class="mt-1 text-2xl font-semibold">{money(totals.income)}</div>
+        {incomeBadge && <div class="mt-1 text-xs font-medium" style={`color:${incomeBadge.color};`}>{incomeBadge.text} vs last month</div>}
+      </div>
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Expenses</div>
+        <div class="mt-1 text-2xl font-semibold">{money(totals.expense)}</div>
+        {expenseBadge && <div class="mt-1 text-xs font-medium" style={`color:${expenseBadge.color};`}>{expenseBadge.text} vs last month</div>}
+      </div>
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Net profit</div>
+        <div class="mt-1 text-2xl font-semibold">{money(net)}</div>
+        {netBadge && <div class="mt-1 text-xs font-medium" style={`color:${netBadge.color};`}>{netBadge.text} vs last month</div>}
+      </div>
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Orders completed</div>
+        <div class="mt-1 text-2xl font-semibold">{orderStats.orderCount}</div>
+      </div>
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-5">
+        <div class="text-xs" style="color: var(--muted);">Avg order value</div>
+        <div class="mt-1 text-2xl font-semibold">{money(avgOrderValue)}</div>
+      </div>
+    </div>
+
+    <!-- Trend chart -->
+    <div class="mt-8 rounded-3xl border border-[var(--line)] bg-white/40 p-6">
+      <h2 class="text-lg font-semibold">{selectedMonth ? "Daily income vs expense" : "Monthly income vs expense"}</h2>
+      <div class="mt-4" style="height: 320px;">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top services + expense breakdown -->
+    <div class="mt-8 grid gap-6 lg:grid-cols-2">
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-6">
+        <h2 class="text-lg font-semibold">Top services by revenue</h2>
+        {topServices.length === 0 ? (
+          <p class="mt-4 text-sm" style="color: var(--muted);">No income recorded for this period.</p>
+        ) : (
+          <>
+            <div class="mt-4" style="height: 260px;">
+              <canvas id="topServicesChart"></canvas>
+            </div>
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-[var(--line)]">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-white/40"><tr><th class="px-3 py-2">Service</th><th class="px-3 py-2 text-right">Qty</th><th class="px-3 py-2 text-right">Revenue</th></tr></thead>
+                <tbody>
+                  {topServices.map((s) => (
+                    <tr class="border-t border-[var(--line)]">
+                      <td class="px-3 py-2">{s.name}</td>
+                      <td class="px-3 py-2 text-right tabular-nums">{s.qty}</td>
+                      <td class="px-3 py-2 text-right tabular-nums font-medium">{money(s.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div class="rounded-3xl border border-[var(--line)] bg-white/40 p-6">
+        <h2 class="text-lg font-semibold">Expense breakdown</h2>
+        {expenseBreakdown.length === 0 ? (
+          <p class="mt-4 text-sm" style="color: var(--muted);">No expenses recorded for this period.</p>
+        ) : (
+          <>
+            <div class="mt-4" style="height: 260px;">
+              <canvas id="expenseChart"></canvas>
+            </div>
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-[var(--line)]">
+              <table class="w-full text-left text-sm">
+                <thead class="bg-white/40"><tr><th class="px-3 py-2">Name</th><th class="px-3 py-2 text-right">Qty</th><th class="px-3 py-2 text-right">Total</th></tr></thead>
+                <tbody>
+                  {expenseBreakdown.map((e) => (
+                    <tr class="border-t border-[var(--line)]">
+                      <td class="px-3 py-2">{e.name}</td>
+                      <td class="px-3 py-2 text-right tabular-nums">{e.qty}</td>
+                      <td class="px-3 py-2 text-right tabular-nums font-medium">{money(e.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <script is:inline src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script define:vars={{
+    trendLabels, trendIncome, trendExpense,
+    topServiceLabels: topServices.map((s) => s.name),
+    topServiceData: topServices.map((s) => s.revenue / 100),
+    expenseLabels: expenseBreakdown.map((e) => e.name),
+    expenseData: expenseBreakdown.map((e) => e.total / 100),
+  }}>
+    (function () {
+      var GREEN = "#007A59", RED = "#ED1C24", ORANGE = "#FF5200", BLUE = "#0047BA", YELLOW = "#FFD200";
+
+      var trendCtx = document.getElementById("trendChart");
+      if (trendCtx && window.Chart) {
+        new Chart(trendCtx, {
+          type: "line",
+          data: {
+            labels: trendLabels,
+            datasets: [
+              { label: "Income", data: trendIncome, borderColor: GREEN, backgroundColor: GREEN + "33", tension: 0.3, fill: true },
+              { label: "Expense", data: trendExpense, borderColor: RED, backgroundColor: RED + "33", tension: 0.3, fill: true },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { position: "bottom" } },
+          },
+        });
+      }
+
+      var topServicesCtx = document.getElementById("topServicesChart");
+      if (topServicesCtx && window.Chart) {
+        new Chart(topServicesCtx, {
+          type: "bar",
+          data: { labels: topServiceLabels, datasets: [{ label: "Revenue (MVR)", data: topServiceData, backgroundColor: BLUE }] },
+          options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+        });
+      }
+
+      var expenseCtx = document.getElementById("expenseChart");
+      if (expenseCtx && window.Chart) {
+        new Chart(expenseCtx, {
+          type: "doughnut",
+          data: { labels: expenseLabels, datasets: [{ data: expenseData, backgroundColor: [RED, ORANGE, YELLOW, BLUE, GREEN, "#9333ea", "#0891b2", "#737373"] }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } },
+        });
+      }
+    })();
+  </script>
+</BaseLayout>
