@@ -46,12 +46,75 @@ function money(cents: number) {
         </p>
       </div>
 
-      <a
-        href="/admin/services/new"
-        class="rounded-[999px] bg-[var(--btn)] px-5 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90"
-      >
-        + New service
-      </a>
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          href="/api/admin/services/export"
+          class="rounded-[999px] border border-[var(--line)] bg-white/60 px-5 py-3 text-sm hover:bg-white/80"
+        >
+          Export CSV
+        </a>
+        <button
+          id="showImportBtn"
+          type="button"
+          class="rounded-[999px] border border-[var(--line)] bg-white/60 px-5 py-3 text-sm hover:bg-white/80"
+        >
+          Import CSV
+        </button>
+        <a
+          href="/admin/services/new"
+          class="rounded-[999px] bg-[var(--btn)] px-5 py-3 text-sm font-medium text-[var(--btnText)] hover:opacity-90"
+        >
+          + New service
+        </a>
+      </div>
+    </div>
+
+    <!-- Import CSV panel -->
+    <div id="importPanel" class="hidden mt-8 rounded-3xl border border-[var(--line)] bg-white/40 p-6">
+      <h2 class="text-lg font-semibold">Import services CSV</h2>
+      <p class="mt-2 text-sm" style="color: var(--muted);">
+        Match rows by <code class="font-mono">id</code>. A bare <code class="font-mono">NULL</code> cell clears the value;
+        an empty cell means "no change" in Merge mode, or "blank" in Overwrite mode.
+      </p>
+
+      <div class="mt-5 grid gap-4 md:grid-cols-2">
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">CSV file</span>
+          <input id="importFile" type="file" accept=".csv,text/csv" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none" />
+        </label>
+
+        <div>
+          <span class="text-sm" style="color: var(--muted);">Mode</span>
+          <div class="mt-2 flex gap-4">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="importMode" value="merge" checked />
+              Merge — add new rows, update matches, keep everything else
+            </label>
+          </div>
+          <div class="mt-2 flex gap-4">
+            <label class="flex items-center gap-2 text-sm">
+              <input type="radio" name="importMode" value="overwrite" />
+              Overwrite — table becomes exactly this file
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <label id="overwriteConfirmWrap" class="hidden mt-4 flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm" style="border-color: color-mix(in srgb, var(--red) 40%, transparent); background: color-mix(in srgb, var(--red) 8%, transparent);">
+        <input id="overwriteConfirm" type="checkbox" class="mt-0.5" />
+        <span>I understand this will permanently delete any service not present in this file (and its gallery images).</span>
+      </label>
+
+      <div class="mt-5 flex gap-3">
+        <button id="runImportBtn" class="rounded-[999px] bg-[var(--btn)] px-5 py-2.5 text-sm font-medium text-[var(--btnText)] hover:opacity-90">
+          Run import
+        </button>
+        <button id="cancelImportBtn" type="button" class="rounded-[999px] border border-[var(--line)] px-5 py-2.5 text-sm hover:bg-white/70">
+          Cancel
+        </button>
+      </div>
+
+      <div id="importResult" class="hidden mt-5 rounded-2xl border border-[var(--line)] bg-white/60 p-4 text-sm"></div>
     </div>
 
     <form class="mt-8 flex flex-wrap gap-3" method="get">
@@ -147,4 +210,103 @@ function money(cents: number) {
 
     </div>
   </section>
+
+  <script is:inline>
+  (function () {
+    var showBtn      = document.getElementById("showImportBtn");
+    var cancelBtn    = document.getElementById("cancelImportBtn");
+    var panel        = document.getElementById("importPanel");
+    var fileInput    = document.getElementById("importFile");
+    var modeRadios   = document.querySelectorAll('input[name="importMode"]');
+    var confirmWrap  = document.getElementById("overwriteConfirmWrap");
+    var confirmBox   = document.getElementById("overwriteConfirm");
+    var runBtn       = document.getElementById("runImportBtn");
+    var resultBox    = document.getElementById("importResult");
+
+    showBtn && showBtn.addEventListener("click", function () {
+      panel.classList.remove("hidden");
+      showBtn.classList.add("hidden");
+    });
+    cancelBtn && cancelBtn.addEventListener("click", function () {
+      panel.classList.add("hidden");
+      showBtn.classList.remove("hidden");
+      resultBox.classList.add("hidden");
+    });
+
+    function currentMode() {
+      var checked = document.querySelector('input[name="importMode"]:checked');
+      return checked ? checked.value : "merge";
+    }
+
+    modeRadios.forEach(function (r) {
+      r.addEventListener("change", function () {
+        var isOverwrite = currentMode() === "overwrite";
+        confirmWrap.classList.toggle("hidden", !isOverwrite);
+        if (!isOverwrite) confirmBox.checked = false;
+      });
+    });
+
+    function showResult(html, isError) {
+      resultBox.innerHTML = html;
+      resultBox.style.borderColor = isError ? "color-mix(in srgb, var(--red) 40%, transparent)" : "var(--line)";
+      resultBox.classList.remove("hidden");
+    }
+
+    runBtn && runBtn.addEventListener("click", async function () {
+      var file = fileInput.files && fileInput.files[0];
+      if (!file) { showResult("Choose a CSV file first.", true); return; }
+      var mode = currentMode();
+      if (mode === "overwrite" && !confirmBox.checked) {
+        showResult("Please check the confirmation box before running an overwrite import.", true);
+        return;
+      }
+
+      runBtn.disabled = true;
+      runBtn.textContent = "Importing…";
+
+      try {
+        var csvText = await file.text();
+        var res = await fetch("/api/admin/services/import", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ mode: mode, csv: csvText }),
+        });
+        var data = await res.json();
+
+        if (!data.ok) {
+          var errHtml = "<div class='font-medium' style='color:var(--red);'>" + (data.error || "Import failed.") + "</div>";
+          if (data.errors && data.errors.length) {
+            errHtml += "<ul class='mt-2 list-disc pl-5 space-y-1'>" +
+              data.errors.slice(0, 30).map(function (e) { return "<li>Row " + e.row + ": " + e.message + "</li>"; }).join("") +
+              "</ul>";
+            if (data.errors.length > 30) errHtml += "<div class='mt-1 text-xs' style='color:var(--muted);'>+ " + (data.errors.length - 30) + " more…</div>";
+          }
+          showResult(errHtml, true);
+        } else {
+          var html = "<div class='font-medium'>Import complete (" + data.mode + ")</div>" +
+            "<div class='mt-2'>Inserted: " + data.inserted + " · Updated: " + data.updated +
+            (data.mode === "overwrite" ? " · Deleted: " + data.deleted : "") +
+            " · Skipped: " + data.skipped + "</div>";
+          if (data.unknownCols && data.unknownCols.length) {
+            html += "<div class='mt-2 text-xs' style='color:var(--muted);'>Ignored unknown columns: " + data.unknownCols.join(", ") + "</div>";
+          }
+          if (data.errors && data.errors.length) {
+            html += "<ul class='mt-2 list-disc pl-5 space-y-1' style='color:var(--red);'>" +
+              data.errors.slice(0, 30).map(function (e) { return "<li>Row " + e.row + ": " + e.message + "</li>"; }).join("") +
+              "</ul>";
+          }
+          showResult(html, false);
+          if (data.inserted + data.updated + data.deleted > 0) {
+            setTimeout(function () { window.location.reload(); }, 1800);
+          }
+        }
+      } catch (e) {
+        showResult("Unexpected error: " + (e && e.message ? e.message : String(e)), true);
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = "Run import";
+      }
+    });
+  })();
+  </script>
 </BaseLayout>
