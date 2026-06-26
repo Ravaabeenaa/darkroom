@@ -103,6 +103,16 @@ function parseServiceOptions(raw: string | null): OptionGroup[] {
   } catch { return []; }
 }
 const optionGroups = parseServiceOptions(service.service_options);
+
+function priceDeltaLabel(raw: string | undefined): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  const n = parseFloat(trimmed);
+  if (!n) return ""; // zero (the default/standard option) or unparsable — no label
+  const sign = n > 0 ? "+" : "-";
+  const abs = trimmed.replace(/^[+-]/, "");
+  return ` (${sign}MVR ${abs})`;
+}
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -147,7 +157,7 @@ const optionGroups = parseServiceOptions(service.service_options);
           <label class="block text-sm" style="color: var(--muted);">{optionGroupLabel(group.name)}</label>
           <select class="dr-option-select mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" data-group={group.name}>
             {group.options.map((opt, i) => (
-              <option value={opt} data-price={group.prices[i] ?? "+0"}>{opt}{group.prices[i] && group.prices[i] !== "+0" ? ` (+MVR ${group.prices[i].replace(/^\+/, "")})` : ""}</option>
+              <option value={opt} data-price={group.prices[i] ?? "+0"}>{opt}{priceDeltaLabel(group.prices[i])}</option>
             ))}
           </select>
         </div>
