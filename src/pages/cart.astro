@@ -154,12 +154,12 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
 
       <div class="mt-8 space-y-4">
         <label class="block">
-          <span class="text-sm font-medium">Name</span>
+          <span class="text-sm font-medium">Name <span style="color: var(--red);">*</span></span>
           <input id="custName" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" />
         </label>
 
         <label class="block">
-          <span class="text-sm font-medium">Phone</span>
+          <span class="text-sm font-medium">Phone <span style="color: var(--red);">*</span></span>
           <div class="mt-2 flex rounded-2xl border border-[var(--line)] bg-[var(--input-bg)]">
             <div class="relative w-[108px] shrink-0 border-r border-[var(--line)]">
               <input
@@ -190,12 +190,13 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
         </label>
 
         <label class="block">
-          <span class="text-sm font-medium">Preferred contact method</span>
+          <span class="text-sm font-medium">Preferred contact method <span style="color: var(--red);">*</span></span>
           <select id="custMethod" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
             <option value="">Select…</option>
             <option value="Telegram">Telegram</option>
             <option value="Viber">Viber</option>
             <option value="WhatsApp">WhatsApp</option>
+            <option value="Email">Email</option>
           </select>
         </label>
 
@@ -351,11 +352,15 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
 
     function isMaldives() { return currentDialCode() === "960"; }
 
+    function isEmailRequired() {
+      return !isMaldives() || methodEl.value.trim() === "Email";
+    }
+
     function updateEmailRequirement() {
-      const mv = isMaldives();
+      const required = isEmailRequired();
       if (emailReqBadge) {
-        emailReqBadge.textContent = mv ? "optional" : "required";
-        emailReqBadge.style.color = mv ? "var(--muted)" : "var(--red)";
+        emailReqBadge.textContent = required ? "*" : "optional";
+        emailReqBadge.style.color = required ? "var(--red)" : "var(--muted)";
       }
     }
 
@@ -574,7 +579,7 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
       if (!name) ok = false;
       if (!phone) ok = false;
       if (mv && (!onlyDigits(phone) || phone.length < 7)) ok = false;
-      if (!mv && !email) ok = false;
+      if (isEmailRequired() && !email) ok = false;
       if (!method) ok = false;
       if (!items.length) ok = false;
       if (isDeliverySelected() && !(deliveryAddrEl?.value.trim())) ok = false;

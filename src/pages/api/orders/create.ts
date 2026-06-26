@@ -54,11 +54,11 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   if (isMaldivesOrder && (!onlyDigits(customer_phone) || customer_phone.length < 7))
     return new Response(JSON.stringify({ ok: false, error: "Phone must be at least 7 digits" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  if (!isMaldivesOrder && !customer_email)
-    return new Response(JSON.stringify({ ok: false, error: "Email is required for non-Maldives orders" }), { status: 400, headers: { "content-type": "application/json" } });
-
-  if (!["Telegram", "Viber", "WhatsApp"].includes(contact_method))
+  if (!["Telegram", "Viber", "WhatsApp", "Email"].includes(contact_method))
     return new Response(JSON.stringify({ ok: false, error: "Invalid contact method" }), { status: 400, headers: { "content-type": "application/json" } });
+
+  if ((!isMaldivesOrder || contact_method === "Email") && !customer_email)
+    return new Response(JSON.stringify({ ok: false, error: "Email is required" }), { status: 400, headers: { "content-type": "application/json" } });
 
   if (!cart)
     return new Response(JSON.stringify({ ok: false, error: "Cart is empty" }), { status: 400, headers: { "content-type": "application/json" } });
