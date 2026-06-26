@@ -25,13 +25,20 @@ type ServiceRow = {
   requires_service_id: string | null;
   notes: string | null;
   primary_image_key: string | null;
-  turnaround_options: string | null;
-  turnaround_prices: string | null;
-  pushpull_options: string | null;
-  pushpull_prices: string | null;
-  film_size_options: string | null;
-  film_size_prices: string | null;
+  service_options: string | null;
 };
+
+type OptionGroup = { name: string; options: string[]; prices: string[] };
+
+const OPTION_GROUP_LABELS: Record<string, string> = {
+  turnaround: "Turnaround",
+  pushpull: "Push/Pull",
+  film_size: "Film size",
+};
+
+function optionGroupLabel(name: string): string {
+  return OPTION_GROUP_LABELS[name] ?? (name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " "));
+}
 
 type ImgRow = {
   image_key: string;
@@ -48,7 +55,7 @@ function imgUrl(key: string) {
 let service = await db
   .prepare(
     `
-  SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices
+  SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, service_options
   FROM services
   WHERE active=1 AND slug = ?
   LIMIT 1;
@@ -61,7 +68,7 @@ if (!service) {
   const byId = await db
     .prepare(
       `
-    SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices
+    SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, requires_group, requires_service_id, notes, primary_image_key, service_options
     FROM services
     WHERE active=1 AND id = ?
     LIMIT 1;
@@ -89,15 +96,13 @@ const gallery = await db
 
 const galleryRows = gallery.results ?? [];
 
-function parseOpts(raw: string | null): string[] {
-  try { return JSON.parse(raw || '[]'); } catch { return []; }
+function parseServiceOptions(raw: string | null): OptionGroup[] {
+  try {
+    const arr = JSON.parse(raw || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
 }
-const turnaroundOpts = parseOpts(service.turnaround_options);
-const turnaroundPrices = parseOpts(service.turnaround_prices);
-const pushpullOpts = parseOpts(service.pushpull_options);
-const pushpullPrices = parseOpts(service.pushpull_prices);
-const filmSizeOpts = parseOpts(service.film_size_options);
-const filmSizePrices = parseOpts(service.film_size_prices);
+const optionGroups = parseServiceOptions(service.service_options);
 ---
 
 <BaseLayout title={`${service.name} — DARKROOM`}>
@@ -137,38 +142,16 @@ const filmSizePrices = parseOpts(service.film_size_prices);
         </div>
       )}
 
-      {filmSizeOpts.length > 0 && (
+      {optionGroups.map((group) => (
         <div class="mt-6">
-          <label class="block text-sm" style="color: var(--muted);">Film size</label>
-          <select id="filmSizeSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
-            {filmSizeOpts.map((opt: string, i: number) => (
-              <option value={opt} data-price={filmSizePrices[i] ?? "+0"}>{opt}{filmSizePrices[i] && filmSizePrices[i] !== "+0" ? ` (+MVR ${filmSizePrices[i].replace(/^\+/, "")})` : ""}</option>
+          <label class="block text-sm" style="color: var(--muted);">{optionGroupLabel(group.name)}</label>
+          <select class="dr-option-select mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" data-group={group.name}>
+            {group.options.map((opt, i) => (
+              <option value={opt} data-price={group.prices[i] ?? "+0"}>{opt}{group.prices[i] && group.prices[i] !== "+0" ? ` (+MVR ${group.prices[i].replace(/^\+/, "")})` : ""}</option>
             ))}
           </select>
         </div>
-      )}
-
-      {turnaroundOpts.length > 0 && (
-        <div class="mt-6">
-          <label class="block text-sm" style="color: var(--muted);">Turnaround</label>
-          <select id="turnaroundSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
-            {turnaroundOpts.map((opt, i) => (
-              <option value={opt} data-price={turnaroundPrices[i] ?? "+0"}>{opt}{turnaroundPrices[i] && turnaroundPrices[i] !== "+0" ? ` (+MVR ${turnaroundPrices[i].replace(/^\+/, "")})` : ""}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {pushpullOpts.length > 0 && (
-        <div class="mt-4">
-          <label class="block text-sm" style="color: var(--muted);">Push/Pull</label>
-          <select id="pushpullSelect" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none">
-            {pushpullOpts.map((opt, i) => (
-              <option value={opt} data-price={pushpullPrices[i] ?? "+0"}>{opt}{pushpullPrices[i] && pushpullPrices[i] !== "+0" ? ` (+MVR ${pushpullPrices[i].replace(/^\+/, "")})` : ""}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      ))}
 
       <!-- Cart controls -->
       <div class="mt-8">
@@ -224,9 +207,7 @@ const filmSizePrices = parseOpts(service.film_size_prices);
       var incBtn       = document.getElementById("incBtn");
       var decBtn       = document.getElementById("decBtn");
       var addToCartBtn = document.getElementById("addToCartBtn");
-      var turnaroundEl = document.getElementById("turnaroundSelect");
-      var pushpullEl   = document.getElementById("pushpullSelect");
-      var filmSizeEl   = document.getElementById("filmSizeSelect");
+      var optionEls    = Array.from(document.querySelectorAll(".dr-option-select"));
 
       function selectedOptionPrice(selectEl) {
         if (!selectEl) return 0;
@@ -237,17 +218,19 @@ const filmSizePrices = parseOpts(service.film_size_prices);
       }
 
       function currentUnitPrice() {
-        return basePriceCents
-          + selectedOptionPrice(turnaroundEl)
-          + selectedOptionPrice(pushpullEl)
-          + selectedOptionPrice(filmSizeEl);
+        return optionEls.reduce(function (sum, el) { return sum + selectedOptionPrice(el); }, basePriceCents);
+      }
+
+      function getCurrentSelections() {
+        var sel = {};
+        optionEls.forEach(function (el) {
+          sel[el.getAttribute("data-group")] = el.value || null;
+        });
+        return sel;
       }
 
       function getCurrentKey() {
-        var t = turnaroundEl ? turnaroundEl.value || null : null;
-        var p = pushpullEl   ? pushpullEl.value   || null : null;
-        var f = filmSizeEl   ? filmSizeEl.value   || null : null;
-        return window.DarkroomCart.makeKey(serviceId, t, p, f);
+        return window.DarkroomCart.makeKey(serviceId, getCurrentSelections());
       }
 
       var pending = 1;
@@ -288,9 +271,7 @@ const filmSizePrices = parseOpts(service.film_size_prices);
         if (addToCartBtn) addToCartBtn.disabled = true;
       }
 
-      turnaroundEl && turnaroundEl.addEventListener("change", renderAll);
-      pushpullEl   && pushpullEl.addEventListener("change", renderAll);
-      filmSizeEl   && filmSizeEl.addEventListener("change", renderAll);
+      optionEls.forEach(function (el) { el.addEventListener("change", renderAll); });
       renderAll();
     })();
   </script>

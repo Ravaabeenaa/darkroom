@@ -66,26 +66,28 @@ if (db) {
     </script>
     <script is:inline>
       (function () {
-        const CART_KEY = "dr_cart_v2";
+        const CART_KEY = "dr_cart_v3";
 
-        // Composite key: "serviceId" or "serviceId~turnaround~pushpull~filmSize"
-        function makeKey(serviceId, turnaround, pushpull, filmSize) {
-          const t = turnaround ?? "";
-          const p = pushpull   ?? "";
-          const f = filmSize   ?? "";
-          if (!t && !p && !f) return serviceId;
-          return `${serviceId}~${t}~${p}~${f}`;
+        // Composite key: "serviceId" or "serviceId~group=value~group=value..." (sorted by group name)
+        function makeKey(serviceId, selections) {
+          const sel = selections && typeof selections === "object" ? selections : {};
+          const groupNames = Object.keys(sel).filter((g) => sel[g]).sort();
+          if (!groupNames.length) return serviceId;
+          const parts = groupNames.map((g) => `${g}=${sel[g]}`);
+          return `${serviceId}~${parts.join("~")}`;
         }
 
         function parseKey(key) {
-          const parts = key.split("~");
-          if (parts.length === 1) return { serviceId: key, turnaround: null, pushpull: null, filmSize: null };
-          return {
-            serviceId:  parts[0] || key,
-            turnaround: parts[1] || null,
-            pushpull:   parts[2] || null,
-            filmSize:   parts[3] || null,
-          };
+          const idx = key.indexOf("~");
+          if (idx === -1) return { serviceId: key, selections: {} };
+          const serviceId = key.slice(0, idx) || key;
+          const selections = {};
+          key.slice(idx + 1).split("~").forEach((pair) => {
+            const eq = pair.indexOf("=");
+            if (eq === -1) return;
+            selections[pair.slice(0, eq)] = pair.slice(eq + 1) || null;
+          });
+          return { serviceId, selections };
         }
 
         function load() {

@@ -60,21 +60,36 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     .map((item: any) => ({
       id: String(item.service_id ?? "").trim(),
       qty: Math.max(0, Math.floor(Number(item.qty ?? 0))),
-      turnaround_option: String(item.turnaround_option ?? "").trim() || null,
-      pushpull_option: String(item.pushpull_option ?? "").trim() || null,
-      film_size_option: String(item.film_size_option ?? "").trim() || null,
+      selected_options:
+        item.selected_options && typeof item.selected_options === "object" ? item.selected_options : {},
     }))
     .filter((it) => it.id && it.qty > 0);
 
-  function getOptionCents(optsJson: string | null, pricesJson: string | null, selected: string | null): number {
-    if (!selected || !optsJson || !pricesJson) return 0;
+  type ServiceOptionGroup = { name: string; options: string[]; prices: string[] };
+
+  function parseServiceOptions(raw: string | null): ServiceOptionGroup[] {
     try {
-      const opts = JSON.parse(optsJson) as string[];
-      const prices = JSON.parse(pricesJson) as string[];
-      const idx = opts.indexOf(selected);
-      if (idx === -1 || !prices[idx]) return 0;
-      return Math.round((parseFloat(String(prices[idx]).replace(/^\+/, "")) || 0) * 100);
-    } catch { return 0; }
+      const arr = JSON.parse(raw ?? "[]");
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  }
+
+  // Sums price adjustments for the groups that have a valid selected value;
+  // also returns only the selections that actually matched a real option,
+  // so junk/stale client input never reaches order storage.
+  function resolveOptions(groups: ServiceOptionGroup[], selected: Record<string, any>): { cents: number; matched: Record<string, string> } {
+    let cents = 0;
+    const matched: Record<string, string> = {};
+    for (const g of groups) {
+      const val = selected?.[g.name];
+      if (!val) continue;
+      const idx = g.options.indexOf(val);
+      if (idx === -1) continue;
+      const priceStr = g.prices[idx];
+      if (priceStr) cents += Math.round((parseFloat(String(priceStr).replace(/^\+/, "")) || 0) * 100);
+      matched[g.name] = val;
+    }
+    return { cents, matched };
   }
 
   if (!norm.length)
@@ -85,9 +100,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const placeholders = ids.map(() => "?").join(",");
 
   const svcRes = await db
-    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices FROM services WHERE active = 1 AND id IN (${placeholders});`)
+    .prepare(`SELECT id, name, price_cents, service_group, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, service_options FROM services WHERE active = 1 AND id IN (${placeholders});`)
     .bind(...ids)
-    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; bulk_discount_min: number; turnaround_options: string | null; turnaround_prices: string | null; pushpull_options: string | null; pushpull_prices: string | null; film_size_options: string | null; film_size_prices: string | null }>();
+    .all<{ id: string; name: string; price_cents: number; service_group: string | null; bulk_discount_eligible: number; bulk_discount_percent: number; bulk_discount_min: number; service_options: string | null }>();
 
   const svcs = new Map((svcRes.results ?? []).map((s) => [s.id, s]));
   const missing = norm.filter((x) => !svcs.has(x.id));
@@ -98,10 +113,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const orderItems: any[] = [];
   for (const it of norm) {
     const s = svcs.get(it.id)!;
-    const unitPrice = s.price_cents
-      + getOptionCents(s.turnaround_options, s.turnaround_prices, it.turnaround_option)
-      + getOptionCents(s.pushpull_options, s.pushpull_prices, it.pushpull_option)
-      + getOptionCents(s.film_size_options, s.film_size_prices, it.film_size_option);
+    const groups = parseServiceOptions(s.service_options);
+    const { cents: optionCents, matched } = resolveOptions(groups, it.selected_options);
+    const unitPrice = s.price_cents + optionCents;
     const line = unitPrice * it.qty;
     total += line;
     orderItems.push({
@@ -111,8 +125,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       quantity: it.qty,
       line_total_cents: line,
       service_group: s.service_group ?? null,
-      turnaround_option: it.turnaround_option,
-      pushpull_option: it.pushpull_option,
+      selected_options: Object.keys(matched).length ? JSON.stringify(matched) : null,
     });
   }
 
@@ -174,8 +187,6 @@ export async function POST({ request, locals }: { request: Request; locals: any 
             quantity: 1,
             line_total_cents: collection_option_cents,
             service_group: delivery_address,
-            turnaround_option: null,
-            pushpull_option: null,
           });
           total += collection_option_cents;
         }
@@ -232,19 +243,19 @@ export async function POST({ request, locals }: { request: Request; locals: any 
     await db
       .prepare(`
         INSERT INTO order_items
-          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, selected_options)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
-      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.selected_options ?? null)
       .run();
 
     await db
       .prepare(`
         INSERT INTO order_items_original
-          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, turnaround_option, pushpull_option, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          (id, order_id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, selected_options, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `)
-      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.turnaround_option ?? null, oi.pushpull_option ?? null, now)
+      .bind(crypto.randomUUID(), order_id, oi.service_id, oi.service_name, oi.unit_price_cents, oi.quantity, oi.line_total_cents, oi.service_group, oi.selected_options ?? null, now)
       .run();
   }
 

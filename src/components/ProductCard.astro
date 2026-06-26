@@ -1,4 +1,6 @@
 ---
+type OptionGroup = { name: string; options: string[]; prices: string[] };
+
 const {
   id,
   href = "/shop/sample",
@@ -8,42 +10,33 @@ const {
   compareAtCents,
   badge,
   outOfStock = false,
-  turnaroundOptions = [],
-  turnaroundPrices  = [],
-  pushpullOptions   = [],
-  pushpullPrices    = [],
-  filmSizeOptions   = [],
-  filmSizePrices    = [],
+  serviceOptions = [] as OptionGroup[],
 } = Astro.props;
 
 if (!id) throw new Error("ProductCard requires prop: id");
 
-// ── Default option values (first item of each array) ──────────────
-const defaultTurnaround = turnaroundOptions[0] ?? null;
-const defaultPushpull   = pushpullOptions[0]   ?? null;
-const defaultFilmSize   = filmSizeOptions[0]   ?? null;
-const hasOptions        = !!(defaultTurnaround || defaultPushpull || defaultFilmSize);
+// ── Default selections: first option of each group ─────────────────
+const defaultSelections: Record<string, string> = {};
+for (const g of serviceOptions) {
+  if (g.options?.[0]) defaultSelections[g.name] = g.options[0];
+}
+const hasOptions = Object.keys(defaultSelections).length > 0;
 
 // ── Composite cart key with defaults baked in ─────────────────────
-function makeKey(t: string | null, p: string | null, f: string | null): string {
-  const tv = t ?? "";
-  const pv = p ?? "";
-  const fv = f ?? "";
-  if (!tv && !pv && !fv) return id;
-  return `${id}~${tv}~${pv}~${fv}`;
+function makeKey(selections: Record<string, string>): string {
+  const groupNames = Object.keys(selections).sort();
+  if (!groupNames.length) return id;
+  return `${id}~${groupNames.map((g) => `${g}=${selections[g]}`).join("~")}`;
 }
-const cartKey = makeKey(defaultTurnaround, defaultPushpull, defaultFilmSize);
+const cartKey = makeKey(defaultSelections);
 
 // ── Display price = base + default option prices ──────────────────
 function parseOptCents(str: string): number {
   return Math.round((parseFloat(str.replace(/^\+/, "")) || 0) * 100);
 }
-const displayPrice = priceCents
-  + (turnaroundPrices[0] ? parseOptCents(turnaroundPrices[0]) : 0)
-  + (pushpullPrices[0]   ? parseOptCents(pushpullPrices[0])   : 0)
-  + (filmSizePrices[0]   ? parseOptCents(filmSizePrices[0])   : 0);
+const displayPrice = priceCents + serviceOptions.reduce((sum, g) => sum + (g.prices?.[0] ? parseOptCents(g.prices[0]) : 0), 0);
 
-const defaultLabels = [defaultTurnaround, defaultPushpull, defaultFilmSize].filter(Boolean) as string[];
+const defaultLabels = Object.values(defaultSelections);
 ---
 
 <article data-dr-product-card data-id={cartKey} data-out-of-stock={outOfStock ? "1" : ""} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col">

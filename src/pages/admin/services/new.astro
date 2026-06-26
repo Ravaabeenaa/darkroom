@@ -101,33 +101,19 @@ const msg = Astro.url.searchParams.get("msg") || "";
         <textarea name="notes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"></textarea>
       </label>
 
-      <!-- Options + Prices -->
-      <div class="grid gap-4 md:grid-cols-2">
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Turnaround options (JSON array)</span>
-          <input name="turnaround_options" placeholder='e.g. ["Standard","Express"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Turnaround prices (MVR, must match count)</span>
-          <input name="turnaround_prices" placeholder='e.g. ["+0","+20"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Push/Pull options (JSON array)</span>
-          <input name="pushpull_options" placeholder='e.g. ["Normal","+1","+2","-1"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Push/Pull prices (MVR, must match count)</span>
-          <input name="pushpull_prices" placeholder='e.g. ["+0","+30","+60","+30"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Film size options (JSON array)</span>
-          <input name="film_size_options" placeholder='e.g. ["35mm","120","Large Format"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Film size prices (MVR, must match count)</span>
-          <input name="film_size_prices" placeholder='e.g. ["+0","+50","+100"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-      </div>
+      <!-- Service options -->
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Service options (JSON array of option groups)</span>
+        <textarea
+          name="service_options"
+          rows="6"
+          placeholder={'e.g. [{"name":"turnaround","options":["Standard","Express"],"prices":["+0","+75"]}]'}
+          class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono"
+        ></textarea>
+        <span class="mt-1 block text-xs" style="color: var(--muted);">
+          Each group needs <span class="font-mono">name</span>, <span class="font-mono">options</span>, and <span class="font-mono">prices</span> (same length, prices like "+0"/"+75"). Leave blank for no option selectors.
+        </span>
+      </label>
 
       <!-- Do not set primary_image_key here anymore -->
       <input type="hidden" name="primary_image_key" value="" />

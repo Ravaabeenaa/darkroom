@@ -18,14 +18,9 @@ type ServiceRow = {
   bulk_discount_percent: number;
   bulk_discount_min: number;
   tags: string | null;
-  turnaround_prices: string | null;
-  pushpull_prices: string | null;
-  film_size_options: string | null;
-  film_size_prices: string | null;
   notes: string | null;
   primary_image_key: string | null;
-  turnaround_options: string | null;
-  pushpull_options: string | null;
+  service_options: string | null;
   stock: number;
   out_of_stock: number;
 };
@@ -41,7 +36,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, turnaround_options, turnaround_prices, pushpull_options, pushpull_prices, film_size_options, film_size_prices, stock, out_of_stock
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, service_options, stock, out_of_stock
   FROM services
   WHERE slug = ? OR id = ?
   LIMIT 1;
@@ -296,44 +291,22 @@ function imgUrl(key: string) {
         <textarea name="notes" rows="3" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none">{service.notes ?? ""}</textarea>
       </label>
 
-      <!-- Options + Prices grid -->
+      <!-- Service options -->
       <div id="optValidationError" class="hidden rounded-2xl border border-red-400/40 bg-red-50/80 px-4 py-3 text-sm text-red-700"></div>
 
-      <div class="grid gap-4 md:grid-cols-2">
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Turnaround options (JSON array)</span>
-          <input id="f_turnaround_options" name="turnaround_options" value={service.turnaround_options ?? ""} placeholder='e.g. ["Standard","Express"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Turnaround prices (MVR, must match count)</span>
-          <input id="f_turnaround_prices" name="turnaround_prices" value={service.turnaround_prices ?? ""} placeholder='e.g. ["+0","+20"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no turnaround selector.</span>
-        </label>
-
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Push/Pull options (JSON array)</span>
-          <input id="f_pushpull_options" name="pushpull_options" value={service.pushpull_options ?? ""} placeholder='e.g. ["Normal","+1","+2","-1"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Push/Pull prices (MVR, must match count)</span>
-          <input id="f_pushpull_prices" name="pushpull_prices" value={service.pushpull_prices ?? ""} placeholder='e.g. ["+0","+30","+60","+30"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no push/pull selector.</span>
-        </label>
-
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Film size options (JSON array)</span>
-          <input id="f_film_size_options" name="film_size_options" value={service.film_size_options ?? ""} placeholder='e.g. ["35mm","120","Large Format"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-        </label>
-
-        <label class="block">
-          <span class="text-sm" style="color: var(--muted);">Film size prices (MVR, must match count)</span>
-          <input id="f_film_size_prices" name="film_size_prices" value={service.film_size_prices ?? ""} placeholder='e.g. ["+0","+50","+100"]' class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono" />
-          <span class="mt-1 block text-xs" style="color: var(--muted);">Leave both blank for no film size selector.</span>
-        </label>
-
-      </div>
+      <label class="block">
+        <span class="text-sm" style="color: var(--muted);">Service options (JSON array of option groups)</span>
+        <textarea
+          id="f_service_options"
+          name="service_options"
+          rows="6"
+          placeholder={'e.g. [{"name":"turnaround","options":["Standard","Express"],"prices":["+0","+75"]}]'}
+          class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono"
+        >{service.service_options ?? ""}</textarea>
+        <span class="mt-1 block text-xs" style="color: var(--muted);">
+          Each group needs <span class="font-mono">name</span>, <span class="font-mono">options</span>, and <span class="font-mono">prices</span> (same length, prices like "+0"/"+75"). Leave blank for no option selectors.
+        </span>
+      </label>
 
       <label class="block">
         <span class="text-sm" style="color: var(--muted);">Primary image key (R2)</span>
@@ -363,37 +336,31 @@ function imgUrl(key: string) {
   </section>
 
   <script>
-    // Validate options/prices count match on submit
+    // Validate service_options shape on submit
     (function () {
-      function parseJsonArr(val) {
-        if (!val.trim()) return null;
-        try { return JSON.parse(val); } catch { return "invalid"; }
-      }
+      function checkServiceOptions(val) {
+        if (!val.trim()) return null; // blank = OK, no option selectors
 
-      function checkPair(optsId, pricesId, label) {
-        const opts = parseJsonArr(document.getElementById(optsId)?.value ?? "");
-        const prices = parseJsonArr(document.getElementById(pricesId)?.value ?? "");
-        if (opts === null && prices === null) return null; // both blank = OK
-        if (opts === "invalid") return `${label} options is not valid JSON.`;
-        if (prices === "invalid") return `${label} prices is not valid JSON.`;
-        if (opts !== null && prices === null) return `${label} prices is required when options are set.`;
-        if (opts === null && prices !== null) return `${label} options is required when prices are set.`;
-        if (!Array.isArray(opts) || !Array.isArray(prices)) return `${label} options and prices must be JSON arrays.`;
-        if (opts.length !== prices.length) return `${label} options (${opts.length}) and prices (${prices.length}) must have the same number of items.`;
+        let groups;
+        try { groups = JSON.parse(val); } catch { return "Service options is not valid JSON."; }
+        if (!Array.isArray(groups)) return "Service options must be a JSON array.";
+
+        for (const g of groups) {
+          if (!g || typeof g.name !== "string" || !g.name.trim()) return "Each option group needs a name.";
+          if (!Array.isArray(g.options) || !Array.isArray(g.prices)) return `Group "${g.name}" needs options and prices arrays.`;
+          if (g.options.length !== g.prices.length) return `Group "${g.name}" options (${g.options.length}) and prices (${g.prices.length}) must have the same number of items.`;
+        }
         return null;
       }
 
       const form = document.querySelector('form[action="/api/admin/services/save"]');
       const errEl = document.getElementById("optValidationError");
       form?.addEventListener("submit", (e) => {
-        const errors = [
-          checkPair("f_turnaround_options", "f_turnaround_prices", "Turnaround"),
-          checkPair("f_pushpull_options", "f_pushpull_prices", "Push/Pull"),
-        ].filter(Boolean);
+        const error = checkServiceOptions(document.getElementById("f_service_options")?.value ?? "");
 
-        if (errors.length) {
+        if (error) {
           e.preventDefault();
-          errEl.textContent = errors.join(" ");
+          errEl.textContent = error;
           errEl.classList.remove("hidden");
           errEl.scrollIntoView({ behavior: "smooth", block: "center" });
         } else {
