@@ -47,6 +47,13 @@ function parseServiceOptions(raw: string | null) {
 }
 
 const groups = [...new Set(rows.map((s) => s.service_group).filter(Boolean))].sort() as string[];
+
+const FILTER_PRESETS = [
+  { label: "Films", groups: ["film_roll"] },
+  { label: "Dev & Scan", groups: ["developing", "processing"] },
+]
+  .map((p) => ({ ...p, groups: p.groups.filter((g) => groups.includes(g)) }))
+  .filter((p) => p.groups.length > 0);
 ---
 
 <BaseLayout title="Shop — DARKROOM">
@@ -57,29 +64,46 @@ const groups = [...new Set(rows.map((s) => s.service_group).filter(Boolean))].so
     </p>
 
     {groups.length > 0 && (
-      <div class="relative mt-6 inline-block">
-        <button id="filterBtn" type="button" class="flex cursor-pointer items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-sm hover:bg-white/80">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-          </svg>
-          Filter
-          <span id="filterCount" class="ml-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[var(--red)] px-1.5 py-0.5 text-[10px] font-medium text-black" style="display:none;"></span>
-        </button>
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <div class="relative inline-block">
+          <button id="filterBtn" type="button" class="flex cursor-pointer items-center gap-2 rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-sm hover:bg-white/80">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            Filter
+            <span id="filterCount" class="ml-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-[var(--red)] px-1.5 py-0.5 text-[10px] font-medium text-black" style="display:none;"></span>
+          </button>
 
-        <div id="filterMenu" class="absolute left-0 top-full z-20 mt-2 hidden w-64 rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-4 shadow-lg">
-          <div class="text-xs font-medium uppercase tracking-wide" style="color: var(--muted);">Group</div>
-          <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
-            {groups.map((g) => (
-              <label class="flex cursor-pointer items-center gap-2 text-sm">
-                <input type="checkbox" data-filter-group value={g} class="h-4 w-4 accent-[var(--red)]" />
-                <span>{g}</span>
-              </label>
+          <div id="filterMenu" class="absolute left-0 top-full z-20 mt-2 hidden w-64 rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-4 shadow-lg">
+            <div class="text-xs font-medium uppercase tracking-wide" style="color: var(--muted);">Group</div>
+            <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
+              {groups.map((g) => (
+                <label class="flex cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" data-filter-group value={g} class="h-4 w-4 accent-[var(--red)]" />
+                  <span>{g}</span>
+                </label>
+              ))}
+            </div>
+            <button id="filterResetBtn" type="button" class="mt-4 w-full cursor-pointer rounded-[999px] border border-[var(--line)] bg-white/10 px-4 py-2 text-xs hover:bg-white/20">
+              Reset filter
+            </button>
+          </div>
+        </div>
+
+        {FILTER_PRESETS.length > 0 && (
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs" style="color: var(--muted);">Recommended filters:</span>
+            {FILTER_PRESETS.map((preset) => (
+              <button
+                type="button"
+                class="filter-preset-btn cursor-pointer rounded-[999px] border border-[var(--line)] bg-white/40 px-3 py-1.5 text-xs hover:bg-white/70"
+                data-preset-groups={preset.groups.join(",")}
+              >
+                {preset.label}
+              </button>
             ))}
           </div>
-          <button id="filterResetBtn" type="button" class="mt-4 w-full cursor-pointer rounded-[999px] border border-[var(--line)] bg-white/10 px-4 py-2 text-xs hover:bg-white/20">
-            Reset filter
-          </button>
-        </div>
+        )}
       </div>
     )}
 
@@ -113,9 +137,16 @@ const groups = [...new Set(rows.map((s) => s.service_group).filter(Boolean))].so
       const emptyMsg = document.getElementById("filterEmptyMsg");
       const checkboxes = Array.from(document.querySelectorAll("[data-filter-group]"));
       const cards = Array.from(document.querySelectorAll("[data-service-group]"));
+      const presetBtns = Array.from(document.querySelectorAll(".filter-preset-btn"));
 
       function selectedGroups() {
         return checkboxes.filter((cb) => cb.checked).map((cb) => cb.value);
+      }
+
+      function sameGroups(a, b) {
+        if (a.length !== b.length) return false;
+        const setA = new Set(a);
+        return b.every((g) => setA.has(g));
       }
 
       function applyFilter() {
@@ -133,6 +164,15 @@ const groups = [...new Set(rows.map((s) => s.service_group).filter(Boolean))].so
           filterCountEl.textContent = selected.length > 0 ? String(selected.length) : "";
           filterCountEl.style.display = selected.length > 0 ? "inline-flex" : "none";
         }
+
+        presetBtns.forEach((btn) => {
+          const presetGroups = btn.getAttribute("data-preset-groups").split(",").filter(Boolean);
+          const isActive = sameGroups(selected, presetGroups);
+          btn.classList.toggle("is-active", isActive);
+          btn.style.background = isActive ? "var(--red)" : "";
+          btn.style.color = isActive ? "#000" : "";
+          btn.style.borderColor = isActive ? "var(--red)" : "";
+        });
       }
 
       filterBtn?.addEventListener("click", (e) => {
@@ -157,6 +197,19 @@ const groups = [...new Set(rows.map((s) => s.service_group).filter(Boolean))].so
       resetBtn?.addEventListener("click", () => {
         checkboxes.forEach((cb) => { cb.checked = false; });
         applyFilter();
+      });
+
+      presetBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const presetGroups = btn.getAttribute("data-preset-groups").split(",").filter(Boolean);
+          const alreadyActive = sameGroups(selectedGroups(), presetGroups);
+
+          checkboxes.forEach((cb) => {
+            cb.checked = !alreadyActive && presetGroups.includes(cb.value);
+          });
+
+          applyFilter();
+        });
       });
 
       applyFilter();
