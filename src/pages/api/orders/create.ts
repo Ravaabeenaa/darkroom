@@ -36,6 +36,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   // cart.astro sends flat fields + a cart map { [service_id]: qty }
   const customer_name = String(body?.customer_name ?? "").trim();
   const customer_phone = String(body?.customer_phone ?? "").trim();
+  const country_dial_code = String(body?.country_dial_code ?? "960").replace(/\D/g, "") || "960";
+  const isMaldivesOrder = country_dial_code === "960";
   const contact_method = String(body?.contact_method ?? "").trim();
   const customer_email = String(body?.customer_email ?? "").trim();
   const customer_notes = String(body?.customer_notes ?? "").trim();
@@ -46,8 +48,14 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   if (!customer_name)
     return new Response(JSON.stringify({ ok: false, error: "Name is required" }), { status: 400, headers: { "content-type": "application/json" } });
 
-  if (!customer_phone || !onlyDigits(customer_phone))
-    return new Response(JSON.stringify({ ok: false, error: "Phone must be digits only" }), { status: 400, headers: { "content-type": "application/json" } });
+  if (!customer_phone)
+    return new Response(JSON.stringify({ ok: false, error: "Phone is required" }), { status: 400, headers: { "content-type": "application/json" } });
+
+  if (isMaldivesOrder && (!onlyDigits(customer_phone) || customer_phone.length < 7))
+    return new Response(JSON.stringify({ ok: false, error: "Phone must be at least 7 digits" }), { status: 400, headers: { "content-type": "application/json" } });
+
+  if (!isMaldivesOrder && !customer_email)
+    return new Response(JSON.stringify({ ok: false, error: "Email is required for non-Maldives orders" }), { status: 400, headers: { "content-type": "application/json" } });
 
   if (!["Telegram", "Viber", "WhatsApp"].includes(contact_method))
     return new Response(JSON.stringify({ ok: false, error: "Invalid contact method" }), { status: 400, headers: { "content-type": "application/json" } });
@@ -265,11 +273,13 @@ export async function POST({ request, locals }: { request: Request; locals: any 
   const chatId   = env.TELEGRAM_CHAT_ID;
 
 if (botToken && chatId) {
-  const phoneNumber = customer_phone.replace(/\D/g, ""); // ensures tel: link works
+  const phoneDigits = customer_phone.replace(/\D/g, ""); // ensures tel: link works
+  const telHref = isMaldivesOrder ? `tel:+960${phoneDigits}` : `tel:+${phoneDigits}`;
+  const phoneDisplay = isMaldivesOrder ? `+960 ${customer_phone}` : customer_phone;
   const lines = [
     `🧾 <b>New order: ${order_ref}</b>`,
     `👤 ${customer_name}`,
-    `📱 <a href="tel:+960${phoneNumber}">+960 ${customer_phone}</a> · ${contact_method}`,
+    `📱 <a href="${telHref}">${phoneDisplay}</a> · ${contact_method}`,
     `📦 ${services_summary}`,
     collection_option_label ? `🚚 ${collection_option_label}` : null,
     `💰 MVR ${(total / 100).toFixed(2)}`,

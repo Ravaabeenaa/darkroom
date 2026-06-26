@@ -44,6 +44,69 @@ function imgUrl(key: string | null) {
   if (!key) return null;
   return base ? `${base}/${key}` : `/${key}`;
 }
+
+function flagEmoji(iso2: string): string {
+  return iso2
+    .toUpperCase()
+    .split("")
+    .map((c) => String.fromCodePoint(127397 + c.charCodeAt(0)))
+    .join("");
+}
+
+const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
+  { name: "Maldives", iso2: "MV", dial: "960" },
+  { name: "India", iso2: "IN", dial: "91" },
+  { name: "Sri Lanka", iso2: "LK", dial: "94" },
+  { name: "Bangladesh", iso2: "BD", dial: "880" },
+  { name: "Nepal", iso2: "NP", dial: "977" },
+  { name: "Bhutan", iso2: "BT", dial: "975" },
+  { name: "Pakistan", iso2: "PK", dial: "92" },
+  { name: "China", iso2: "CN", dial: "86" },
+  { name: "Hong Kong", iso2: "HK", dial: "852" },
+  { name: "Japan", iso2: "JP", dial: "81" },
+  { name: "South Korea", iso2: "KR", dial: "82" },
+  { name: "Singapore", iso2: "SG", dial: "65" },
+  { name: "Malaysia", iso2: "MY", dial: "60" },
+  { name: "Thailand", iso2: "TH", dial: "66" },
+  { name: "Indonesia", iso2: "ID", dial: "62" },
+  { name: "Philippines", iso2: "PH", dial: "63" },
+  { name: "Vietnam", iso2: "VN", dial: "84" },
+  { name: "United Arab Emirates", iso2: "AE", dial: "971" },
+  { name: "Saudi Arabia", iso2: "SA", dial: "966" },
+  { name: "Qatar", iso2: "QA", dial: "974" },
+  { name: "Kuwait", iso2: "KW", dial: "965" },
+  { name: "Oman", iso2: "OM", dial: "968" },
+  { name: "Bahrain", iso2: "BH", dial: "973" },
+  { name: "Israel", iso2: "IL", dial: "972" },
+  { name: "Turkey", iso2: "TR", dial: "90" },
+  { name: "Egypt", iso2: "EG", dial: "20" },
+  { name: "Russia", iso2: "RU", dial: "7" },
+  { name: "United Kingdom", iso2: "GB", dial: "44" },
+  { name: "Ireland", iso2: "IE", dial: "353" },
+  { name: "Germany", iso2: "DE", dial: "49" },
+  { name: "France", iso2: "FR", dial: "33" },
+  { name: "Italy", iso2: "IT", dial: "39" },
+  { name: "Spain", iso2: "ES", dial: "34" },
+  { name: "Portugal", iso2: "PT", dial: "351" },
+  { name: "Netherlands", iso2: "NL", dial: "31" },
+  { name: "Belgium", iso2: "BE", dial: "32" },
+  { name: "Switzerland", iso2: "CH", dial: "41" },
+  { name: "Austria", iso2: "AT", dial: "43" },
+  { name: "Sweden", iso2: "SE", dial: "46" },
+  { name: "Norway", iso2: "NO", dial: "47" },
+  { name: "Denmark", iso2: "DK", dial: "45" },
+  { name: "Finland", iso2: "FI", dial: "358" },
+  { name: "Poland", iso2: "PL", dial: "48" },
+  { name: "Czech Republic", iso2: "CZ", dial: "420" },
+  { name: "Greece", iso2: "GR", dial: "30" },
+  { name: "United States", iso2: "US", dial: "1" },
+  { name: "Canada", iso2: "CA", dial: "1" },
+  { name: "Mexico", iso2: "MX", dial: "52" },
+  { name: "Brazil", iso2: "BR", dial: "55" },
+  { name: "Australia", iso2: "AU", dial: "61" },
+  { name: "New Zealand", iso2: "NZ", dial: "64" },
+  { name: "South Africa", iso2: "ZA", dial: "27" },
+].map((c) => ({ ...c, flag: flagEmoji(c.iso2) }));
 ---
 
 <BaseLayout title="Cart — DARKROOM">
@@ -97,8 +160,22 @@ function imgUrl(key: string | null) {
 
         <label class="block">
           <span class="text-sm font-medium">Phone</span>
-          <input id="custPhone" inputmode="numeric" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" placeholder="xxxxxxx" />
-          <div id="phoneErr" class="mt-2 text-sm" style="color:#b91c1c;display:none;">Phone must contain digits only.</div>
+          <div class="mt-2 flex overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--input-bg)]">
+            <input
+              id="custCountryCode"
+              list="countryCodeList"
+              autocomplete="off"
+              value={`${COUNTRY_DIAL_CODES[0].flag} +${COUNTRY_DIAL_CODES[0].dial}`}
+              class="w-[108px] shrink-0 border-r border-[var(--line)] bg-transparent px-3 py-3 text-sm outline-none"
+            />
+            <datalist id="countryCodeList">
+              {COUNTRY_DIAL_CODES.map((c) => (
+                <option value={`${c.flag} +${c.dial}`}>{c.name}</option>
+              ))}
+            </datalist>
+            <input id="custPhone" inputmode="numeric" class="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none" placeholder="xxxxxxx" />
+          </div>
+          <div id="phoneErr" class="mt-2 text-sm" style="color:#b91c1c;display:none;">Phone must be at least 7 digits.</div>
         </label>
 
         <label class="block">
@@ -114,7 +191,7 @@ function imgUrl(key: string | null) {
         <label class="block">
           <div class="flex items-baseline gap-2">
             <span class="text-sm font-medium">Email</span>
-            <span class="text-xs" style="color: var(--muted);">optional</span>
+            <span id="emailReqBadge" class="text-xs" style="color: var(--muted);">optional</span>
           </div>
           <input id="custEmail" type="email" class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-[var(--input-bg)] px-4 py-3 text-sm outline-none" />
         </label>
@@ -199,11 +276,13 @@ function imgUrl(key: string | null) {
     const cartTotalEl = document.getElementById("cartTotal");
 
     const nameEl = document.getElementById("custName");
+    const countryCodeEl = document.getElementById("custCountryCode");
     const phoneEl = document.getElementById("custPhone");
     const methodEl = document.getElementById("custMethod");
     const emailEl = document.getElementById("custEmail");
     const notesEl = document.getElementById("custNotes");
     const phoneErr = document.getElementById("phoneErr");
+    const emailReqBadge = document.getElementById("emailReqBadge");
     const checkoutBtn = document.getElementById("checkoutBtn");
     const checkoutStatus = document.getElementById("checkoutStatus");
     const deliveryAddrEl = document.getElementById("deliveryAddr");
@@ -242,16 +321,32 @@ function imgUrl(key: string | null) {
     // autofill customer details
     const saved = loadCustomer();
     if (saved.name) nameEl.value = saved.name;
+    if (saved.countryCode) countryCodeEl.value = saved.countryCode;
     if (saved.phone) phoneEl.value = saved.phone;
     if (saved.method) methodEl.value = saved.method;
     if (saved.email) emailEl.value = saved.email;
     if (saved.notes) notesEl.value = saved.notes;
-    
+
     function digitsOnlyStr(s) {
       return String(s || "").replace(/\D+/g, "");
     }
 
     function onlyDigits(s) { return /^[0-9]+$/.test(s); }
+
+    function currentDialCode() {
+      const m = String(countryCodeEl.value || "").match(/\+(\d+)/);
+      return m ? m[1] : "";
+    }
+
+    function isMaldives() { return currentDialCode() === "960"; }
+
+    function updateEmailRequirement() {
+      const mv = isMaldives();
+      if (emailReqBadge) {
+        emailReqBadge.textContent = mv ? "optional" : "required";
+        emailReqBadge.style.color = mv ? "var(--muted)" : "var(--red)";
+      }
+    }
 
     function getCart() {
       return window.DarkroomCart.load();
@@ -456,15 +551,21 @@ function imgUrl(key: string | null) {
       const name = nameEl.value.trim();
       const phone = phoneEl.value.trim();
       const method = methodEl.value.trim();
+      const email = emailEl.value.trim();
+      const mv = isMaldives();
+
+      updateEmailRequirement();
 
       let ok = true;
       if (!name) ok = false;
-      if (!phone || !onlyDigits(phone)) ok = false;
+      if (!phone) ok = false;
+      if (mv && (!onlyDigits(phone) || phone.length < 7)) ok = false;
+      if (!mv && !email) ok = false;
       if (!method) ok = false;
       if (!items.length) ok = false;
       if (isDeliverySelected() && !(deliveryAddrEl?.value.trim())) ok = false;
 
-      phoneErr.style.display = (phone && !onlyDigits(phone)) ? "block" : "none";
+      phoneErr.style.display = (mv && phone && (!onlyDigits(phone) || phone.length < 7)) ? "block" : "none";
       checkoutBtn.disabled = !ok;
     }
 
@@ -723,9 +824,15 @@ function imgUrl(key: string | null) {
       const cartItemsForSubmit = getCartItems();
       const { label: collectionLabel } = getSelectedCollection(calcDiscounts(cartItemsForSubmit).length > 0);
 
+      const dialCode = currentDialCode();
+      const mv = isMaldives();
+      const phoneTyped = phoneEl.value.trim();
+      const customerPhone = mv ? phoneTyped : (phoneTyped ? `+${dialCode} ${phoneTyped}` : "");
+
       const payload = {
         customer_name: nameEl.value.trim(),
-        customer_phone: phoneEl.value.trim(),
+        customer_phone: customerPhone,
+        country_dial_code: dialCode,
         contact_method: methodEl.value.trim(),
         customer_email: emailEl.value.trim() || null,
         customer_notes: notesEl.value.trim() || null,
@@ -833,10 +940,17 @@ function imgUrl(key: string | null) {
       validate();
     });
 
+    countryCodeEl.addEventListener("input", () => {
+      saveCustomer({ countryCode: countryCodeEl.value });
+      validate();
+    });
+
     phoneEl.addEventListener("input", () => {
-      // keep your digit-only enforcement if you already have it
-      const d = String(phoneEl.value || "").replace(/\D+/g, "");
-      if (phoneEl.value !== d) phoneEl.value = d;
+      // digit-only enforcement only applies to Maldives numbers; other countries are unvalidated
+      if (isMaldives()) {
+        const d = String(phoneEl.value || "").replace(/\D+/g, "");
+        if (phoneEl.value !== d) phoneEl.value = d;
+      }
 
       saveCustomer({ phone: phoneEl.value });
       validate();
