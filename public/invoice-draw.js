@@ -20,13 +20,20 @@
     const STRIP_H     = 5;
     const INFO_H      = 128;
     const COL_LABEL_H = 40;
-    const ROW_H       = 52;
     const TABLE_PAD_TOP = 28;
     const TOTAL_H     = 64;
     const FOOTER_H    = 72;
 
+    var itemsRowHeight = 0;
+    for (var ri = 0; ri < items.length; ri++) {
+      var ri_it           = items[ri];
+      var ri_isDiscount   = ri_it.line_total_cents < 0;
+      var ri_isCollection = ri_it.service_id == null && ri_it.line_total_cents > 0;
+      itemsRowHeight += rowHeightFor(extraLinesFor(ri_it, String(ri_it.service_group || ""), ri_isDiscount, ri_isCollection));
+    }
+
     const H = HEADER_H + STRIP_H + INFO_H
-            + TABLE_PAD_TOP + COL_LABEL_H + items.length * ROW_H
+            + TABLE_PAD_TOP + COL_LABEL_H + itemsRowHeight
             + TOTAL_H + FOOTER_H;
 
     const SCALE = 2; // 2× resolution for crisp output
@@ -51,6 +58,31 @@
     function mvr(cents) {
       return (Number(cents || 0) / 100)
         .toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatSelectedOptions(it) {
+      if (!it.selected_options) return "";
+      try {
+        var obj = JSON.parse(it.selected_options);
+        if (!obj || typeof obj !== "object") return "";
+        return Object.values(obj).filter(Boolean).join(" · ");
+      } catch {
+        return "";
+      }
+    }
+
+    // Lines drawn under the service name: group (unless discount/collection-uppercased
+    // already handled by caller) and the chosen options, e.g. "Standard · -1 · 35mm".
+    function extraLinesFor(it, group, isDiscount, isCollection) {
+      var lines = [];
+      if (group && !isDiscount) lines.push(isCollection ? group : group.toUpperCase());
+      var opts = formatSelectedOptions(it);
+      if (opts) lines.push(opts);
+      return lines;
+    }
+
+    function rowHeightFor(extraLines) {
+      return 22 + extraLines.length * 14 + 16;
     }
 
     function hline(y, alpha) {
@@ -153,16 +185,17 @@
       var qty          = isDiscount ? "" : String(it.quantity || it.qty || 0);
       var absCents   = Math.abs(it.line_total_cents);
       var amt        = isDiscount ? ("−MVR " + mvr(absCents)) : ("MVR " + mvr(it.line_total_cents));
+      var extraLines = extraLinesFor(it, group, isDiscount, isCollection);
 
       ctx.font = "500 13px 'JetBrains Mono', monospace";
       ctx.fillStyle = isDiscount ? RED : BLACK;
       ctx.textAlign = "left";
       ctx.fillText(name, PAD, y + 22);
 
-      if (group && !isDiscount) {
-        ctx.font = "400 10px 'JetBrains Mono', monospace";
-        ctx.fillStyle = MUTED_DARK;
-        ctx.fillText(isCollection ? group : group.toUpperCase(), PAD, y + 36);
+      ctx.font = "400 10px 'JetBrains Mono', monospace";
+      ctx.fillStyle = MUTED_DARK;
+      for (var li = 0; li < extraLines.length; li++) {
+        ctx.fillText(extraLines[li], PAD, y + 36 + li * 14);
       }
 
       ctx.font = "400 13px 'JetBrains Mono', monospace";
@@ -171,7 +204,7 @@
       if (qty) ctx.fillText(qty, W - PAD - 140, y + 22);
       ctx.fillText(amt, W - PAD, y + 22);
 
-      y += ROW_H;
+      y += rowHeightFor(extraLines);
       hline(y, 0.07);
     }
 

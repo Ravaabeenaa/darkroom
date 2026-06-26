@@ -21,6 +21,7 @@ type ItemRow = {
   quantity: number;
   unit_price_cents: number;
   line_total_cents: number;
+  selected_options: string | null;
 };
 
 type DiscountRow = {
@@ -59,7 +60,7 @@ export async function GET({ request, locals }: { request: Request; locals: any }
 
   const [itemsRes, discountsRes] = await Promise.all([
     db.prepare(
-      `SELECT service_id, service_name, service_group, quantity, unit_price_cents, line_total_cents
+      `SELECT service_id, service_name, service_group, quantity, unit_price_cents, line_total_cents, selected_options
        FROM order_items WHERE order_id = ?
        ORDER BY
          CASE WHEN line_total_cents < 0 THEN 2 WHEN service_id IS NULL THEN 1 ELSE 0 END ASC,

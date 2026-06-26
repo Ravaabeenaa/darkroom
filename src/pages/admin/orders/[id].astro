@@ -33,6 +33,7 @@ type ItemRow = {
   quantity: number;
   line_total_cents: number;
   service_group: string | null;
+  selected_options: string | null;
 };
 
 type DiscountRow = {
@@ -59,8 +60,8 @@ const order = await db
 if (!order) return new Response("Order not found", { status: 404 });
 
 const [currentRes, originalRes, discountsRes] = await Promise.all([
-  db.prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group FROM order_items WHERE order_id = ? ORDER BY CASE WHEN line_total_cents < 0 THEN 2 WHEN service_id IS NULL THEN 1 ELSE 0 END ASC, service_group ASC, service_name ASC;`).bind(id).all<ItemRow>(),
-  db.prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group FROM order_items_original WHERE order_id = ? ORDER BY CASE WHEN line_total_cents < 0 THEN 2 WHEN service_id IS NULL THEN 1 ELSE 0 END ASC, service_group ASC, service_name ASC;`).bind(id).all<ItemRow>(),
+  db.prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, selected_options FROM order_items WHERE order_id = ? ORDER BY CASE WHEN line_total_cents < 0 THEN 2 WHEN service_id IS NULL THEN 1 ELSE 0 END ASC, service_group ASC, service_name ASC;`).bind(id).all<ItemRow>(),
+  db.prepare(`SELECT id, service_id, service_name, unit_price_cents, quantity, line_total_cents, service_group, selected_options FROM order_items_original WHERE order_id = ? ORDER BY CASE WHEN line_total_cents < 0 THEN 2 WHEN service_id IS NULL THEN 1 ELSE 0 END ASC, service_group ASC, service_name ASC;`).bind(id).all<ItemRow>(),
   db.prepare(`SELECT id, label, scope, scope_ref, amount_type, amount, computed_cents FROM order_discounts WHERE order_id = ? ORDER BY created_at ASC;`).bind(id).all<DiscountRow>(),
 ]);
 
@@ -93,6 +94,15 @@ const isModified =
 
 function money(cents: number) {
   return `MVR ${(cents / 100).toFixed(2)}`;
+}
+
+function formatSelectedOptions(raw: string | null): string {
+  if (!raw) return "";
+  try {
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== "object") return "";
+    return Object.values(obj).filter(Boolean).join(" · ");
+  } catch { return ""; }
 }
 
 const STATUS_OPTIONS = ["NEW", "IN_PROGRESS", "READY", "COMPLETED", "CANCELLED"];
@@ -200,6 +210,9 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
                       <div class="font-medium" style={isBulk ? "color: var(--red);" : ""}>{it.service_name}</div>
                       {it.service_group && (
                         <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
+                      )}
+                      {formatSelectedOptions(it.selected_options) && (
+                        <div class="mt-0.5 text-xs" style="color: var(--muted);">{formatSelectedOptions(it.selected_options)}</div>
                       )}
                       {it.service_id && stockMap[it.service_id] !== undefined && (() => {
                         const stock = stockMap[it.service_id!];
@@ -375,6 +388,9 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
                       <div class="font-medium">{it.service_name}</div>
                       {it.service_group && (
                         <div class="mt-0.5 text-xs" style="color: var(--muted);">{it.service_group}</div>
+                      )}
+                      {formatSelectedOptions(it.selected_options) && (
+                        <div class="mt-0.5 text-xs" style="color: var(--muted);">{formatSelectedOptions(it.selected_options)}</div>
                       )}
                     </td>
                     <td class="px-4 py-3 text-right tabular-nums">{money(it.unit_price_cents)}</td>
