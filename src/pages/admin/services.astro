@@ -19,12 +19,29 @@ type ServiceRow = {
 const q = Astro.url.searchParams.get("q")?.trim() ?? "";
 const showInactive = Astro.url.searchParams.get("inactive") === "1";
 
+// Whitelist of sortable columns → actual SQL column (never interpolate raw user input into ORDER BY)
+const SORT_COLUMNS: Record<string, string> = {
+  name: "name",
+  group: "service_group",
+  price: "price_cents",
+  active: "active",
+  id: "id",
+};
+
+const sortParam = Astro.url.searchParams.get("sort") ?? "";
+const sortKey = sortParam in SORT_COLUMNS ? sortParam : "";
+const sortDir = Astro.url.searchParams.get("dir") === "desc" ? "desc" : "asc";
+
+const orderBy = sortKey
+  ? `${SORT_COLUMNS[sortKey]} ${sortDir.toUpperCase()}, name ASC`
+  : `active DESC, service_group ASC, name ASC`;
+
 const sql = `
   SELECT id, slug, service_group, name, price_cents, active, tags, primary_image_key
   FROM services
   WHERE (${showInactive ? "1=1" : "active=1"})
     AND (? = '' OR name LIKE '%' || ? || '%' OR id LIKE '%' || ? || '%' OR tags LIKE '%' || ? || '%')
-  ORDER BY active DESC, service_group ASC, name ASC;
+  ORDER BY ${orderBy};
 `;
 
 const res = await db.prepare(sql).bind(q, q, q, q).all<ServiceRow>();
@@ -32,6 +49,15 @@ const rows = res.results ?? [];
 
 function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+// Link that sorts by `col`: unsorted/other column → asc; already asc on this column → desc; already desc → asc.
+function sortLink(col: string) {
+  const nextDir = sortKey === col && sortDir === "asc" ? "desc" : "asc";
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set("sort", col);
+  params.set("dir", nextDir);
+  return `?${params.toString()}`;
 }
 ---
 
@@ -166,11 +192,27 @@ function money(cents: number) {
       <table class="hidden md:table w-full text-left text-sm bg-white/40">
         <thead class="bg-white/40">
           <tr>
-            <th class="px-4 py-3">Name</th>
-            <th class="px-4 py-3">Group</th>
-            <th class="px-4 py-3">Price</th>
-            <th class="px-4 py-3">Active</th>
-            <th class="px-4 py-3">ID</th>
+            {[
+              { key: "name", label: "Name" },
+              { key: "group", label: "Group" },
+              { key: "price", label: "Price" },
+              { key: "active", label: "Active" },
+              { key: "id", label: "ID" },
+            ].map((col) => (
+              <th class="px-4 py-3">
+                <span class="inline-flex items-center gap-1">
+                  <span>{col.label}</span>
+                  <a
+                    href={sortLink(col.key)}
+                    class="inline-flex flex-col items-center justify-center leading-none hover:opacity-80"
+                    aria-label={`Sort by ${col.label}`}
+                  >
+                    <span class="block text-[8px] leading-[7px]" style={`color: ${sortKey === col.key && sortDir === "asc" ? "var(--red)" : "var(--muted)"};`}>▲</span>
+                    <span class="block text-[8px] leading-[7px]" style={`color: ${sortKey === col.key && sortDir === "desc" ? "var(--red)" : "var(--muted)"};`}>▼</span>
+                  </a>
+                </span>
+              </th>
+            ))}
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
