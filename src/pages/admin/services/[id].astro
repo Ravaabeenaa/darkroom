@@ -294,19 +294,34 @@ function imgUrl(key: string) {
       <!-- Service options -->
       <div id="optValidationError" class="hidden rounded-2xl border border-red-400/40 bg-red-50/80 px-4 py-3 text-sm text-red-700"></div>
 
-      <label class="block">
-        <span class="text-sm" style="color: var(--muted);">Service options (JSON array of option groups)</span>
-        <textarea
-          id="f_service_options"
-          name="service_options"
-          rows="6"
-          placeholder={'e.g. [{"name":"turnaround","options":["Standard","Express"],"prices":["+0","+75"]}]'}
-          class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none font-mono"
-        >{service.service_options ?? ""}</textarea>
-        <span class="mt-1 block text-xs" style="color: var(--muted);">
-          Each group needs <span class="font-mono">name</span>, <span class="font-mono">options</span>, and <span class="font-mono">prices</span> (same length, prices like "+0"/"+75"). Leave blank for no option selectors.
-        </span>
-      </label>
+      <div class="block">
+        <span class="text-sm" style="color: var(--muted);">Service options</span>
+
+        <div id="serviceOptionsEditor" class="mt-3 space-y-4"></div>
+
+        <button type="button" id="addGroupBtn" class="mt-3 rounded-[999px] border border-[var(--line)] bg-white/60 px-4 py-2 text-sm hover:bg-white/80">
+          + Add option group
+        </button>
+
+        <div id="addGroupPanel" class="mt-3 hidden space-y-3 rounded-2xl border border-[var(--line)] bg-white/40 p-4">
+          <label class="block">
+            <span class="text-xs" style="color: var(--muted);">Copy an existing group from another service (optional)</span>
+            <select id="copyGroupSelect" class="mt-1 w-full rounded-xl border border-[var(--line)] bg-white/60 px-3 py-2 text-sm outline-none">
+              <option value="">— New empty group —</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-xs" style="color: var(--muted);">Group name</span>
+            <input id="newGroupName" type="text" placeholder="e.g. turnaround" class="mt-1 w-full rounded-xl border border-[var(--line)] bg-white/60 px-3 py-2 text-sm outline-none" />
+          </label>
+          <div class="flex gap-3">
+            <button type="button" id="confirmAddGroupBtn" class="rounded-[999px] bg-[var(--btn)] px-5 py-2 text-sm font-medium text-[var(--btnText)] hover:opacity-90">Add</button>
+            <button type="button" id="cancelAddGroupBtn" class="rounded-[999px] border border-[var(--line)] bg-white/60 px-5 py-2 text-sm hover:bg-white/80">Cancel</button>
+          </div>
+        </div>
+
+        <input type="hidden" id="f_service_options" name="service_options" />
+      </div>
 
       <label class="block">
         <span class="text-sm" style="color: var(--muted);">Primary image key (R2)</span>
@@ -335,29 +350,186 @@ function imgUrl(key: string) {
     </form>
   </section>
 
-  <script>
-    // Validate service_options shape on submit
+  <script define:vars={{ initialServiceOptions: service.service_options ?? "", serviceId: service.id }}>
+    // Structured editor for service_options: renders each group as a name + options/prices
+    // table, serializes back into the hidden JSON field on submit.
     (function () {
-      function checkServiceOptions(val) {
-        if (!val.trim()) return null; // blank = OK, no option selectors
+      const editor = document.getElementById("serviceOptionsEditor");
+      const hiddenInput = document.getElementById("f_service_options");
+      const errEl = document.getElementById("optValidationError");
+      const addGroupBtn = document.getElementById("addGroupBtn");
+      const addGroupPanel = document.getElementById("addGroupPanel");
+      const copyGroupSelect = document.getElementById("copyGroupSelect");
+      const newGroupName = document.getElementById("newGroupName");
+      const confirmAddGroupBtn = document.getElementById("confirmAddGroupBtn");
+      const cancelAddGroupBtn = document.getElementById("cancelAddGroupBtn");
 
-        let groups;
-        try { groups = JSON.parse(val); } catch { return "Service options is not valid JSON."; }
-        if (!Array.isArray(groups)) return "Service options must be a JSON array.";
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      }
 
-        for (const g of groups) {
-          if (!g || typeof g.name !== "string" || !g.name.trim()) return "Each option group needs a name.";
-          if (!Array.isArray(g.options) || !Array.isArray(g.prices)) return `Group "${g.name}" needs options and prices arrays.`;
-          if (g.options.length !== g.prices.length) return `Group "${g.name}" options (${g.options.length}) and prices (${g.prices.length}) must have the same number of items.`;
+      function rowHtml(option, price) {
+        return `
+          <tr class="option-row">
+            <td class="py-1 pr-2">
+              <input type="text" class="option-input w-full rounded-lg border border-[var(--line)] bg-white/60 px-2 py-1.5 text-sm outline-none" value="${escapeHtml(option)}" placeholder="e.g. Standard" />
+            </td>
+            <td class="py-1 pr-2">
+              <input type="text" class="price-input w-28 rounded-lg border border-[var(--line)] bg-white/60 px-2 py-1.5 text-sm outline-none" value="${escapeHtml(price)}" placeholder="+0" />
+            </td>
+            <td class="py-1">
+              <button type="button" class="remove-row-btn px-1 text-xs" style="color: var(--muted);">✕</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      function groupCardHtml(name, options, prices) {
+        const rows = (options.length ? options : [""]).map((opt, i) => rowHtml(opt, prices[i] ?? "")).join("");
+        return `
+          <div class="rounded-2xl border border-[var(--line)] p-4" data-group-card>
+            <div class="flex items-center justify-between gap-3">
+              <input type="text" class="group-name-input flex-1 rounded-xl border border-[var(--line)] bg-white/60 px-3 py-2 text-sm font-medium outline-none" value="${escapeHtml(name)}" placeholder="group name e.g. turnaround" />
+              <button type="button" class="delete-group-btn shrink-0 rounded-full border border-red-400/40 bg-white/60 px-3 py-1.5 text-xs hover:bg-white/80">Delete group</button>
+            </div>
+            <table class="mt-3 w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th class="pb-1 text-xs font-normal" style="color: var(--muted);">Option</th>
+                  <th class="pb-1 text-xs font-normal" style="color: var(--muted);">Price adjustment</th>
+                  <th class="pb-1"></th>
+                </tr>
+              </thead>
+              <tbody class="group-rows">${rows}</tbody>
+            </table>
+            <button type="button" class="add-row-btn mt-2 text-xs underline" style="color: var(--muted);">+ Add option</button>
+          </div>
+        `;
+      }
+
+      function addGroupCard(name, options, prices) {
+        const wrap = document.createElement("div");
+        wrap.innerHTML = groupCardHtml(name, options ?? [], prices ?? []).trim();
+        editor.appendChild(wrap.firstElementChild);
+      }
+
+      // Initial render from the service's current service_options
+      let initialGroups = [];
+      try {
+        const parsed = JSON.parse(initialServiceOptions || "[]");
+        if (Array.isArray(parsed)) initialGroups = parsed;
+      } catch { /* leave empty */ }
+      initialGroups.forEach((g) => addGroupCard(g?.name ?? "", g?.options ?? [], g?.prices ?? []));
+
+      // Event delegation for dynamically added rows/groups
+      editor.addEventListener("click", (e) => {
+        const delGroupBtn = e.target.closest(".delete-group-btn");
+        if (delGroupBtn) {
+          delGroupBtn.closest("[data-group-card]")?.remove();
+          return;
         }
-        return null;
+        const addRowBtn = e.target.closest(".add-row-btn");
+        if (addRowBtn) {
+          const tbody = addRowBtn.closest("[data-group-card]")?.querySelector(".group-rows");
+          if (tbody) {
+            const tmp = document.createElement("tbody");
+            tmp.innerHTML = rowHtml("", "+0");
+            tbody.appendChild(tmp.firstElementChild);
+          }
+          return;
+        }
+        const removeRowBtn = e.target.closest(".remove-row-btn");
+        if (removeRowBtn) {
+          removeRowBtn.closest(".option-row")?.remove();
+        }
+      });
+
+      // "Add option group" panel — can copy an existing group from another service
+      let fetchedGroups = null;
+      async function ensureGroupsFetched() {
+        if (fetchedGroups) return fetchedGroups;
+        try {
+          const res = await fetch(`/api/admin/services/option-groups.json?exclude=${encodeURIComponent(serviceId)}`);
+          const data = await res.json().catch(() => null);
+          fetchedGroups = (data?.ok && Array.isArray(data.groups)) ? data.groups : [];
+        } catch {
+          fetchedGroups = [];
+        }
+
+        copyGroupSelect.innerHTML = '<option value="">— New empty group —</option>' +
+          fetchedGroups.map((g, i) => `<option value="${i}">${escapeHtml(g.name)} (from ${escapeHtml(g.serviceName)})</option>`).join("");
+
+        return fetchedGroups;
+      }
+
+      addGroupBtn?.addEventListener("click", async () => {
+        addGroupPanel.classList.remove("hidden");
+        newGroupName.value = "";
+        copyGroupSelect.value = "";
+        await ensureGroupsFetched();
+      });
+
+      copyGroupSelect?.addEventListener("change", () => {
+        const idx = copyGroupSelect.value;
+        if (idx === "" || !fetchedGroups) return;
+        const g = fetchedGroups[Number(idx)];
+        if (g) newGroupName.value = g.name;
+      });
+
+      cancelAddGroupBtn?.addEventListener("click", () => {
+        addGroupPanel.classList.add("hidden");
+      });
+
+      confirmAddGroupBtn?.addEventListener("click", () => {
+        const idx = copyGroupSelect.value;
+        const chosen = (idx !== "" && fetchedGroups) ? fetchedGroups[Number(idx)] : null;
+        const name = newGroupName.value.trim() || chosen?.name || "";
+
+        if (!name) {
+          errEl.textContent = "Group name is required.";
+          errEl.classList.remove("hidden");
+          return;
+        }
+
+        addGroupCard(name, chosen?.options ?? [], chosen?.prices ?? []);
+        addGroupPanel.classList.add("hidden");
+        errEl.classList.add("hidden");
+      });
+
+      // Serialize the structured editor into the hidden JSON field; returns an error string or null
+      function syncAndValidate() {
+        const groups = [];
+        const names = new Set();
+        let error = null;
+
+        editor.querySelectorAll("[data-group-card]").forEach((card) => {
+          if (error) return;
+          const name = card.querySelector(".group-name-input")?.value.trim() ?? "";
+          const options = [];
+          const prices = [];
+          card.querySelectorAll(".option-row").forEach((row) => {
+            const opt = row.querySelector(".option-input")?.value.trim() ?? "";
+            if (!opt) return; // skip blank rows
+            options.push(opt);
+            prices.push(row.querySelector(".price-input")?.value.trim() || "+0");
+          });
+
+          if (!name && options.length === 0) return; // fully empty card, drop silently
+          if (!name) { error = "Each option group needs a name."; return; }
+          if (names.has(name)) { error = `Duplicate group name "${name}".`; return; }
+          if (options.length === 0) { error = `Group "${name}" needs at least one option.`; return; }
+
+          names.add(name);
+          groups.push({ name, options, prices });
+        });
+
+        if (!error) hiddenInput.value = groups.length ? JSON.stringify(groups) : "";
+        return error;
       }
 
       const form = document.querySelector('form[action="/api/admin/services/save"]');
-      const errEl = document.getElementById("optValidationError");
       form?.addEventListener("submit", (e) => {
-        const error = checkServiceOptions(document.getElementById("f_service_options")?.value ?? "");
-
+        const error = syncAndValidate();
         if (error) {
           e.preventDefault();
           errEl.textContent = error;
