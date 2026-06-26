@@ -54,6 +54,11 @@
   --container:   1200px;
   --gap:         24px;
 
+  /* Service primary image aspect ratio — used on the shop grid (ProductCard)
+     and the service detail gallery (ServiceGallery). Change this one value
+     to re-crop both at once. */
+  --primary-image-aspect: 4/3;
+
   /* Header */
   --header-py:       1rem;
   --header-logo-h:   32px;

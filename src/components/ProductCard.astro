@@ -42,9 +42,9 @@ const defaultLabels = Object.values(defaultSelections);
 <article data-dr-product-card data-id={cartKey} data-out-of-stock={outOfStock ? "1" : ""} class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col">
   <a href={href} class="block overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
     {image ? (
-      <img src={image} alt={name} class="aspect-[4/3] w-full object-cover" loading="lazy" />
+      <img src={image} alt={name} class="aspect-[var(--primary-image-aspect)] w-full object-cover" loading="lazy" />
     ) : (
-      <div class="flex aspect-[4/3] w-full items-center justify-center text-xs" style="color: var(--muted);">
+      <div class="flex aspect-[var(--primary-image-aspect)] w-full items-center justify-center text-xs" style="color: var(--muted);">
         No image
       </div>
     )}

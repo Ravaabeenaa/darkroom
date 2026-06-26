@@ -137,14 +137,14 @@ const showStrip  = allImages.length > 1;
   .sg-main-img {
     display: block;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: var(--primary-image-aspect);
     object-fit: cover;
     transition: opacity 0.22s ease;
   }
   .sg-main-img.is-fading { opacity: 0; }
 
   .sg-empty {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: var(--primary-image-aspect);
     display: flex;
     align-items: center;
     justify-content: center;
