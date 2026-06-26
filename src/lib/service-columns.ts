@@ -29,6 +29,7 @@ export const SERVICE_COLUMNS: ServiceColDef[] = [
   { key: "requires_service_id",    type: "text" },
   { key: "service_options",        type: "text" },
   { key: "stock",                  type: "integer", notNull: true },
+  { key: "total_stock",            type: "integer", notNull: true },
   { key: "out_of_stock",           type: "integer", notNull: true },
 ];
 

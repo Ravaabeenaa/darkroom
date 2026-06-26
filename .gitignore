@@ -2,6 +2,11 @@
 dist/
 # generated types
 .astro/
+# wrangler local cache/state (build temp files, local D1 sqlite, etc.)
+.wrangler/
+# local secrets for `wrangler dev`
+.dev.vars
+.dev.vars.*
 
 # dependencies
 node_modules/
