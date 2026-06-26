@@ -160,19 +160,30 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
 
         <label class="block">
           <span class="text-sm font-medium">Phone</span>
-          <div class="mt-2 flex overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--input-bg)]">
-            <input
-              id="custCountryCode"
-              list="countryCodeList"
-              autocomplete="off"
-              value={`${COUNTRY_DIAL_CODES[0].flag} +${COUNTRY_DIAL_CODES[0].dial}`}
-              class="w-[108px] shrink-0 border-r border-[var(--line)] bg-transparent px-3 py-3 text-sm outline-none"
-            />
-            <datalist id="countryCodeList">
-              {COUNTRY_DIAL_CODES.map((c) => (
-                <option value={`${c.flag} +${c.dial}`}>{c.name}</option>
-              ))}
-            </datalist>
+          <div class="mt-2 flex rounded-2xl border border-[var(--line)] bg-[var(--input-bg)]">
+            <div class="relative w-[108px] shrink-0 border-r border-[var(--line)]">
+              <input
+                id="custCountryCode"
+                type="text"
+                autocomplete="off"
+                value={`${COUNTRY_DIAL_CODES[0].flag} +${COUNTRY_DIAL_CODES[0].dial}`}
+                class="w-full bg-transparent px-3 py-3 text-sm outline-none"
+              />
+              <div id="countryCodeMenu" class="absolute left-0 top-full z-30 mt-1 hidden max-h-60 w-56 overflow-y-auto rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-2 shadow-lg">
+                {COUNTRY_DIAL_CODES.map((c) => (
+                  <button
+                    type="button"
+                    class="country-code-option flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-white/10"
+                    data-value={`${c.flag} +${c.dial}`}
+                    data-search={`${c.name} ${c.dial}`.toLowerCase()}
+                  >
+                    <span>{c.flag}</span>
+                    <span class="flex-1 truncate">{c.name}</span>
+                    <span class="shrink-0" style="color: var(--muted);">+{c.dial}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <input id="custPhone" inputmode="numeric" class="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none" placeholder="xxxxxxx" />
           </div>
           <div id="phoneErr" class="mt-2 text-sm" style="color:#b91c1c;display:none;">Phone must be at least 7 digits.</div>
@@ -940,9 +951,54 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
       validate();
     });
 
+    // Custom country-code dropdown (native <datalist> doesn't render reliably on mobile, e.g. iOS Safari)
+    const countryCodeMenu = document.getElementById("countryCodeMenu");
+    const countryOptions = Array.from(document.querySelectorAll(".country-code-option"));
+
+    function filterCountryMenu() {
+      const q = countryCodeEl.value.toLowerCase().replace(/[^a-z0-9+]/g, "");
+      countryOptions.forEach((opt) => {
+        const hay = (opt.getAttribute("data-search") + " " + opt.getAttribute("data-value")).toLowerCase().replace(/[^a-z0-9+]/g, "");
+        opt.style.display = !q || hay.includes(q) ? "" : "none";
+      });
+    }
+
+    function openCountryMenu() {
+      filterCountryMenu();
+      countryCodeMenu?.classList.remove("hidden");
+    }
+
+    function closeCountryMenu() {
+      countryCodeMenu?.classList.add("hidden");
+    }
+
+    countryCodeEl.addEventListener("focus", openCountryMenu);
+    countryCodeEl.addEventListener("click", openCountryMenu);
+
     countryCodeEl.addEventListener("input", () => {
+      openCountryMenu();
       saveCustomer({ countryCode: countryCodeEl.value });
       validate();
+    });
+
+    countryOptions.forEach((opt) => {
+      opt.addEventListener("click", () => {
+        countryCodeEl.value = opt.getAttribute("data-value");
+        closeCountryMenu();
+        saveCustomer({ countryCode: countryCodeEl.value });
+        validate();
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (
+        countryCodeMenu &&
+        !countryCodeMenu.classList.contains("hidden") &&
+        !countryCodeMenu.contains(e.target) &&
+        e.target !== countryCodeEl
+      ) {
+        closeCountryMenu();
+      }
     });
 
     phoneEl.addEventListener("input", () => {
