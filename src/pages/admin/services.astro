@@ -48,7 +48,7 @@ const res = await db.prepare(sql).bind(q, q, q, q).all<ServiceRow>();
 const rows = res.results ?? [];
 
 function money(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `MVR ${(cents / 100).toFixed(2)}`;
 }
 
 // Link that sorts by `col`: unsorted/other column → asc; already asc on this column → desc; already desc → asc.

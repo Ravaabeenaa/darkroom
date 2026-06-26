@@ -102,6 +102,7 @@ html, body {
   color: var(--text);
   font-family: var(--font-sans);
   height: 100%;
+  overflow-x: hidden;
 }
 
 body { margin: 0; }
