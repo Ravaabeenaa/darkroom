@@ -23,25 +23,12 @@
     const TABLE_PAD_TOP = 28;
     const TOTAL_H     = 64;
     const FOOTER_H    = 72;
-
-    var itemsRowHeight = 0;
-    for (var ri = 0; ri < items.length; ri++) {
-      var ri_it           = items[ri];
-      var ri_isDiscount   = ri_it.line_total_cents < 0;
-      var ri_isCollection = ri_it.service_id == null && ri_it.line_total_cents > 0;
-      itemsRowHeight += rowHeightFor(extraLinesFor(ri_it, String(ri_it.service_group || ""), ri_isDiscount, ri_isCollection));
-    }
-
-    const H = HEADER_H + STRIP_H + INFO_H
-            + TABLE_PAD_TOP + COL_LABEL_H + itemsRowHeight
-            + TOTAL_H + FOOTER_H;
+    const QTY_COL_X   = W - PAD - 140;
+    const EXTRA_FONT  = "400 10px 'JetBrains Mono', monospace";
 
     const SCALE = 2; // 2× resolution for crisp output
     const canvas = document.createElement("canvas");
-    canvas.width  = W * SCALE;
-    canvas.height = H * SCALE;
     const ctx = canvas.getContext("2d");
-    ctx.scale(SCALE, SCALE);
 
     await Promise.all([
       document.fonts.load("400 16px 'League Gothic'"),
@@ -71,13 +58,35 @@
       }
     }
 
+    // Word-wraps text to fit the SERVICE column's available width (stops short of QTY_COL_X)
+    // instead of running on past it. Needs ctx's font set first, hence ctx created up front.
+    function wrapText(text, font) {
+      ctx.font = font;
+      const maxWidth = QTY_COL_X - PAD - 10;
+      const words = String(text).split(/\s+/).filter(Boolean);
+      const lines = [];
+      let current = "";
+      for (const word of words) {
+        const test = current ? current + " " + word : word;
+        if (current && ctx.measureText(test).width > maxWidth) {
+          lines.push(current);
+          current = word;
+        } else {
+          current = test;
+        }
+      }
+      if (current) lines.push(current);
+      return lines;
+    }
+
     // Lines drawn under the service name: group (unless discount/collection-uppercased
-    // already handled by caller) and the chosen options, e.g. "Standard · -1 · 35mm".
+    // already handled by caller) and the chosen options, e.g. "Standard · -1 · 35mm" —
+    // each wrapped independently so a long option list doesn't run into the QTY/AMOUNT columns.
     function extraLinesFor(it, group, isDiscount, isCollection) {
       var lines = [];
-      if (group && !isDiscount) lines.push(isCollection ? group : group.toUpperCase());
+      if (group && !isDiscount) lines = lines.concat(wrapText(isCollection ? group : group.toUpperCase(), EXTRA_FONT));
       var opts = formatSelectedOptions(it);
-      if (opts) lines.push(opts);
+      if (opts) lines = lines.concat(wrapText(opts, EXTRA_FONT));
       return lines;
     }
 
@@ -96,6 +105,22 @@
       ctx.stroke();
       ctx.restore();
     }
+
+    var itemsRowHeight = 0;
+    for (var ri = 0; ri < items.length; ri++) {
+      var ri_it           = items[ri];
+      var ri_isDiscount   = ri_it.line_total_cents < 0;
+      var ri_isCollection = ri_it.service_id == null && ri_it.line_total_cents > 0;
+      itemsRowHeight += rowHeightFor(extraLinesFor(ri_it, String(ri_it.service_group || ""), ri_isDiscount, ri_isCollection));
+    }
+
+    const H = HEADER_H + STRIP_H + INFO_H
+            + TABLE_PAD_TOP + COL_LABEL_H + itemsRowHeight
+            + TOTAL_H + FOOTER_H;
+
+    canvas.width  = W * SCALE;
+    canvas.height = H * SCALE;
+    ctx.scale(SCALE, SCALE); // resizing the canvas above resets its state, so re-apply scale here
 
     // Cream base
     ctx.fillStyle = CREAM;
@@ -170,7 +195,7 @@
     ctx.textAlign = "left";
     ctx.fillText("SERVICE", PAD, y + 22);
     ctx.textAlign = "right";
-    ctx.fillText("QTY", W - PAD - 140, y + 22);
+    ctx.fillText("QTY", QTY_COL_X, y + 22);
     ctx.fillText("AMOUNT", W - PAD, y + 22);
 
     y += COL_LABEL_H;
@@ -192,7 +217,7 @@
       ctx.textAlign = "left";
       ctx.fillText(name, PAD, y + 22);
 
-      ctx.font = "400 10px 'JetBrains Mono', monospace";
+      ctx.font = EXTRA_FONT;
       ctx.fillStyle = MUTED_DARK;
       for (var li = 0; li < extraLines.length; li++) {
         ctx.fillText(extraLines[li], PAD, y + 36 + li * 14);
@@ -201,7 +226,7 @@
       ctx.font = "400 13px 'JetBrains Mono', monospace";
       ctx.fillStyle = isDiscount ? RED : BLACK;
       ctx.textAlign = "right";
-      if (qty) ctx.fillText(qty, W - PAD - 140, y + 22);
+      if (qty) ctx.fillText(qty, QTY_COL_X, y + 22);
       ctx.fillText(amt, W - PAD, y + 22);
 
       y += rowHeightFor(extraLines);
