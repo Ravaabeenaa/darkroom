@@ -34,7 +34,7 @@ const cartKey = makeKey(defaultSelections);
 function parseOptCents(str: string): number {
   return Math.round((parseFloat(str.replace(/^\+/, "")) || 0) * 100);
 }
-const displayPrice = priceCents + serviceOptions.reduce((sum, g) => sum + (g.prices?.[0] ? parseOptCents(g.prices[0]) : 0), 0);
+const displayPrice = priceCents + serviceOptions.reduce((sum: number, g: OptionGroup) => sum + (g.prices?.[0] ? parseOptCents(g.prices[0]) : 0), 0);
 
 const defaultLabels = Object.values(defaultSelections);
 ---
@@ -84,14 +84,14 @@ const defaultLabels = Object.values(defaultSelections);
       </span>
     ) : (
       <div class="space-y-2">
-        <div class="flex gap-2">
-          <div class="flex items-center rounded-[999px] border border-[var(--line)] bg-white/40 px-1 py-1" data-qty-wrap>
-            <button type="button" class="h-8 w-8 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70 text-base" data-dec aria-label="Decrease">−</button>
-            <span class="w-7 text-center text-sm tabular-nums" data-pending-qty>1</span>
-            <button type="button" class="h-8 w-8 cursor-pointer rounded-full hover:bg-white/70 active:bg-white/70 text-base" data-inc aria-label="Increase">+</button>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-0.5 rounded-full border border-[var(--line)] bg-white/40 px-1 py-0.5" data-qty-wrap>
+            <button type="button" class="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full hover:bg-white/70 active:bg-white/70 text-sm leading-none" data-dec aria-label="Decrease">−</button>
+            <span class="w-5 text-center text-sm tabular-nums" data-pending-qty>1</span>
+            <button type="button" class="flex h-6 w-6 cursor-pointer items-center justify-center rounded-full hover:bg-white/70 active:bg-white/70 text-sm leading-none" data-inc aria-label="Increase">+</button>
           </div>
-          <button type="button" class="flex-1 cursor-pointer rounded-[999px] bg-[var(--btn)] px-3 py-2 text-sm font-medium text-[var(--btnText)] hover:opacity-90 active:opacity-90" data-add-to-cart>
-            Add to cart
+          <button type="button" class="cart-icon-btn flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center hover:opacity-75 active:opacity-75" data-add-to-cart aria-label="Add to cart">
+            <span class="cart-icon-mask" aria-hidden="true"></span>
           </button>
         </div>
         <div class="flex items-center justify-between gap-2">
@@ -108,6 +108,22 @@ const defaultLabels = Object.values(defaultSelections);
     )}
   </div>
 </article>
+
+<style>
+  .cart-icon-mask {
+    width: 22px;
+    height: 22px;
+    background-color: var(--red);
+    -webkit-mask-image: url('/icons/add_to_cart.png');
+    mask-image: url('/icons/add_to_cart.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+</style>
 
 <script is:inline>
   (function () {
