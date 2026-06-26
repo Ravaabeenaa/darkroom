@@ -27,7 +27,7 @@ const showStrip  = allImages.length > 1;
 <div class="sg-root">
 
   <!-- ── Main stage ─────────────────────────────────── -->
-  <div class="sg-stage">
+  <div class="sg-stage" id="sg-stage">
     {hasImages ? (
       <img
         id="sg-main"
@@ -59,16 +59,27 @@ const showStrip  = allImages.length > 1;
         zoom
       </div>
     )}
+
+    <!-- arrow controls -->
+    {allImages.length > 1 && (
+      <>
+        <button class="sg-arrow sg-arrow-l" id="sg-prev" aria-label="Previous image">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 2 4 7l5 5"/>
+          </svg>
+        </button>
+        <button class="sg-arrow sg-arrow-r" id="sg-next" aria-label="Next image">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 2l5 5-5 5"/>
+          </svg>
+        </button>
+      </>
+    )}
   </div>
 
-  <!-- ── Film-strip thumbnails ──────────────────────── -->
+  <!-- ── Thumbnails ──────────────────────── -->
   {showStrip && (
     <div class="sg-strip-wrap">
-      <!-- sprocket perforations top -->
-      <div class="sg-perfs sg-perfs-top" aria-hidden="true">
-        {Array.from({ length: 20 }).map(() => <span class="sg-perf" />)}
-      </div>
-
       <div class="sg-strip" id="sg-strip">
         {allImages.map((img, i) => (
           <button
@@ -80,14 +91,8 @@ const showStrip  = allImages.length > 1;
             aria-label={`View image ${i + 1}`}
           >
             <img src={img.src} alt={img.alt} loading={i === 0 ? "eager" : "lazy"} />
-            <span class="sg-thumb-num">{String(i + 1).padStart(2, "0")}</span>
           </button>
         ))}
-      </div>
-
-      <!-- sprocket perforations bottom -->
-      <div class="sg-perfs sg-perfs-bottom" aria-hidden="true">
-        {Array.from({ length: 20 }).map(() => <span class="sg-perf" />)}
       </div>
     </div>
   )}
@@ -200,41 +205,49 @@ const showStrip  = allImages.length > 1;
     .sg-stage:hover .sg-zoom-hint { opacity: 0; }
   }
 
-  /* ── Film strip ───────────────────────────────────── */
+  /* ── Arrow controls ───────────────────────────────── */
+  .sg-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(238, 228, 210, 0.14);
+    color: rgba(238, 228, 210, 0.9);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.22s ease, background 0.2s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .sg-arrow-l { left: 10px; }
+  .sg-arrow-r { right: 10px; }
+
+  .sg-stage:hover .sg-arrow,
+  .sg-stage:focus-within .sg-arrow { opacity: 1; }
+  .sg-arrow:hover,
+  .sg-arrow:active { background: rgba(0, 0, 0, 0.72); }
+
+  /* always visible on touch devices */
+  @media (hover: none) {
+    .sg-arrow { opacity: 0.7 !important; }
+  }
+
+  /* ── Thumbnails ───────────────────────────────────── */
   .sg-strip-wrap {
     margin-top: 10px;
-    background: #0a0a0a;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.06);
-    position: relative;
-  }
-
-  /* sprocket holes */
-  .sg-perfs {
-    display: flex;
-    gap: 0;
-    padding: 0 4px;
-    height: 8px;
-    align-items: center;
-    overflow: hidden;
-  }
-  .sg-perfs-top  { background: #111; border-bottom: 1px solid #1a1a1a; }
-  .sg-perfs-bottom { background: #111; border-top: 1px solid #1a1a1a; }
-
-  .sg-perf {
-    flex: 0 0 18px;
-    height: 4px;
-    border-radius: 1px;
-    background: #2a2a2a;
-    margin-right: 10px;
   }
 
   /* scrollable row */
   .sg-strip {
     display: flex;
-    gap: 3px;
-    padding: 6px 6px;
+    gap: 8px;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -244,16 +257,11 @@ const showStrip  = allImages.length > 1;
   /* individual thumb */
   .sg-thumb {
     flex: 0 0 68px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
     outline: none;
-    position: relative;
   }
 
   .sg-thumb img {
@@ -261,22 +269,14 @@ const showStrip  = allImages.length > 1;
     width: 68px;
     height: 54px;
     object-fit: cover;
-    border-radius: 3px;
+    border-radius: 10px;
     border: 2px solid transparent;
     transition: border-color 0.15s, opacity 0.15s;
     opacity: 0.55;
   }
 
-  .sg-thumb:hover img { opacity: 0.85; border-color: rgba(238,228,210,0.3); }
-  .sg-thumb.is-active img { opacity: 1; border-color: #ED1C24; }
-
-  .sg-thumb-num {
-    font-family: var(--font-sans);
-    font-size: 8px;
-    letter-spacing: 0.05em;
-    color: rgba(238,228,210,0.25);
-  }
-  .sg-thumb.is-active .sg-thumb-num { color: rgba(238,228,210,0.6); }
+  .sg-thumb:hover img { opacity: 0.85; border-color: var(--muted); }
+  .sg-thumb.is-active img { opacity: 1; border-color: var(--red); }
 
   /* ── Lightbox ─────────────────────────────────────── */
   .sg-lb {
@@ -383,9 +383,12 @@ const showStrip  = allImages.length > 1;
   (function () {
     if (!allImages.length) return;
 
+    const stage      = document.getElementById("sg-stage");
     const mainImg    = document.getElementById("sg-main");
     const counter    = document.getElementById("sg-counter-cur");
     const strip      = document.getElementById("sg-strip");
+    const prevBtn    = document.getElementById("sg-prev");
+    const nextBtn    = document.getElementById("sg-next");
     const lb         = document.getElementById("sg-lb");
     const lbImg      = document.getElementById("sg-lb-img");
     const lbClose    = document.getElementById("sg-lb-close");
@@ -425,6 +428,23 @@ const showStrip  = allImages.length > 1;
     thumbBtns.forEach((btn, i) => {
       btn.addEventListener("click", () => setActive(i));
     });
+
+    // ── Arrow controls + swipe ──────────────────────────
+    function goTo(idx) {
+      setActive(((idx % allImages.length) + allImages.length) % allImages.length);
+    }
+
+    prevBtn?.addEventListener("click", (e) => { e.stopPropagation(); goTo(activeIndex - 1); });
+    nextBtn?.addEventListener("click", (e) => { e.stopPropagation(); goTo(activeIndex + 1); });
+
+    let touchX = 0;
+    if (stage) {
+      stage.addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+      stage.addEventListener("touchend", (e) => {
+        const dx = e.changedTouches[0].clientX - touchX;
+        if (Math.abs(dx) > 44) goTo(activeIndex + (dx < 0 ? 1 : -1));
+      }, { passive: true });
+    }
 
     // ── Lightbox ───────────────────────────────────────
     function openLb(idx) {
