@@ -12,6 +12,7 @@ type ServiceRow = {
   name: string;
   price_cents: number;
   active: number;
+  priority: number;
   tags: string | null;
   primary_image_key: string | null;
 };
@@ -25,6 +26,7 @@ const SORT_COLUMNS: Record<string, string> = {
   group: "service_group",
   price: "price_cents",
   active: "active",
+  priority: "priority",
   id: "id",
 };
 
@@ -34,10 +36,10 @@ const sortDir = Astro.url.searchParams.get("dir") === "desc" ? "desc" : "asc";
 
 const orderBy = sortKey
   ? `${SORT_COLUMNS[sortKey]} ${sortDir.toUpperCase()}, name ASC`
-  : `active DESC, service_group ASC, name ASC`;
+  : `active DESC, priority DESC, service_group ASC, name ASC`;
 
 const sql = `
-  SELECT id, slug, service_group, name, price_cents, active, tags, primary_image_key
+  SELECT id, slug, service_group, name, price_cents, active, priority, tags, primary_image_key
   FROM services
   WHERE (${showInactive ? "1=1" : "active=1"})
     AND (? = '' OR name LIKE '%' || ? || '%' OR id LIKE '%' || ? || '%' OR tags LIKE '%' || ? || '%')
@@ -177,7 +179,7 @@ function sortLink(col: string) {
                 {s.name}
               </a>
               <div class="mt-0.5 text-xs truncate" style="color: var(--muted);">
-                {[s.service_group, money(s.price_cents), s.active ? "Active" : "Inactive"].filter(Boolean).join(" · ")}
+                {[s.service_group, money(s.price_cents), s.active ? "Active" : "Inactive", s.priority ? `Priority ${s.priority}` : null].filter(Boolean).join(" · ")}
               </div>
             </div>
             <a href={`/admin/services/${encodeURIComponent(s.slug ?? s.id)}`}
@@ -197,6 +199,7 @@ function sortLink(col: string) {
               { key: "group", label: "Group" },
               { key: "price", label: "Price" },
               { key: "active", label: "Active" },
+              { key: "priority", label: "Priority" },
               { key: "id", label: "ID" },
             ].map((col) => (
               <th class="px-4 py-3">
@@ -229,6 +232,7 @@ function sortLink(col: string) {
               <td class="px-4 py-3">{s.service_group ?? "—"}</td>
               <td class="px-4 py-3">{money(s.price_cents)}</td>
               <td class="px-4 py-3">{s.active ? "✔️" : "❌"}</td>
+              <td class="px-4 py-3">{s.priority}</td>
               <td class="px-4 py-3 font-mono text-xs">{s.id}</td>
               <td class="px-4 py-3 text-right">
                 <a

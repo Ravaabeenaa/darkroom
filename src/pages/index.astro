@@ -59,7 +59,7 @@ const featuredRes = await db
     SELECT id, slug, name, price_cents, primary_image_key, service_options
     FROM services
     WHERE active = 1 AND featured = 1
-    ORDER BY updated_at DESC
+    ORDER BY priority DESC, updated_at DESC
     LIMIT 4;
   `)
   .all();

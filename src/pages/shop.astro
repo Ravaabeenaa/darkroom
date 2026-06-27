@@ -25,7 +25,7 @@ const res = await db.prepare(`
   SELECT id, slug, service_group, name, description, price_cents, active, out_of_stock, tags, primary_image_key, service_options
   FROM services
   WHERE active = 1
-  ORDER BY service_group ASC, name ASC;
+  ORDER BY priority DESC, service_group ASC, name ASC;
 `).all();
 
 const rows = (res.results ?? []) as ServiceRow[];

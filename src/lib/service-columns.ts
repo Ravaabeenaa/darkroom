@@ -31,6 +31,7 @@ export const SERVICE_COLUMNS: ServiceColDef[] = [
   { key: "stock",                  type: "integer", notNull: true },
   { key: "total_stock",            type: "integer", notNull: true },
   { key: "out_of_stock",           type: "integer", notNull: true },
+  { key: "priority",               type: "integer", notNull: true },
 ];
 
 export const SERVICE_COLUMN_KEYS = SERVICE_COLUMNS.map((c) => c.key);

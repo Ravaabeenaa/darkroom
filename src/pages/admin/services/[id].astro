@@ -17,6 +17,7 @@ type ServiceRow = {
   bulk_discount_eligible: number;
   bulk_discount_percent: number;
   bulk_discount_min: number;
+  priority: number;
   tags: string | null;
   notes: string | null;
   primary_image_key: string | null;
@@ -36,7 +37,7 @@ type ImageRow = {
 };
 
 const service = await db.prepare(`
-  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, tags, notes, primary_image_key, service_options, stock, out_of_stock
+  SELECT id, slug, service_group, name, description, price_cents, active, featured, bulk_discount_eligible, bulk_discount_percent, bulk_discount_min, priority, tags, notes, primary_image_key, service_options, stock, out_of_stock
   FROM services
   WHERE slug = ? OR id = ?
   LIMIT 1;
@@ -259,6 +260,17 @@ function imgUrl(key: string) {
             min="2"
             step="1"
             value={service.bulk_discount_min ?? 5}
+            class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
+          />
+        </label>
+
+        <label class="block">
+          <span class="text-sm" style="color: var(--muted);">Shop order priority <span class="text-xs">(higher shows first, default 0)</span></span>
+          <input
+            name="priority"
+            type="number"
+            step="1"
+            value={service.priority ?? 0}
             class="mt-2 w-full rounded-2xl border border-[var(--line)] bg-white/60 px-4 py-3 text-sm outline-none"
           />
         </label>
