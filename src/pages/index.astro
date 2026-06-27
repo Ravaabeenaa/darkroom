@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
 import InstagramPost from "../components/InstagramPost.astro";
+import InstagramSlider from "../components/InstagramSlider.astro";
 import HeroCarousel from "../components/HeroCarousel.astro";
 import { contact } from "../lib/contact";
 import { filmLabel } from "../lib/filmLabel";
@@ -66,11 +67,22 @@ const featuredRes = await db
 
 const featured = (featuredRes.results ?? []) as FeaturedRow[];
 
-type IgPost = { id: string; url: string };
+type IgPost = {
+  id: string;
+  url: string;
+  account_handle: string | null;
+  caption: string | null;
+  photo_key: string | null;
+};
 const igRes = await db
-  .prepare("SELECT id, url FROM instagram_posts WHERE active = 1 ORDER BY sort_order ASC")
+  .prepare("SELECT id, url, account_handle, caption, photo_key FROM instagram_posts WHERE active = 1 ORDER BY sort_order ASC")
   .all<IgPost>();
 const igPosts = igRes.results ?? [];
+
+function igPhotoUrl(key: string | null) {
+  if (!key) return null;
+  return r2Base ? `${r2Base}/${key}` : `/${key}`;
+}
 
 ---
 
@@ -252,6 +264,24 @@ const igPosts = igRes.results ?? [];
       <div class="mt-10 text-sm text-center" style="color: var(--muted);">No posts yet.</div>
     )}
     {igPosts.length > 0 && <script is:inline async src="//www.instagram.com/embed.js"></script>}
+
+    {igPosts.length > 0 && (
+      <div class="mt-16">
+        <div class="ig-compare-label">
+          <span>Comparison — custom widget (WIP)</span>
+        </div>
+        <div class="mt-4 reveal">
+          <InstagramSlider
+            posts={igPosts.map((p: IgPost) => ({
+              url: p.url,
+              accountHandle: p.account_handle,
+              caption: p.caption,
+              photoUrl: igPhotoUrl(p.photo_key),
+            }))}
+          />
+        </div>
+      </div>
+    )}
   </section>
 
   <style>
@@ -516,6 +546,24 @@ const igPosts = igRes.results ?? [];
     }
     @media (min-width: 640px) {
       .ig-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 540px)); }
+    }
+
+    .ig-compare-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-sans);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .ig-compare-label::before,
+    .ig-compare-label::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
     }
 
     /* ─── SHARED GALLERY HOVER (applied to all content images) ── */
