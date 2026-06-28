@@ -1,8 +1,10 @@
 ---
 /**
- * InstagramSlider — same look & mechanics as HeroCarousel (full-bleed crossfade,
- * stamp counter, arrows, pips, progress line, autoplay), adapted to show an
- * account handle + caption instead of a single label.
+ * InstagramSlider — simple letterboxed photo viewer.
+ *
+ * Fixed-height stage, object-fit: contain so the full photo always shows
+ * (never cropped) regardless of orientation, with true horizontal sliding
+ * between posts (translateX), arrows, dots, and a caption line below.
  *
  * Data (photo/handle/caption) is entered manually in /admin/instagram since
  * Instagram's oEmbed API now requires a registered Meta app + access token.
@@ -18,391 +20,257 @@ interface Props {
 }
 const { posts } = Astro.props;
 const total = posts.length;
-
-function captionLine(p: Post) {
-  const handle = `@${p.accountHandle ?? "darkroom"}`;
-  return p.caption ? `${handle} — ${p.caption}` : handle;
-}
 ---
 
 {total > 0 && (
-  <div class="igc" id="igc">
+  <div class="igs" id="igs">
 
-    <!-- image stage -->
-    <div class="igc-stage" id="igcStage">
-
-      {posts.map((p, i) => (
-        <a
-          href={p.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          class={`igc-slide${i === 0 ? ' is-active' : ''}`}
-          data-idx={i}
-          aria-label="View on Instagram"
-        >
-          {p.photoUrl ? (
-            <img
-              src={p.photoUrl}
-              alt={p.caption ?? "Instagram post"}
-              class="igc-img"
-              loading={i === 0 ? 'eager' : 'lazy'}
-              decoding="async"
-            />
-          ) : (
-            <div class="igc-empty">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <div class="igs-stage" id="igsStage">
+      <div class="igs-track" id="igsTrack" style={`width:${total * 100}%;`}>
+        {posts.map((p, i) => (
+          <a
+            href={p.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="igs-slide"
+            style={`width:${100 / total}%;`}
+            aria-label="View on Instagram"
+          >
+            {p.photoUrl ? (
+              <img
+                src={p.photoUrl}
+                alt={p.caption ?? "Instagram post"}
+                class="igs-img"
+                loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
+              />
+            ) : (
+              <svg class="igs-empty" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <rect x="2" y="5" width="20" height="15" rx="2"/>
                 <circle cx="12" cy="12.5" r="4"/>
                 <path d="M7 5l1.5-2h7L17 5"/>
               </svg>
-            </div>
-          )}
-        </a>
-      ))}
+            )}
+          </a>
+        ))}
+      </div>
 
-      <!-- vignette -->
-      <div class="igc-vignette" aria-hidden="true"></div>
-
-      <!-- frame counter -->
       {total > 1 && (
-        <div class="igc-stamp" aria-hidden="true">
-          <span id="igcNum">01</span><span class="igc-stamp-sep">/</span><span>{String(total).padStart(2, '0')}</span>
+        <div class="igs-count" aria-hidden="true">
+          <span id="igsNum">1</span> / {total}
         </div>
       )}
 
-      <!-- arrow controls -->
       {total > 1 && (
         <>
-          <button class="igc-arrow igc-arrow-l" id="igcPrev" aria-label="Previous post">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 2 4 7l5 5"/>
-            </svg>
+          <button class="igs-arrow igs-arrow-l" id="igsPrev" aria-label="Previous post">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2 4 7l5 5"/></svg>
           </button>
-          <button class="igc-arrow igc-arrow-r" id="igcNext" aria-label="Next post">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 2l5 5-5 5"/>
-            </svg>
+          <button class="igs-arrow igs-arrow-r" id="igsNext" aria-label="Next post">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2l5 5-5 5"/></svg>
           </button>
         </>
       )}
     </div>
 
-    <!-- caption bar -->
-    <a href={posts[0].url} target="_blank" rel="noopener noreferrer" class="igc-bar">
-      <span class="igc-caption">
-        <span class="igc-bullet" aria-hidden="true"></span>
-        <span class="igc-label" id="igcLabel">{captionLine(posts[0])}</span>
-      </span>
-      {total > 1 && (
-        <span class="igc-pips" role="presentation">
-          {posts.map((_, i) => (
-            <button class={`igc-pip${i === 0 ? ' is-active' : ''}`} data-pip={i} aria-label={`Post ${i + 1}`}></button>
-          ))}
-        </span>
-      )}
-    </a>
+    <div class="igs-foot">
+      <a href={posts[0].url} target="_blank" rel="noopener noreferrer" class="igs-meta" id="igsMeta">
+        <span class="igs-handle">@{posts[0].accountHandle ?? "darkroom"}</span>
+        <span class="igs-caption" style={posts[0].caption ? "" : "display:none;"}>{posts[0].caption ?? ""}</span>
+      </a>
 
-    <!-- progress track -->
-    {total > 1 && (
-      <div class="igc-progress" aria-hidden="true">
-        <div class="igc-progress-fill" id="igcFill"></div>
-      </div>
-    )}
+      {total > 1 && (
+        <div class="igs-dots" role="presentation">
+          {posts.map((_, i) => (
+            <button class={`igs-dot ${i === 0 ? "is-active" : ""}`} data-dot={i} aria-label={`Post ${i + 1}`}></button>
+          ))}
+        </div>
+      )}
+    </div>
 
   </div>
 )}
 
 <style>
-  /* ── ROOT ──────────────────────────────────────────────────── */
-  .igc {
+  .igs {
     min-width: 0;
     width: 100%;
   }
 
   /* ── STAGE ─────────────────────────────────────────────────── */
-  /* Height is set by JS to match each photo's natural aspect ratio at the
-     stage's fixed width — so the full photo always shows uncropped, and
-     only the height changes between posts (not the width). */
-  .igc-stage {
+  /* Fixed height; photos use object-fit: contain so they always show in full,
+     letterboxed rather than cropped or forcing the widget to grow/shrink. */
+  .igs-stage {
     position: relative;
     overflow: hidden;
-    background: #0a0a0a;
-    width: 100%;
-    height: 75vw;
-    max-height: 480px;
-    transition: height 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: 0.85rem;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    height: 280px;
+  }
+  @media (min-width: 640px) {
+    .igs-stage { height: 380px; }
+  }
+  @media (min-width: 1024px) {
+    .igs-stage { height: 440px; }
   }
 
-  /* ── SLIDES ────────────────────────────────────────────────── */
-  .igc-slide {
-    position: absolute;
-    inset: 0 0 auto 0;
-    display: block;
-    opacity: 0;
-    transition: opacity 0.65s ease;
-  }
-  .igc-slide.is-active { opacity: 1; z-index: 1; }
-
-  .igc-img {
-    display: block;
-    width: 100%;
-    height: auto;
-    will-change: opacity;
+  .igs-track {
+    display: flex;
+    height: 100%;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .igc-empty {
-    width: 100%;
-    aspect-ratio: 4 / 3;
+  .igs-slide {
+    flex-shrink: 0;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(238, 228, 210, 0.25);
   }
 
-  /* ── VIGNETTE ──────────────────────────────────────────────── */
-  .igc-vignette {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1;
-    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
+  .igs-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
-  /* ── STAMP (frame counter) ─────────────────────────────────── */
-  .igc-stamp {
+  .igs-empty {
+    color: var(--muted);
+    opacity: 0.5;
+  }
+
+  /* ── COUNT ─────────────────────────────────────────────────── */
+  .igs-count {
     position: absolute;
-    top: 12px;
-    right: 14px;
-    z-index: 3;
+    top: 10px;
+    right: 12px;
+    z-index: 2;
     font-family: var(--font-sans);
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    color: rgba(238, 228, 210, 0.55);
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    padding: 3px 7px;
-    border-radius: 2px;
-    pointer-events: none;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
     font-variant-numeric: tabular-nums;
+    pointer-events: none;
   }
-  .igc-stamp-sep { opacity: 0.4; }
 
   /* ── ARROWS ────────────────────────────────────────────────── */
-  .igc-arrow {
+  .igs-arrow {
     position: absolute;
     top: 50%;
     translate: 0 -50%;
-    z-index: 3;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(238, 228, 210, 0.14);
-    color: rgba(238, 228, 210, 0.9);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.22s ease, background 0.2s ease;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    opacity: 0.85;
+    transition: opacity 0.2s ease, background 0.2s ease;
   }
-  .igc-arrow-l { left: 10px; }
-  .igc-arrow-r { right: 10px; }
+  .igs-arrow-l { left: 8px; }
+  .igs-arrow-r { right: 8px; }
+  .igs-arrow:hover { opacity: 1; background: var(--red); color: #000; border-color: var(--red); }
 
-  .igc-stage:hover .igc-arrow,
-  .igc-stage:focus-within .igc-arrow { opacity: 1; }
-  .igc-arrow:hover,
-  .igc-arrow:active { background: rgba(0, 0, 0, 0.72); }
-
-  @media (hover: none) {
-    .igc-arrow { opacity: 0.7 !important; }
-  }
-
-  /* ── CAPTION BAR ───────────────────────────────────────────── */
-  .igc-bar {
+  /* ── FOOT (handle + caption + dots) ───────────────────────── */
+  .igs-foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding-top: 8px;
-    margin-top: 5px;
-    border-top: 1px solid var(--line);
-    font-family: var(--font-sans);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: none;
-    color: var(--muted);
+    gap: 14px;
+    margin-top: 12px;
   }
-  .igc-bar:hover .igc-label { color: var(--text); }
 
-  .igc-caption {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .igs-meta {
     min-width: 0;
     overflow: hidden;
-  }
-  .igc-bullet {
-    flex-shrink: 0;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--red);
-  }
-  .igc-label {
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: opacity 0.22s ease, color 0.2s ease;
+    font-family: var(--font-sans);
+    font-size: 12px;
   }
-  .igc-label.is-fading { opacity: 0; }
+  .igs-handle {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .igs-meta:hover .igs-handle { color: var(--red); }
+  .igs-caption {
+    margin-left: 8px;
+    color: var(--muted);
+  }
 
-  /* ── PIPS ──────────────────────────────────────────────────── */
-  .igc-pips {
+  .igs-dots {
     display: flex;
-    gap: 5px;
+    gap: 6px;
     flex-shrink: 0;
   }
-  .igc-pip {
-    width: 16px;
-    height: 2px;
-    border-radius: 1px;
+  .igs-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
     background: var(--line);
-    cursor: pointer;
-    transition: background 0.2s ease, width 0.2s ease;
-    padding: 0;
     border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
   }
-  .igc-pip.is-active {
-    background: var(--red);
-    width: 24px;
-  }
-  .igc-pip:hover { background: var(--muted); }
-
-  /* ── PROGRESS LINE ─────────────────────────────────────────── */
-  .igc-progress {
-    height: 1px;
-    margin-top: 5px;
-    background: var(--line);
-    overflow: hidden;
-  }
-  .igc-progress-fill {
-    height: 100%;
-    width: 0;
-    background: var(--red);
-  }
-  .igc-progress-fill.is-running {
-    animation: igcFill var(--igc-dur, 5000ms) linear forwards;
-  }
-  @keyframes igcFill {
-    from { width: 0; }
-    to   { width: 100%; }
-  }
+  .igs-dot.is-active { background: var(--red); transform: scale(1.25); }
+  .igs-dot:hover { background: var(--muted); }
 </style>
 
-<script is:inline define:vars={{ igcCaptions: posts.map(captionLine), igcUrls: posts.map(p => p.url), igcInterval: 5000 }}>
+<script is:inline define:vars={{ igsUrls: posts.map(p => p.url), igsHandles: posts.map(p => p.accountHandle), igsCaptions: posts.map(p => p.caption) }}>
   (function () {
-    const stage    = document.getElementById('igcStage');
-    const slideEls = stage ? stage.querySelectorAll('.igc-slide') : [];
-    const bar      = document.querySelector('.igc-bar');
-    const labelEl  = document.getElementById('igcLabel');
-    const numEl    = document.getElementById('igcNum');
-    const fill     = document.getElementById('igcFill');
-    const prevBtn  = document.getElementById('igcPrev');
-    const nextBtn  = document.getElementById('igcNext');
-    const pipBtns  = document.querySelectorAll('#igc .igc-pip');
+    const stage = document.getElementById('igsStage');
+    const track = document.getElementById('igsTrack');
+    if (!track) return;
 
-    if (!slideEls.length) return;
+    const slides = Array.from(track.children);
+    const total = slides.length;
+    if (total <= 1) return;
 
-    const total = slideEls.length;
+    const numEl  = document.getElementById('igsNum');
+    const metaEl = document.getElementById('igsMeta');
+    const prevBtn = document.getElementById('igsPrev');
+    const nextBtn = document.getElementById('igsNext');
+    const dots = Array.from(document.querySelectorAll('#igs .igs-dot'));
+
     var cur = 0;
-    var tmr = null;
 
-    // Stage height tracks the active photo's natural aspect ratio at the stage's
-    // fixed width, so the full photo always shows uncropped — only height changes.
-    function applyHeight(slideEl) {
-      if (!stage) return;
-      var img = slideEl.querySelector('img');
-      var w = stage.clientWidth;
-      if (img) {
-        var setFromImg = function () {
-          var ratio = img.naturalWidth ? img.naturalHeight / img.naturalWidth : 0.75;
-          stage.style.height = Math.round(w * ratio) + 'px';
-        };
-        if (img.complete && img.naturalWidth) setFromImg();
-        else img.addEventListener('load', setFromImg, { once: true });
-      } else {
-        stage.style.height = Math.round(w * 0.75) + 'px'; // matches .igc-empty's 4:3
+    function render() {
+      track.style.transform = 'translateX(-' + (cur * (100 / total)) + '%)';
+      dots.forEach(function (d, i) { d.classList.toggle('is-active', i === cur); });
+      if (numEl) numEl.textContent = String(cur + 1);
+      if (metaEl) {
+        metaEl.href = igsUrls[cur] || '#';
+        var handle = metaEl.querySelector('.igs-handle');
+        var caption = metaEl.querySelector('.igs-caption');
+        if (handle) handle.textContent = '@' + (igsHandles[cur] || 'darkroom');
+        if (caption) {
+          if (igsCaptions[cur]) { caption.textContent = igsCaptions[cur]; caption.style.display = ''; }
+          else caption.style.display = 'none';
+        }
       }
     }
 
-    function goTo(idx) {
-      var next = ((idx % total) + total) % total;
-
-      slideEls[cur].classList.remove('is-active');
-      if (pipBtns[cur]) pipBtns[cur].classList.remove('is-active');
-
-      cur = next;
-
-      slideEls[cur].classList.add('is-active');
-      if (pipBtns[cur]) pipBtns[cur].classList.add('is-active');
-      applyHeight(slideEls[cur]);
-
-      if (numEl) numEl.textContent = String(cur + 1).padStart(2, '0');
-      if (bar) bar.href = igcUrls[cur] || '#';
-
-      if (labelEl) {
-        labelEl.classList.add('is-fading');
-        setTimeout(function () {
-          labelEl.textContent = igcCaptions[cur] || '';
-          labelEl.classList.remove('is-fading');
-        }, 200);
-      }
-
-      if (fill) {
-        fill.classList.remove('is-running');
-        fill.style.setProperty('--igc-dur', igcInterval + 'ms');
-        void fill.offsetWidth;
-        fill.classList.add('is-running');
-      }
+    function goTo(i) {
+      cur = ((i % total) + total) % total;
+      render();
     }
 
-    function start() {
-      clearInterval(tmr);
-      if (total > 1) tmr = setInterval(function () { goTo(cur + 1); }, igcInterval);
-    }
+    prevBtn && prevBtn.addEventListener('click', function (e) { e.preventDefault(); goTo(cur - 1); });
+    nextBtn && nextBtn.addEventListener('click', function (e) { e.preventDefault(); goTo(cur + 1); });
+    dots.forEach(function (d, i) { d.addEventListener('click', function (e) { e.preventDefault(); goTo(i); }); });
 
-    function stop() { clearInterval(tmr); tmr = null; }
-
-    goTo(0);
-    start();
-
-    prevBtn && prevBtn.addEventListener('click', function (e) { e.preventDefault(); stop(); goTo(cur - 1); start(); });
-    nextBtn && nextBtn.addEventListener('click', function (e) { e.preventDefault(); stop(); goTo(cur + 1); start(); });
-
-    pipBtns.forEach(function (pip, i) {
-      pip.addEventListener('click', function (e) { e.preventDefault(); stop(); goTo(i); start(); });
-    });
-
-    stage && stage.addEventListener('mouseenter', stop);
-    stage && stage.addEventListener('mouseleave', start);
-
-    var _tx = 0;
-    if (stage) {
-      stage.addEventListener('touchstart', function (e) { _tx = e.touches[0].clientX; }, { passive: true });
-      stage.addEventListener('touchend', function (e) {
-        var dx = e.changedTouches[0].clientX - _tx;
-        if (Math.abs(dx) > 44) { stop(); goTo(cur + (dx < 0 ? 1 : -1)); start(); }
-      }, { passive: true });
-    }
-
-    var resizeTmr = null;
-    window.addEventListener('resize', function () {
-      clearTimeout(resizeTmr);
-      resizeTmr = setTimeout(function () { applyHeight(slideEls[cur]); }, 120);
-    });
+    var touchX = 0;
+    stage && stage.addEventListener('touchstart', function (e) { touchX = e.touches[0].clientX; }, { passive: true });
+    stage && stage.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 44) goTo(cur + (dx < 0 ? 1 : -1));
+    }, { passive: true });
   })();
 </script>
