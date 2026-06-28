@@ -1,0 +1,163 @@
+---
+/**
+ * LabFilmStrip — horizontally scrollable strip of lab photos.
+ * Drag-to-scroll with momentum/inertia on desktop (native touch scroll on mobile).
+ */
+interface Image {
+  url: string;
+  label: string;
+}
+interface Props {
+  images: Image[];
+  heading?: string;
+  description?: string;
+}
+const { images, heading = "From the lab", description = "A selection of frames processed and scanned in-house." } = Astro.props;
+---
+
+{images.length > 0 && (
+  <section class="lab-strip-section">
+    <div class="lab-header">
+      <h2 class="text-2xl font-semibold tracking-wide">{heading}</h2>
+      <p class="mt-2 text-sm leading-6" style="color: var(--muted);">{description}</p>
+    </div>
+    <div class="lab-strip" id="labStrip">
+      {images.map((img) => (
+        <div class="lab-item">
+          <img src={img.url} alt={img.label} class="lab-img" loading="lazy" decoding="async" />
+          <div class="lab-caption">{img.label}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
+
+<style>
+  .lab-strip-section {
+    margin-top: 6rem;
+  }
+  @media (min-width: 768px) {
+    .lab-strip-section { margin-top: 8rem; }
+  }
+
+  .lab-strip {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-top: 20px;
+    background: var(--line);
+    cursor: grab;
+    user-select: none;
+  }
+  .lab-strip::-webkit-scrollbar { display: none; }
+
+  .lab-strip.is-dragging {
+    cursor: grabbing;
+  }
+  .lab-strip.is-dragging .lab-item {
+    pointer-events: none;
+  }
+
+  .lab-item {
+    flex-shrink: 0;
+    width: 220px;
+    background: var(--bg);
+  }
+  @media (min-width: 768px) {
+    .lab-item { width: 340px; }
+  }
+
+  .lab-img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    transition: opacity 0.3s ease;
+  }
+  .lab-item:hover .lab-img,
+  .lab-item:active .lab-img { opacity: 0.85; }
+
+  .lab-caption {
+    padding: 6px 0 10px 6px;
+    font-family: var(--font-sans);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+
+<script>
+  // Click-and-drag horizontal scroll, with momentum/inertia on release — on desktop,
+  // mouse users have no scrollbar or swipe gesture to scroll it otherwise, and a
+  // hard stop on mouseup feels broken next to the smooth native inertia touch
+  // users get on mobile.
+  (function () {
+    const strip = document.getElementById("labStrip");
+    if (!strip) return;
+
+    let isDown = false;
+    let startX = 0;
+    let startScroll = 0;
+    let prevScrollLeft = 0;
+    let prevTime = 0;
+    let velocity = 0;
+    let rafId = null;
+
+    function stopInertia() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function inertiaStep() {
+      const max = strip.scrollWidth - strip.clientWidth;
+      strip.scrollLeft = Math.max(0, Math.min(max, strip.scrollLeft + velocity));
+      velocity *= 0.94;
+
+      const atBound = strip.scrollLeft <= 0 || strip.scrollLeft >= max;
+      if (Math.abs(velocity) > 0.4 && !atBound) {
+        rafId = requestAnimationFrame(inertiaStep);
+      } else {
+        rafId = null;
+      }
+    }
+
+    strip.addEventListener("mousedown", (e) => {
+      isDown = true;
+      stopInertia();
+      startX = e.pageX;
+      startScroll = strip.scrollLeft;
+      prevScrollLeft = strip.scrollLeft;
+      prevTime = performance.now();
+      velocity = 0;
+      strip.classList.add("is-dragging");
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDown && Math.abs(velocity) > 0.4) {
+        rafId = requestAnimationFrame(inertiaStep);
+      }
+      isDown = false;
+      strip.classList.remove("is-dragging");
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDown) return;
+      const dx = e.pageX - startX;
+      strip.scrollLeft = startScroll - dx;
+
+      const now = performance.now();
+      const dt = now - prevTime || 16;
+      velocity = ((strip.scrollLeft - prevScrollLeft) / dt) * 16;
+      prevScrollLeft = strip.scrollLeft;
+      prevTime = now;
+    });
+  })();
+</script>

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import LabFilmStrip from "../components/LabFilmStrip.astro";
 import { filmLabel } from "../lib/filmLabel";
 
 export const prerender = false;
@@ -163,24 +164,7 @@ try {
   </section>
 
   <!-- From the lab -->
-  {labImages.length > 0 && (
-    <section class="mt-24 md:mt-32">
-      <div class="lab-header">
-        <h2 class="text-2xl font-semibold tracking-wide">From the lab</h2>
-        <p class="mt-2 text-sm leading-6" style="color: var(--muted);">
-          A selection of frames processed and scanned in-house.
-        </p>
-      </div>
-      <div class="lab-strip">
-        {labImages.map((img) => (
-          <div class="lab-item">
-            <img src={img.url} alt={img.label} class="lab-img" loading="lazy" decoding="async" />
-            <div class="lab-caption">{img.label}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )}
+  <LabFilmStrip images={labImages} />
 
   <!-- How it works -->
   <section class="mt-24 md:mt-32">
@@ -202,7 +186,7 @@ try {
   </section>
 
   <!-- CTA -->
-  <section class="mt-24 mb-10 rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-10 md:p-16 text-center">
+  <section class="mt-24 mb-10 text-center">
     <h2 class="text-4xl md:text-5xl leading-[0.95] tracking-wide">Ready to shoot?</h2>
     <p class="mt-4 text-sm" style="color: var(--muted);">Browse the full service menu and add rolls to your cart.</p>
     <div class="mt-8 flex justify-center gap-4 flex-wrap">
@@ -224,48 +208,5 @@ try {
   <style>
     .summary-no-marker { list-style: none; }
     .summary-no-marker::-webkit-details-marker { display: none; }
-
-    /* ── FROM THE LAB STRIP ─────────────────────────────────── */
-    .lab-strip {
-      display: flex;
-      gap: 2px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      margin-top: 20px;
-      background: var(--line);
-    }
-    .lab-strip::-webkit-scrollbar { display: none; }
-
-    .lab-item {
-      flex-shrink: 0;
-      width: 180px;
-      background: var(--bg);
-    }
-    @media (min-width: 768px) {
-      .lab-item { width: 260px; }
-    }
-
-    .lab-img {
-      display: block;
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      object-fit: cover;
-      transition: opacity 0.3s ease;
-    }
-    .lab-item:hover .lab-img,
-    .lab-item:active .lab-img { opacity: 0.85; }
-
-    .lab-caption {
-      padding: 6px 0 10px;
-      font-family: var(--font-sans);
-      font-size: 9px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
   </style>
 </BaseLayout>
