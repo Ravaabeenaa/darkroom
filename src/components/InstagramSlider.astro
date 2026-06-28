@@ -92,9 +92,25 @@ const total = posts.length;
 )}
 
 <style>
+  /* Mobile: full-width, edge-to-edge — feels native there. Desktop: a 4:5
+     card grows huge at full container width (height scales with width), so
+     from md up it's capped to a real "post" width and centered, framed in
+     a light card so it reads as an intentional inset rather than an
+     orphaned narrow column in a wide section. */
   .igs {
     min-width: 0;
     width: 100%;
+  }
+  @media (min-width: 768px) {
+    .igs {
+      max-width: 420px;
+      margin-inline: auto;
+      padding: 14px;
+      border-radius: 1.25rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.35);
+    }
   }
 
   /* ── STAGE ─────────────────────────────────────────────────── */
