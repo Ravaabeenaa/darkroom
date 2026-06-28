@@ -2,7 +2,6 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Button from "../components/Button.astro";
 import ProductCard from "../components/ProductCard.astro";
-import InstagramPost from "../components/InstagramPost.astro";
 import InstagramSlider from "../components/InstagramSlider.astro";
 import HeroCarousel from "../components/HeroCarousel.astro";
 import { contact } from "../lib/contact";
@@ -231,13 +230,16 @@ function igPhotoUrl(key: string | null) {
     </div>
   </section>
 
-  <!-- ═════════════════════════════════════════ FOLLOW US -->
+  <!-- ═══════════════════════════ OUR SATISFIED CUSTOMERS -->
+  <!-- TODO: this is currently just section 2 (customer posts). Section 1
+       (posts by the company) doesn't exist yet — add it above this one
+       when that's ready. -->
   <section class="mt-24 md:mt-32 pb-16">
     <div class="follow-header reveal">
       <div>
         <div class="services-heading-wrap">
 
-          <h2 class="section-heading">Follow Us</h2>
+          <h2 class="section-heading">Our Satisfied Customers</h2>
         </div>
       </div>
       <div class="pt-2">
@@ -253,34 +255,18 @@ function igPhotoUrl(key: string | null) {
     </div>
 
     {igPosts.length > 0 ? (
-      <div class="mt-10 ig-grid reveal-stagger">
-        {igPosts.map((post: IgPost) => (
-          <div class="reveal">
-            <InstagramPost url={post.url} />
-          </div>
-        ))}
+      <div class="mt-10 reveal">
+        <InstagramSlider
+          posts={igPosts.map((p: IgPost) => ({
+            url: p.url,
+            accountHandle: p.account_handle,
+            caption: p.caption,
+            photoUrl: igPhotoUrl(p.photo_key),
+          }))}
+        />
       </div>
     ) : (
       <div class="mt-10 text-sm text-center" style="color: var(--muted);">No posts yet.</div>
-    )}
-    {igPosts.length > 0 && <script is:inline async src="//www.instagram.com/embed.js"></script>}
-
-    {igPosts.length > 0 && (
-      <div class="mt-16">
-        <div class="ig-compare-label">
-          <span>Comparison — custom widget (WIP)</span>
-        </div>
-        <div class="mt-4 reveal">
-          <InstagramSlider
-            posts={igPosts.map((p: IgPost) => ({
-              url: p.url,
-              accountHandle: p.account_handle,
-              caption: p.caption,
-              photoUrl: igPhotoUrl(p.photo_key),
-            }))}
-          />
-        </div>
-      </div>
     )}
   </section>
 
@@ -538,33 +524,6 @@ function igPhotoUrl(key: string | null) {
     }
     .ig-btn:hover { opacity: 0.85; transform: translateY(-2px); }
 
-    .ig-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: 1fr;
-      justify-items: center;
-    }
-    @media (min-width: 640px) {
-      .ig-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 540px)); }
-    }
-
-    .ig-compare-label {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-family: var(--font-sans);
-      font-size: 10px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .ig-compare-label::before,
-    .ig-compare-label::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--line);
-    }
 
     /* ─── SHARED GALLERY HOVER (applied to all content images) ── */
     .gallery-wrap {
