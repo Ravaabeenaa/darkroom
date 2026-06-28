@@ -98,21 +98,16 @@ const total = posts.length;
   }
 
   /* ── STAGE ─────────────────────────────────────────────────── */
-  /* Fixed height; photos use object-fit: contain so they always show in full,
-     letterboxed rather than cropped or forcing the widget to grow/shrink. */
+  /* Fixed 4:5 card aspect ratio; photos use object-fit: contain so they
+     always show in full at their OWN aspect ratio, letterboxed inside the
+     4:5 frame rather than cropped or stretched. */
   .igs-stage {
     position: relative;
     overflow: hidden;
     border-radius: 0.85rem;
     background: var(--panel2);
     border: 1px solid var(--line);
-    height: 280px;
-  }
-  @media (min-width: 640px) {
-    .igs-stage { height: 380px; }
-  }
-  @media (min-width: 1024px) {
-    .igs-stage { height: 440px; }
+    aspect-ratio: 4 / 5;
   }
 
   .igs-track {
@@ -181,18 +176,18 @@ const total = posts.length;
   /* ── FOOT (handle + caption + dots) ───────────────────────── */
   .igs-foot {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 14px;
     margin-top: 12px;
   }
 
   .igs-meta {
+    display: block;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
     font-family: var(--font-sans);
     font-size: 12px;
+    line-height: 1.6;
   }
   .igs-handle {
     font-weight: 600;
@@ -200,14 +195,18 @@ const total = posts.length;
   }
   .igs-meta:hover .igs-handle { color: var(--red); }
   .igs-caption {
-    margin-left: 8px;
+    display: block;
+    margin-top: 3px;
     color: var(--muted);
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .igs-dots {
     display: flex;
     gap: 6px;
     flex-shrink: 0;
+    margin-top: 2px;
   }
   .igs-dot {
     width: 6px;
