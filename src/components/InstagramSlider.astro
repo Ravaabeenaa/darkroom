@@ -92,20 +92,23 @@ const total = posts.length;
 )}
 
 <style>
-  /* Mobile: full-width, edge-to-edge — feels native there. Desktop: a 4:5
-     card grows huge at full container width (height scales with width), so
-     from md up it's capped to a real "post" width and centered, framed in
-     a light card so it reads as an intentional inset rather than an
-     orphaned narrow column in a wide section. */
+  /* Mobile: stacked, full-width, edge-to-edge — feels native there. Desktop:
+     a 4:5 card at full container width grows huge (height scales with
+     width), so from md up the photo is capped to a fixed column and the
+     handle/caption move beside it instead of below — uses the side space
+     instead of leaving it empty, framed in a light card. */
   .igs {
     min-width: 0;
     width: 100%;
   }
   @media (min-width: 768px) {
     .igs {
-      max-width: 420px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      max-width: 640px;
       margin-inline: auto;
-      padding: 14px;
+      padding: 18px;
       border-radius: 1.25rem;
       background: var(--panel);
       border: 1px solid var(--line);
@@ -124,6 +127,12 @@ const total = posts.length;
     background: var(--panel2);
     border: 1px solid var(--line);
     aspect-ratio: 4 / 5;
+  }
+  @media (min-width: 768px) {
+    .igs-stage {
+      width: 260px;
+      flex-shrink: 0;
+    }
   }
 
   .igs-track {
@@ -196,6 +205,19 @@ const total = posts.length;
     justify-content: space-between;
     gap: 14px;
     margin-top: 12px;
+  }
+  @media (min-width: 768px) {
+    .igs-foot {
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 18px;
+      margin-top: 0;
+      min-width: 0;
+      flex: 1;
+    }
+    .igs-meta { font-size: 13px; }
+    .igs-dots { margin-top: 0; }
   }
 
   .igs-meta {
