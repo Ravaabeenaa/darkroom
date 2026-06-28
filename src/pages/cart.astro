@@ -162,19 +162,25 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
           <span class="text-sm font-medium">Phone <span style="color: var(--red);">*</span></span>
           <div class="mt-2 flex rounded-2xl border border-[var(--line)] bg-[var(--input-bg)]">
             <div class="relative w-[108px] shrink-0 border-r border-[var(--line)]">
-              <input
-                id="custCountryCode"
-                type="text"
-                autocomplete="off"
-                value={`${COUNTRY_DIAL_CODES[0].flag} +${COUNTRY_DIAL_CODES[0].dial}`}
-                class="w-full bg-transparent px-3 py-3 text-sm outline-none"
-              />
+              <div class="flex items-center gap-1.5 px-3 py-3">
+                <span id="custCountryFlag" aria-hidden="true">{COUNTRY_DIAL_CODES[0].flag}</span>
+                <span style="color: var(--muted);">+</span>
+                <input
+                  id="custCountryCode"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  value={COUNTRY_DIAL_CODES[0].dial}
+                  class="w-full min-w-0 bg-transparent text-sm outline-none"
+                />
+              </div>
               <div id="countryCodeMenu" class="absolute left-0 top-full z-30 mt-1 hidden max-h-60 w-56 overflow-y-auto rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-2 shadow-lg">
                 {COUNTRY_DIAL_CODES.map((c) => (
                   <button
                     type="button"
                     class="country-code-option flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-white/10"
-                    data-value={`${c.flag} +${c.dial}`}
+                    data-value={c.dial}
+                    data-flag={c.flag}
                     data-search={`${c.name} ${c.dial}`.toLowerCase()}
                   >
                     <span>{c.flag}</span>
@@ -289,6 +295,7 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
 
     const nameEl = document.getElementById("custName");
     const countryCodeEl = document.getElementById("custCountryCode");
+    const countryFlagEl = document.getElementById("custCountryFlag");
     const phoneEl = document.getElementById("custPhone");
     const methodEl = document.getElementById("custMethod");
     const emailEl = document.getElementById("custEmail");
@@ -333,7 +340,7 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
     // autofill customer details
     const saved = loadCustomer();
     if (saved.name) nameEl.value = saved.name;
-    if (saved.countryCode) countryCodeEl.value = saved.countryCode;
+    if (saved.countryCode) countryCodeEl.value = String(saved.countryCode).replace(/\D+/g, "");
     if (saved.phone) phoneEl.value = saved.phone;
     if (saved.method) methodEl.value = saved.method;
     if (saved.email) emailEl.value = saved.email;
@@ -346,8 +353,13 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
     function onlyDigits(s) { return /^[0-9]+$/.test(s); }
 
     function currentDialCode() {
-      const m = String(countryCodeEl.value || "").match(/\+(\d+)/);
-      return m ? m[1] : "";
+      return digitsOnlyStr(countryCodeEl.value);
+    }
+
+    function updateFlagFor(digits) {
+      if (!countryFlagEl) return;
+      const match = document.querySelector(`.country-code-option[data-value="${digits}"]`);
+      if (match) countryFlagEl.textContent = match.getAttribute("data-flag") || "";
     }
 
     function isMaldives() { return currentDialCode() === "960"; }
@@ -964,9 +976,9 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
     const countryOptions = Array.from(document.querySelectorAll(".country-code-option"));
 
     function filterCountryMenu() {
-      const q = countryCodeEl.value.toLowerCase().replace(/[^a-z0-9+]/g, "");
+      const q = digitsOnlyStr(countryCodeEl.value);
       countryOptions.forEach((opt) => {
-        const hay = (opt.getAttribute("data-search") + " " + opt.getAttribute("data-value")).toLowerCase().replace(/[^a-z0-9+]/g, "");
+        const hay = (opt.getAttribute("data-search") + " " + opt.getAttribute("data-value")).toLowerCase().replace(/[^a-z0-9]/g, "");
         opt.style.display = !q || hay.includes(q) ? "" : "none";
       });
     }
@@ -984,16 +996,31 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
     countryCodeEl.addEventListener("click", openCountryMenu);
 
     countryCodeEl.addEventListener("input", () => {
+      // numbers only — the "+" is a fixed, separate prefix outside this field
+      const d = digitsOnlyStr(countryCodeEl.value);
+      if (countryCodeEl.value !== d) countryCodeEl.value = d;
+
+      updateFlagFor(d);
       openCountryMenu();
-      saveCustomer({ countryCode: countryCodeEl.value });
+      saveCustomer({ countryCode: d });
       validate();
+    });
+
+    countryCodeEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        closeCountryMenu();
+        phoneEl.focus();
+      }
     });
 
     countryOptions.forEach((opt) => {
       opt.addEventListener("click", () => {
-        countryCodeEl.value = opt.getAttribute("data-value");
+        const d = opt.getAttribute("data-value");
+        countryCodeEl.value = d;
+        updateFlagFor(d);
         closeCountryMenu();
-        saveCustomer({ countryCode: countryCodeEl.value });
+        saveCustomer({ countryCode: d });
         validate();
       });
     });
@@ -1009,12 +1036,11 @@ const COUNTRY_DIAL_CODES: { name: string; iso2: string; dial: string }[] = [
       }
     });
 
+    updateFlagFor(currentDialCode());
+
     phoneEl.addEventListener("input", () => {
-      // digit-only enforcement only applies to Maldives numbers; other countries are unvalidated
-      if (isMaldives()) {
-        const d = String(phoneEl.value || "").replace(/\D+/g, "");
-        if (phoneEl.value !== d) phoneEl.value = d;
-      }
+      const d = String(phoneEl.value || "").replace(/\D+/g, "");
+      if (phoneEl.value !== d) phoneEl.value = d;
 
       saveCustomer({ phone: phoneEl.value });
       validate();
