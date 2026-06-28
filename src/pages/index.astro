@@ -203,29 +203,27 @@ function igPhotoUrl(key: string | null) {
       </div>
     </div>
 
-    <div class="about-images mt-12 md:mt-16">
-      <div class="about-img-a reveal">
-        <div class="img-frame gallery-wrap">
-          <img
-            src={`${r2Base}/home/Gold200_025.dng.png`}
-            alt="Film photograph"
-            class="about-img-el gallery-img"
-            loading="lazy"
-          />
-          <div class="gallery-overlay" aria-hidden="true"></div>
-        </div>
+    <div class="about-img-a reveal">
+      <div class="img-frame gallery-wrap">
+        <img
+          src={`${r2Base}/home/Gold200_025.dng.png`}
+          alt="Film photograph"
+          class="about-img-el gallery-img"
+          loading="lazy"
+        />
+        <div class="gallery-overlay" aria-hidden="true"></div>
       </div>
+    </div>
 
-      <div class="about-img-b reveal">
-        <div class="img-frame gallery-wrap">
-          <img
-            src={`${r2Base}/home/Ektar100_028.dng.png`}
-            alt="Film photograph"
-            class="about-img-el gallery-img"
-            loading="lazy"
-          />
-          <div class="gallery-overlay" aria-hidden="true"></div>
-        </div>
+    <div class="about-img-b reveal">
+      <div class="img-frame gallery-wrap">
+        <img
+          src={`${r2Base}/home/Ektar100_028.dng.png`}
+          alt="Film photograph"
+          class="about-img-el gallery-img"
+          loading="lazy"
+        />
+        <div class="gallery-overlay" aria-hidden="true"></div>
       </div>
     </div>
   </section>
@@ -462,7 +460,32 @@ function igPhotoUrl(key: string | null) {
     }
 
     /* ─── ABOUT ───────────────────────────────────────────────── */
+    /* Mobile: imgA leads above the heading (otherwise there's no photo at all
+       between "Explore our services" and "Get to know us"), then header,
+       then imgB. Desktop: original layout — full-width header on top, then
+       both images side by side underneath. */
+    .about-section {
+      display: grid;
+      grid-template-areas:
+        "imgA"
+        "header"
+        "imgB";
+      row-gap: 24px;
+      align-items: end;
+    }
+    @media (min-width: 768px) {
+      .about-section {
+        grid-template-columns: 5fr 7fr;
+        grid-template-areas:
+          "header header"
+          "imgA   imgB";
+        column-gap: 24px;
+        row-gap: 64px;
+      }
+    }
+
     .about-header {
+      grid-area: header;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -476,17 +499,8 @@ function igPhotoUrl(key: string | null) {
       }
     }
 
-    .about-images {
-      display: grid;
-      gap: 16px;
-      align-items: end;
-    }
-    @media (min-width: 768px) {
-      .about-images {
-        grid-template-columns: 5fr 7fr;
-        gap: 24px;
-      }
-    }
+    .about-img-a { grid-area: imgA; }
+    .about-img-b { grid-area: imgB; }
 
     .about-img-el {
       width: 100%;
