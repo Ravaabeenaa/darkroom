@@ -1,0 +1,399 @@
+---
+/**
+ * Lightbox — single shared full-screen image viewer, mounted once (in BaseLayout).
+ * Any component opens it via:
+ *
+ *   window.DarkroomLightbox.open([{ src, alt }, ...], startIndex)
+ *
+ * Supports pinch-to-zoom + drag-to-pan on touch, scroll-wheel zoom + drag-to-pan
+ * on desktop, and double-click/double-tap to toggle zoom — all via a custom
+ * transform on the image itself (touch-action: none on the stage), so none of
+ * it triggers the browser's own page-level pinch/double-tap zoom.
+ */
+---
+
+<div class="lb" id="dr-lb" role="dialog" aria-modal="true" aria-label="Image viewer" style="display:none">
+  <div class="lb-backdrop" id="dr-lb-backdrop"></div>
+
+  <button class="lb-close" id="dr-lb-close" aria-label="Close">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </button>
+
+  <button class="lb-nav lb-prev" id="dr-lb-prev" aria-label="Previous image">
+    <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="lb-nav lb-next" id="dr-lb-next" aria-label="Next image">
+    <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M1 1l8 8-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <div class="lb-stage" id="dr-lb-stage">
+    <img class="lb-img" id="dr-lb-img" src="" alt="" draggable="false" />
+  </div>
+
+  <div class="lb-counter" id="dr-lb-counter"></div>
+  <div class="lb-hint" id="dr-lb-hint">scroll or pinch to zoom</div>
+</div>
+
+<style>
+  .lb {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lb-backdrop {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    opacity: 0.96;
+  }
+
+  .lb-stage {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: clamp(16px, 5vw, 60px) clamp(16px, 8vw, 80px);
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .lb-img {
+    display: block;
+    max-width: min(90vw, 1100px);
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.07);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    will-change: transform;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .lb-img.is-fading { opacity: 0; }
+  .lb-img.is-panning { transition: opacity 0.18s ease; }
+  .lb-stage.is-zoomed .lb-img { cursor: grab; }
+  .lb-stage.is-zoomed .lb-img.is-panning { cursor: grabbing; }
+
+  .lb-nav {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(238,228,210,0.8);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, opacity 0.15s;
+    outline: none;
+  }
+  .lb-nav:hover {
+    background: rgba(237,28,36,0.25);
+    border-color: rgba(237,28,36,0.5);
+    color: #fff;
+  }
+  .lb-prev { left: 20px; }
+  .lb-next { right: 20px; }
+  .lb.is-zoomed .lb-nav,
+  .lb.is-single .lb-nav { opacity: 0; pointer-events: none; }
+
+  .lb-close {
+    position: absolute;
+    z-index: 2;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(20px, env(safe-area-inset-right));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(238,228,210,0.7);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    outline: none;
+  }
+  .lb-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+  .lb-counter {
+    position: absolute;
+    z-index: 2;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(238,228,210,0.35);
+    pointer-events: none;
+  }
+  .lb.is-single .lb-counter { display: none; }
+
+  .lb-hint {
+    position: absolute;
+    z-index: 2;
+    bottom: 20px;
+    right: max(20px, env(safe-area-inset-right));
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(238,228,210,0.3);
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  @media (hover: none) {
+    .lb-hint { display: none; }
+  }
+  .lb.is-zoomed .lb-hint { opacity: 0; }
+</style>
+
+<script>
+  (function () {
+    const lb = document.getElementById("dr-lb");
+    const stage = document.getElementById("dr-lb-stage");
+    const img = document.getElementById("dr-lb-img");
+    const closeBtn = document.getElementById("dr-lb-close");
+    const backdrop = document.getElementById("dr-lb-backdrop");
+    const prevBtn = document.getElementById("dr-lb-prev");
+    const nextBtn = document.getElementById("dr-lb-next");
+    const counter = document.getElementById("dr-lb-counter");
+    if (!lb || !stage || !img) return;
+
+    const MAX_SCALE = 4;
+    const DBLTAP_MS = 300;
+    const DBLTAP_DIST = 24;
+
+    let images = [];
+    let index = 0;
+    let isOpen = false;
+
+    let scale = 1;
+    let tx = 0;
+    let ty = 0;
+
+    // active pointers, keyed by pointerId, for pan + pinch
+    const pointers = new Map();
+    let pinchStartDist = 0;
+    let pinchStartScale = 1;
+    let panStart = null; // { x, y, tx, ty }
+    let lastTapTime = 0;
+    let lastTapPos = { x: 0, y: 0 };
+    let swipeStartX = null;
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+    function applyTransform() {
+      img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      stage.classList.toggle("is-zoomed", scale > 1.02);
+      lb.classList.toggle("is-zoomed", scale > 1.02);
+    }
+
+    function clampPan() {
+      if (!img.naturalWidth) return;
+      const rect = stage.getBoundingClientRect();
+      const baseW = img.clientWidth || rect.width;
+      const baseH = img.clientHeight || rect.height;
+      const scaledW = baseW * scale;
+      const scaledH = baseH * scale;
+      const maxX = Math.max(0, (scaledW - rect.width) / 2);
+      const maxY = Math.max(0, (scaledH - rect.height) / 2);
+      tx = clamp(tx, -maxX, maxX);
+      ty = clamp(ty, -maxY, maxY);
+    }
+
+    function resetZoom() {
+      scale = 1;
+      tx = 0;
+      ty = 0;
+      applyTransform();
+    }
+
+    function setScaleAnchored(newScale, anchorX, anchorY) {
+      const rect = stage.getBoundingClientRect();
+      const cx = anchorX - rect.left - rect.width / 2;
+      const cy = anchorY - rect.top - rect.height / 2;
+      const prevScale = scale;
+      const next = clamp(newScale, 1, MAX_SCALE);
+      // keep the point under the anchor stationary as scale changes
+      tx = tx + (cx - tx) * (1 - next / prevScale);
+      ty = ty + (cy - ty) * (1 - next / prevScale);
+      scale = next;
+      clampPan();
+      applyTransform();
+    }
+
+    function updateCounter() {
+      if (counter) counter.textContent = `${index + 1} / ${images.length}`;
+      lb.classList.toggle("is-single", images.length <= 1);
+    }
+
+    function showImage(i, fade) {
+      index = ((i % images.length) + images.length) % images.length;
+      const item = images[index];
+      if (fade) {
+        img.classList.add("is-fading");
+        setTimeout(() => {
+          img.src = item.src;
+          img.alt = item.alt || "";
+          resetZoom();
+          img.onload = () => img.classList.remove("is-fading");
+          if (img.complete) img.classList.remove("is-fading");
+        }, 110);
+      } else {
+        img.src = item.src;
+        img.alt = item.alt || "";
+        resetZoom();
+      }
+      updateCounter();
+    }
+
+    function open(imgs, startIndex) {
+      images = Array.isArray(imgs) ? imgs.filter((x) => x && x.src) : [];
+      if (!images.length) return;
+      isOpen = true;
+      lb.style.display = "flex";
+      document.body.style.overflow = "hidden";
+      showImage(startIndex || 0, false);
+    }
+
+    function close() {
+      isOpen = false;
+      lb.style.display = "none";
+      document.body.style.overflow = "";
+      resetZoom();
+    }
+
+    function next() { showImage(index + 1, true); }
+    function prev() { showImage(index - 1, true); }
+
+    window.DarkroomLightbox = { open, close };
+
+    closeBtn && closeBtn.addEventListener("click", close);
+    backdrop && backdrop.addEventListener("click", close);
+    prevBtn && prevBtn.addEventListener("click", (e) => { e.preventDefault(); if (scale <= 1.02) prev(); });
+    nextBtn && nextBtn.addEventListener("click", (e) => { e.preventDefault(); if (scale <= 1.02) next(); });
+
+    document.addEventListener("keydown", (e) => {
+      if (!isOpen) return;
+      if (e.key === "Escape") { e.preventDefault(); close(); }
+      if (e.key === "ArrowLeft" && scale <= 1.02) { e.preventDefault(); prev(); }
+      if (e.key === "ArrowRight" && scale <= 1.02) { e.preventDefault(); next(); }
+    });
+
+    // Desktop: wheel to zoom, anchored at cursor
+    stage.addEventListener("wheel", (e) => {
+      if (!isOpen) return;
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      setScaleAnchored(scale * factor, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // Double-click (desktop) toggle zoom
+    stage.addEventListener("dblclick", (e) => {
+      e.preventDefault();
+      if (scale > 1.02) resetZoom();
+      else setScaleAnchored(2.5, e.clientX, e.clientY);
+    });
+
+    function pointerDist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+    function pointerMid(a, b) {
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+
+    stage.addEventListener("pointerdown", (e) => {
+      if (!isOpen) return;
+      stage.setPointerCapture && stage.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointers.size === 1) {
+        panStart = { x: e.clientX, y: e.clientY, tx, ty };
+        swipeStartX = e.clientX;
+        img.classList.add("is-panning");
+      } else if (pointers.size === 2) {
+        const [a, b] = Array.from(pointers.values());
+        pinchStartDist = pointerDist(a, b);
+        pinchStartScale = scale;
+        swipeStartX = null;
+      }
+    });
+
+    stage.addEventListener("pointermove", (e) => {
+      if (!isOpen || !pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointers.size === 2) {
+        const [a, b] = Array.from(pointers.values());
+        const dist = pointerDist(a, b);
+        if (pinchStartDist > 0) {
+          const mid = pointerMid(a, b);
+          setScaleAnchored(pinchStartScale * (dist / pinchStartDist), mid.x, mid.y);
+        }
+      } else if (pointers.size === 1 && panStart) {
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
+        if (scale > 1.02) {
+          tx = panStart.tx + dx;
+          ty = panStart.ty + dy;
+          clampPan();
+          applyTransform();
+        }
+      }
+    });
+
+    function endPointer(e) {
+      const wasPanOnly = pointers.size === 1;
+      const last = pointers.get(e.pointerId);
+      pointers.delete(e.pointerId);
+      img.classList.remove("is-panning");
+
+      if (pointers.size === 0) {
+        // Tap detection (no real movement) → check double-tap, else swipe-to-navigate
+        if (wasPanOnly && panStart && last) {
+          const movedX = Math.abs(last.x - panStart.x);
+          const movedY = Math.abs(last.y - panStart.y);
+
+          if (movedX < 8 && movedY < 8) {
+            const now = Date.now();
+            const dist = Math.hypot(last.x - lastTapPos.x, last.y - lastTapPos.y);
+            if (now - lastTapTime < DBLTAP_MS && dist < DBLTAP_DIST) {
+              if (scale > 1.02) resetZoom();
+              else setScaleAnchored(2.5, last.x, last.y);
+              lastTapTime = 0;
+            } else {
+              lastTapTime = now;
+              lastTapPos = { x: last.x, y: last.y };
+            }
+          } else if (scale <= 1.02 && swipeStartX !== null) {
+            const dx = last.x - swipeStartX;
+            if (Math.abs(dx) > 50) {
+              if (dx < 0) next(); else prev();
+            }
+          }
+        }
+        panStart = null;
+        swipeStartX = null;
+        pinchStartDist = 0;
+        if (scale < 1) resetZoom();
+      }
+    }
+
+    stage.addEventListener("pointerup", endPointer);
+    stage.addEventListener("pointercancel", endPointer);
+  })();
+</script>

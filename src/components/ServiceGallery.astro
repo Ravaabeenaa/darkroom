@@ -99,28 +99,6 @@ const showStrip  = allImages.length > 1;
 
 </div>
 
-<!-- ── Lightbox ──────────────────────────────────────── -->
-<div class="sg-lb" id="sg-lb" role="dialog" aria-modal="true" aria-label="Image viewer" style="display:none">
-  <div class="sg-lb-backdrop" id="sg-lb-backdrop"></div>
-
-  <button class="sg-lb-close" id="sg-lb-close" aria-label="Close">
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-  </button>
-
-  <button class="sg-lb-nav sg-lb-prev" id="sg-lb-prev" aria-label="Previous image">
-    <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M9 1L1 9l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
-  <button class="sg-lb-nav sg-lb-next" id="sg-lb-next" aria-label="Next image">
-    <svg width="10" height="18" viewBox="0 0 10 18" fill="none"><path d="M1 1l8 8-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button>
-
-  <div class="sg-lb-stage">
-    <img class="sg-lb-img" id="sg-lb-img" src="" alt="" />
-  </div>
-
-  <div class="sg-lb-counter" id="sg-lb-counter"></div>
-</div>
-
 <style>
   /* ── Root ─────────────────────────────────────────── */
   .sg-root {
@@ -277,106 +255,6 @@ const showStrip  = allImages.length > 1;
 
   .sg-thumb:hover img { opacity: 0.85; border-color: var(--muted); }
   .sg-thumb.is-active img { opacity: 1; border-color: var(--red); }
-
-  /* ── Lightbox ─────────────────────────────────────── */
-  .sg-lb {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .sg-lb-backdrop {
-    position: absolute;
-    inset: 0;
-    background: #000;
-    opacity: 0.96;
-  }
-
-  .sg-lb-stage {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: clamp(16px, 5vw, 60px) clamp(16px, 8vw, 80px);
-    max-width: 100vw;
-    max-height: 100vh;
-  }
-
-  .sg-lb-img {
-    display: block;
-    max-width: min(90vw, 1100px);
-    max-height: 85vh;
-    object-fit: contain;
-    border-radius: 4px;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.07);
-    transition: opacity 0.18s ease, transform 0.18s ease;
-  }
-  .sg-lb-img.is-fading { opacity: 0; transform: scale(0.97); }
-
-  /* nav arrows */
-  .sg-lb-nav {
-    position: absolute;
-    z-index: 2;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: rgba(238,228,210,0.8);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    outline: none;
-  }
-  .sg-lb-nav:hover {
-    background: rgba(237,28,36,0.25);
-    border-color: rgba(237,28,36,0.5);
-    color: #fff;
-  }
-  .sg-lb-prev { left: 20px; }
-  .sg-lb-next { right: 20px; }
-
-  /* close button */
-  .sg-lb-close {
-    position: absolute;
-    z-index: 2;
-    top: max(16px, env(safe-area-inset-top));
-    right: max(20px, env(safe-area-inset-right));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(238,228,210,0.7);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    outline: none;
-  }
-  .sg-lb-close:hover { background: rgba(255,255,255,0.14); color: #fff; }
-
-  /* lightbox counter */
-  .sg-lb-counter {
-    position: absolute;
-    z-index: 2;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--font-sans);
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    color: rgba(238,228,210,0.35);
-    pointer-events: none;
-  }
 </style>
 
 <script define:vars={{ allImages }}>
@@ -389,17 +267,10 @@ const showStrip  = allImages.length > 1;
     const strip      = document.getElementById("sg-strip");
     const prevBtn    = document.getElementById("sg-prev");
     const nextBtn    = document.getElementById("sg-next");
-    const lb         = document.getElementById("sg-lb");
-    const lbImg      = document.getElementById("sg-lb-img");
-    const lbClose    = document.getElementById("sg-lb-close");
-    const lbPrev     = document.getElementById("sg-lb-prev");
-    const lbNext     = document.getElementById("sg-lb-next");
-    const lbCounter  = document.getElementById("sg-lb-counter");
     const thumbBtns  = strip ? Array.from(strip.querySelectorAll(".sg-thumb")) : [];
 
     let activeIndex = 0;
-    let lbOpen      = false;
-    let lbIndex     = 0;
+    let swiped      = false;
 
     // ── Thumbnail click → swap main image ─────────────
     function setActive(idx) {
@@ -439,67 +310,19 @@ const showStrip  = allImages.length > 1;
 
     let touchX = 0;
     if (stage) {
-      stage.addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+      stage.addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; swiped = false; }, { passive: true });
       stage.addEventListener("touchend", (e) => {
         const dx = e.changedTouches[0].clientX - touchX;
-        if (Math.abs(dx) > 44) goTo(activeIndex + (dx < 0 ? 1 : -1));
+        if (Math.abs(dx) > 44) { swiped = true; goTo(activeIndex + (dx < 0 ? 1 : -1)); }
       }, { passive: true });
     }
 
-    // ── Lightbox ───────────────────────────────────────
-    function openLb(idx) {
-      lbIndex = ((idx % allImages.length) + allImages.length) % allImages.length;
-      lbImg.src = allImages[lbIndex].src;
-      lbImg.alt = allImages[lbIndex].alt;
-      updateLbCounter();
-      lb.style.display = "flex";
-      lbOpen = true;
-      document.body.style.overflow = "hidden";
-    }
-
-    function closeLb() {
-      lb.style.display = "none";
-      lbOpen = false;
-      document.body.style.overflow = "";
-    }
-
-    function lbNavigate(idx) {
-      const next = ((idx % allImages.length) + allImages.length) % allImages.length;
-      lbImg.classList.add("is-fading");
-      setTimeout(() => {
-        lbIndex = next;
-        lbImg.src = allImages[lbIndex].src;
-        lbImg.alt = allImages[lbIndex].alt;
-        lbImg.onload = () => lbImg.classList.remove("is-fading");
-        if (lbImg.complete) lbImg.classList.remove("is-fading");
-        updateLbCounter();
-      }, 110);
-    }
-
-    function updateLbCounter() {
-      if (lbCounter) lbCounter.textContent = `${lbIndex + 1} / ${allImages.length}`;
-    }
-
+    // Open the shared lightbox (mounted once in BaseLayout) at the current image
     if (mainImg) {
-      mainImg.addEventListener("click", () => openLb(activeIndex));
-    }
-
-    lbClose?.addEventListener("click", closeLb);
-    document.getElementById("sg-lb-backdrop")?.addEventListener("click", closeLb);
-    lbPrev?.addEventListener("click", () => lbNavigate(lbIndex - 1));
-    lbNext?.addEventListener("click", () => lbNavigate(lbIndex + 1));
-
-    document.addEventListener("keydown", (e) => {
-      if (!lbOpen) return;
-      if (e.key === "Escape")     { e.preventDefault(); closeLb(); }
-      if (e.key === "ArrowLeft")  { e.preventDefault(); lbNavigate(lbIndex - 1); }
-      if (e.key === "ArrowRight") { e.preventDefault(); lbNavigate(lbIndex + 1); }
-    });
-
-    // Hide nav arrows when only one image
-    if (allImages.length <= 1) {
-      lbPrev?.style.setProperty("display", "none");
-      lbNext?.style.setProperty("display", "none");
+      mainImg.addEventListener("click", () => {
+        if (swiped || !window.DarkroomLightbox) return;
+        window.DarkroomLightbox.open(allImages, activeIndex);
+      });
     }
   })();
 </script>

@@ -1,5 +1,6 @@
 ---
 import "../styles/tailwind.css";
+import Lightbox from "../components/Lightbox.astro";
 import { contact } from "../lib/contact";
 const { title = "DARKROOM" } = Astro.props;
 
@@ -247,6 +248,8 @@ if (db) {
       </footer>
     </div>
     <div id="drToast" class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl px-4 py-3 text-sm font-medium shadow-lg" style="display:none;background:var(--text);color:var(--bg);"></div>
+
+    <Lightbox />
 
     <!-- Mobile menu drawer -->
     <div id="drMenuOverlay" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm dr-overlay" aria-hidden="true"></div>
