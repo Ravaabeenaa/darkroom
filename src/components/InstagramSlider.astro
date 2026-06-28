@@ -1,10 +1,11 @@
 ---
 /**
- * InstagramSlider — "contact sheet on a light table"
+ * InstagramSlider — same look & mechanics as HeroCarousel (full-bleed crossfade,
+ * stamp counter, arrows, pips, progress line, autoplay), adapted to show an
+ * account handle + caption instead of a single label.
  *
- * One post per slide: photo, account handle, caption (clamped to 2 lines).
- * Data is entered manually in /admin/instagram since Instagram's oEmbed API
- * now requires a registered Meta app + access token to fetch this automatically.
+ * Data (photo/handle/caption) is entered manually in /admin/instagram since
+ * Instagram's oEmbed API now requires a registered Meta app + access token.
  */
 interface Post {
   url: string;
@@ -17,193 +18,178 @@ interface Props {
 }
 const { posts } = Astro.props;
 const total = posts.length;
+
+function captionLine(p: Post) {
+  const handle = `@${p.accountHandle ?? "darkroom"}`;
+  return p.caption ? `${handle} — ${p.caption}` : handle;
+}
 ---
 
 {total > 0 && (
-  <div class="ig-sheet" id="igSheet">
-    <div class="ig-sheet-stage" id="igStage">
-      <div class="ig-sheet-track" id="igTrack" style={`width:${total * 100}%;`}>
-        {posts.map((p, i) => (
-          <div class="ig-frame" style={`width:${100 / total}%;`}>
-            <a href={p.url} target="_blank" rel="noopener noreferrer" class="ig-frame-photo" aria-label="View on Instagram">
-              {p.photoUrl ? (
-                <img src={p.photoUrl} alt={p.caption ?? "Instagram post"} loading={i === 0 ? "eager" : "lazy"} />
-              ) : (
-                <div class="ig-frame-empty">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="2" y="5" width="20" height="15" rx="2"/>
-                    <circle cx="12" cy="12.5" r="4"/>
-                    <path d="M7 5l1.5-2h7L17 5"/>
-                  </svg>
-                </div>
-              )}
-              <span class="ig-frame-stamp">{String(i + 1).padStart(2, "0")}<span class="ig-frame-stamp-sep">/</span>{String(total).padStart(2, "0")}</span>
-            </a>
+  <div class="igc" id="igc">
 
-            <div class="ig-frame-meta">
-              <a href={p.url} target="_blank" rel="noopener noreferrer" class="ig-handle">
-                <span class="ig-handle-dot" aria-hidden="true"></span>
-                @{p.accountHandle ?? "darkroom"}
-              </a>
-              {p.caption && <p class="ig-caption">{p.caption}</p>}
+    <!-- image stage -->
+    <div class="igc-stage" id="igcStage">
+
+      {posts.map((p, i) => (
+        <a
+          href={p.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class={`igc-slide${i === 0 ? ' is-active' : ''}`}
+          data-idx={i}
+          aria-label="View on Instagram"
+        >
+          {p.photoUrl ? (
+            <img
+              src={p.photoUrl}
+              alt={p.caption ?? "Instagram post"}
+              class="igc-img"
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          ) : (
+            <div class="igc-empty">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="5" width="20" height="15" rx="2"/>
+                <circle cx="12" cy="12.5" r="4"/>
+                <path d="M7 5l1.5-2h7L17 5"/>
+              </svg>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </a>
+      ))}
 
+      <!-- vignette -->
+      <div class="igc-vignette" aria-hidden="true"></div>
+
+      <!-- frame counter -->
+      {total > 1 && (
+        <div class="igc-stamp" aria-hidden="true">
+          <span id="igcNum">01</span><span class="igc-stamp-sep">/</span><span>{String(total).padStart(2, '0')}</span>
+        </div>
+      )}
+
+      <!-- arrow controls -->
       {total > 1 && (
         <>
-          <button class="ig-arrow ig-arrow-l" id="igPrev" aria-label="Previous post">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2 4 7l5 5"/></svg>
+          <button class="igc-arrow igc-arrow-l" id="igcPrev" aria-label="Previous post">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 2 4 7l5 5"/>
+            </svg>
           </button>
-          <button class="ig-arrow ig-arrow-r" id="igNext" aria-label="Next post">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2l5 5-5 5"/></svg>
+          <button class="igc-arrow igc-arrow-r" id="igcNext" aria-label="Next post">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 2l5 5-5 5"/>
+            </svg>
           </button>
         </>
       )}
     </div>
 
+    <!-- caption bar -->
+    <a href={posts[0].url} target="_blank" rel="noopener noreferrer" class="igc-bar">
+      <span class="igc-caption">
+        <span class="igc-bullet" aria-hidden="true"></span>
+        <span class="igc-label" id="igcLabel">{captionLine(posts[0])}</span>
+      </span>
+      {total > 1 && (
+        <span class="igc-pips" role="presentation">
+          {posts.map((_, i) => (
+            <button class={`igc-pip${i === 0 ? ' is-active' : ''}`} data-pip={i} aria-label={`Post ${i + 1}`}></button>
+          ))}
+        </span>
+      )}
+    </a>
+
+    <!-- progress track -->
     {total > 1 && (
-      <div class="ig-dots" role="presentation">
-        {posts.map((_, i) => (
-          <button class={`ig-dot ${i === 0 ? "is-active" : ""}`} data-dot={i} aria-label={`Post ${i + 1}`}></button>
-        ))}
+      <div class="igc-progress" aria-hidden="true">
+        <div class="igc-progress-fill" id="igcFill"></div>
       </div>
     )}
+
   </div>
 )}
 
 <style>
-  /* ── Sheet (light-table backdrop) ──────────────────────────── */
-  .ig-sheet {
-    --grain: radial-gradient(circle at 1px 1px, rgba(238,228,210,0.05) 1px, transparent 0);
-    position: relative;
-    border-radius: 1.25rem;
-    padding: 22px;
-    background:
-      var(--grain),
-      radial-gradient(120% 140% at 15% 0%, rgba(237,28,36,0.10), transparent 55%),
-      #0b0b0b;
-    background-size: 3px 3px, auto, auto;
-    border: 1px solid rgba(238,228,210,0.08);
+  /* ── ROOT ──────────────────────────────────────────────────── */
+  .igc {
+    min-width: 0;
+    width: 100%;
   }
 
-  .ig-sheet-stage {
+  /* ── STAGE ─────────────────────────────────────────────────── */
+  /* Height is set by JS to match each photo's natural aspect ratio at the
+     stage's fixed width — so the full photo always shows uncropped, and
+     only the height changes between posts (not the width). */
+  .igc-stage {
     position: relative;
     overflow: hidden;
-    border-radius: 0.85rem;
+    background: #0a0a0a;
+    width: 100%;
+    height: 75vw;
+    max-height: 480px;
+    transition: height 0.45s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .ig-sheet-track {
-    display: flex;
-    transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* ── Frame ─────────────────────────────────────────────────── */
-  .ig-frame {
-    flex-shrink: 0;
-    display: grid;
-    gap: 14px;
-    padding: 4px;
-  }
-  @media (min-width: 640px) {
-    .ig-frame {
-      grid-template-columns: minmax(0, 280px) 1fr;
-      align-items: center;
-      gap: 28px;
-    }
-  }
-
-  .ig-frame-photo {
-    position: relative;
+  /* ── SLIDES ────────────────────────────────────────────────── */
+  .igc-slide {
+    position: absolute;
+    inset: 0 0 auto 0;
     display: block;
-    aspect-ratio: 1 / 1;
-    border-radius: 6px;
-    overflow: hidden;
-    background: #161616;
-    border: 1px solid rgba(238,228,210,0.14);
-    box-shadow: 0 18px 40px -16px rgba(0,0,0,0.7);
+    opacity: 0;
+    transition: opacity 0.65s ease;
   }
-  .ig-frame-photo img {
+  .igc-slide.is-active { opacity: 1; z-index: 1; }
+
+  .igc-img {
     display: block;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    height: auto;
+    will-change: opacity;
   }
-  .ig-frame-photo:hover img { transform: scale(1.04); }
 
-  .ig-frame-empty {
+  .igc-empty {
     width: 100%;
-    height: 100%;
+    aspect-ratio: 4 / 3;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(238,228,210,0.25);
+    color: rgba(238, 228, 210, 0.25);
   }
 
-  .ig-frame-stamp {
+  /* ── VIGNETTE ──────────────────────────────────────────────── */
+  .igc-vignette {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 2;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ── STAMP (frame counter) ─────────────────────────────────── */
+  .igc-stamp {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 3;
     font-family: var(--font-sans);
     font-size: 9px;
-    letter-spacing: 0.18em;
-    color: rgba(238,228,210,0.7);
-    background: rgba(0,0,0,0.5);
+    letter-spacing: 0.2em;
+    color: rgba(238, 228, 210, 0.55);
+    background: rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     padding: 3px 7px;
     border-radius: 2px;
-    font-variant-numeric: tabular-nums;
     pointer-events: none;
+    font-variant-numeric: tabular-nums;
   }
-  .ig-frame-stamp-sep { opacity: 0.4; }
+  .igc-stamp-sep { opacity: 0.4; }
 
-  /* ── Meta (handle + caption) ──────────────────────────────── */
-  .ig-frame-meta {
-    min-width: 0;
-    padding: 2px 8px 10px;
-  }
-  @media (min-width: 640px) {
-    .ig-frame-meta { padding: 0; }
-  }
-
-  .ig-handle {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-family: var(--font-sans);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--cream);
-    text-transform: lowercase;
-  }
-  .ig-handle:hover { color: var(--red); }
-  .ig-handle-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--red);
-    box-shadow: 0 0 0 3px rgba(237,28,36,0.18);
-    flex-shrink: 0;
-  }
-
-  .ig-caption {
-    margin: 10px 0 0;
-    font-family: var(--font-sans);
-    font-size: 13px;
-    line-height: 1.6;
-    color: rgba(238,228,210,0.55);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  /* ── Arrows ────────────────────────────────────────────────── */
-  .ig-arrow {
+  /* ── ARROWS ────────────────────────────────────────────────── */
+  .igc-arrow {
     position: absolute;
     top: 50%;
     translate: 0 -50%;
@@ -211,81 +197,212 @@ const total = posts.length;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.55);
-    border: 1px solid rgba(238,228,210,0.14);
-    color: rgba(238,228,210,0.9);
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(238, 228, 210, 0.14);
+    color: rgba(238, 228, 210, 0.9);
     cursor: pointer;
-    transition: background 0.2s ease, opacity 0.2s ease;
+    opacity: 0;
+    transition: opacity 0.22s ease, background 0.2s ease;
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
-  .ig-arrow-l { left: 6px; }
-  .ig-arrow-r { right: 6px; }
-  .ig-arrow:hover { background: rgba(237,28,36,0.45); }
-  @media (min-width: 640px) {
-    .ig-arrow-l { left: -14px; }
-    .ig-arrow-r { right: -14px; }
+  .igc-arrow-l { left: 10px; }
+  .igc-arrow-r { right: 10px; }
+
+  .igc-stage:hover .igc-arrow,
+  .igc-stage:focus-within .igc-arrow { opacity: 1; }
+  .igc-arrow:hover,
+  .igc-arrow:active { background: rgba(0, 0, 0, 0.72); }
+
+  @media (hover: none) {
+    .igc-arrow { opacity: 0.7 !important; }
   }
 
-  /* ── Dots ──────────────────────────────────────────────────── */
-  .ig-dots {
+  /* ── CAPTION BAR ───────────────────────────────────────────── */
+  .igc-bar {
     display: flex;
-    justify-content: center;
-    gap: 7px;
-    margin-top: 16px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 8px;
+    margin-top: 5px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: none;
+    color: var(--muted);
   }
-  .ig-dot {
-    width: 6px;
-    height: 6px;
+  .igc-bar:hover .igc-label { color: var(--text); }
+
+  .igc-caption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .igc-bullet {
+    flex-shrink: 0;
+    width: 5px;
+    height: 5px;
     border-radius: 50%;
-    background: rgba(238,228,210,0.2);
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    transition: background 0.2s ease, transform 0.2s ease;
-  }
-  .ig-dot.is-active {
     background: var(--red);
-    transform: scale(1.3);
   }
-  .ig-dot:hover { background: rgba(238,228,210,0.45); }
+  .igc-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.22s ease, color 0.2s ease;
+  }
+  .igc-label.is-fading { opacity: 0; }
+
+  /* ── PIPS ──────────────────────────────────────────────────── */
+  .igc-pips {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .igc-pip {
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--line);
+    cursor: pointer;
+    transition: background 0.2s ease, width 0.2s ease;
+    padding: 0;
+    border: none;
+  }
+  .igc-pip.is-active {
+    background: var(--red);
+    width: 24px;
+  }
+  .igc-pip:hover { background: var(--muted); }
+
+  /* ── PROGRESS LINE ─────────────────────────────────────────── */
+  .igc-progress {
+    height: 1px;
+    margin-top: 5px;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .igc-progress-fill {
+    height: 100%;
+    width: 0;
+    background: var(--red);
+  }
+  .igc-progress-fill.is-running {
+    animation: igcFill var(--igc-dur, 5000ms) linear forwards;
+  }
+  @keyframes igcFill {
+    from { width: 0; }
+    to   { width: 100%; }
+  }
 </style>
 
-<script>
-  document.querySelectorAll(".ig-sheet").forEach((sheet) => {
-    const track = sheet.querySelector(".ig-sheet-track");
-    const frames = track ? Array.from(track.children) : [];
-    const total = frames.length;
-    if (!track || total <= 1) return;
+<script is:inline define:vars={{ igcCaptions: posts.map(captionLine), igcUrls: posts.map(p => p.url), igcInterval: 5000 }}>
+  (function () {
+    const stage    = document.getElementById('igcStage');
+    const slideEls = stage ? stage.querySelectorAll('.igc-slide') : [];
+    const bar      = document.querySelector('.igc-bar');
+    const labelEl  = document.getElementById('igcLabel');
+    const numEl    = document.getElementById('igcNum');
+    const fill     = document.getElementById('igcFill');
+    const prevBtn  = document.getElementById('igcPrev');
+    const nextBtn  = document.getElementById('igcNext');
+    const pipBtns  = document.querySelectorAll('#igc .igc-pip');
 
-    const prevBtn = sheet.querySelector("#igPrev") || sheet.querySelector(".ig-arrow-l");
-    const nextBtn = sheet.querySelector("#igNext") || sheet.querySelector(".ig-arrow-r");
-    const dots = Array.from(sheet.querySelectorAll(".ig-dot"));
+    if (!slideEls.length) return;
 
-    let index = 0;
+    const total = slideEls.length;
+    var cur = 0;
+    var tmr = null;
 
-    function render() {
-      track.style.transform = `translateX(-${index * (100 / total)}%)`;
-      dots.forEach((d, i) => d.classList.toggle("is-active", i === index));
+    // Stage height tracks the active photo's natural aspect ratio at the stage's
+    // fixed width, so the full photo always shows uncropped — only height changes.
+    function applyHeight(slideEl) {
+      if (!stage) return;
+      var img = slideEl.querySelector('img');
+      var w = stage.clientWidth;
+      if (img) {
+        var setFromImg = function () {
+          var ratio = img.naturalWidth ? img.naturalHeight / img.naturalWidth : 0.75;
+          stage.style.height = Math.round(w * ratio) + 'px';
+        };
+        if (img.complete && img.naturalWidth) setFromImg();
+        else img.addEventListener('load', setFromImg, { once: true });
+      } else {
+        stage.style.height = Math.round(w * 0.75) + 'px'; // matches .igc-empty's 4:3
+      }
     }
 
-    function goTo(i) {
-      index = ((i % total) + total) % total;
-      render();
+    function goTo(idx) {
+      var next = ((idx % total) + total) % total;
+
+      slideEls[cur].classList.remove('is-active');
+      if (pipBtns[cur]) pipBtns[cur].classList.remove('is-active');
+
+      cur = next;
+
+      slideEls[cur].classList.add('is-active');
+      if (pipBtns[cur]) pipBtns[cur].classList.add('is-active');
+      applyHeight(slideEls[cur]);
+
+      if (numEl) numEl.textContent = String(cur + 1).padStart(2, '0');
+      if (bar) bar.href = igcUrls[cur] || '#';
+
+      if (labelEl) {
+        labelEl.classList.add('is-fading');
+        setTimeout(function () {
+          labelEl.textContent = igcCaptions[cur] || '';
+          labelEl.classList.remove('is-fading');
+        }, 200);
+      }
+
+      if (fill) {
+        fill.classList.remove('is-running');
+        fill.style.setProperty('--igc-dur', igcInterval + 'ms');
+        void fill.offsetWidth;
+        fill.classList.add('is-running');
+      }
     }
 
-    prevBtn?.addEventListener("click", () => goTo(index - 1));
-    nextBtn?.addEventListener("click", () => goTo(index + 1));
-    dots.forEach((d, i) => d.addEventListener("click", () => goTo(i)));
+    function start() {
+      clearInterval(tmr);
+      if (total > 1) tmr = setInterval(function () { goTo(cur + 1); }, igcInterval);
+    }
 
-    let touchX = 0;
-    const stage = sheet.querySelector(".ig-sheet-stage");
-    stage?.addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; }, { passive: true });
-    stage?.addEventListener("touchend", (e) => {
-      const dx = e.changedTouches[0].clientX - touchX;
-      if (Math.abs(dx) > 44) goTo(index + (dx < 0 ? 1 : -1));
-    }, { passive: true });
-  });
+    function stop() { clearInterval(tmr); tmr = null; }
+
+    goTo(0);
+    start();
+
+    prevBtn && prevBtn.addEventListener('click', function (e) { e.preventDefault(); stop(); goTo(cur - 1); start(); });
+    nextBtn && nextBtn.addEventListener('click', function (e) { e.preventDefault(); stop(); goTo(cur + 1); start(); });
+
+    pipBtns.forEach(function (pip, i) {
+      pip.addEventListener('click', function (e) { e.preventDefault(); stop(); goTo(i); start(); });
+    });
+
+    stage && stage.addEventListener('mouseenter', stop);
+    stage && stage.addEventListener('mouseleave', start);
+
+    var _tx = 0;
+    if (stage) {
+      stage.addEventListener('touchstart', function (e) { _tx = e.touches[0].clientX; }, { passive: true });
+      stage.addEventListener('touchend', function (e) {
+        var dx = e.changedTouches[0].clientX - _tx;
+        if (Math.abs(dx) > 44) { stop(); goTo(cur + (dx < 0 ? 1 : -1)); start(); }
+      }, { passive: true });
+    }
+
+    var resizeTmr = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTmr);
+      resizeTmr = setTimeout(function () { applyHeight(slideEls[cur]); }, 120);
+    });
+  })();
 </script>
