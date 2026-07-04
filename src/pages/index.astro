@@ -5,7 +5,6 @@ import ProductCard from "../components/ProductCard.astro";
 import InstagramSlider from "../components/InstagramSlider.astro";
 import HeroCarousel from "../components/HeroCarousel.astro";
 import { contact } from "../lib/contact";
-import { filmLabel } from "../lib/filmLabel";
 
 export const prerender = false;
 
@@ -37,22 +36,19 @@ function parseServiceOptions(raw: string | null) {
   } catch { return []; }
 }
 
-// List all home/ images from R2 for the hero carousel
-const r2Bucket = Astro.locals.runtime.env.darkroom_media as any;
+type CarouselRow = { filename: string; film_name: string; sort_order: number };
 let homeImages: { url: string; label: string }[] = [];
 try {
-  const listed = await r2Bucket.list({ prefix: 'home/' });
-  homeImages = ((listed.objects ?? []) as any[])
-    .filter((o) => !o.key.endsWith('/'))
-    .sort((a, b) => a.key.localeCompare(b.key))
-    .map((o) => ({ url: `${r2Base}/${o.key}`, label: filmLabel(o.key) }));
-} catch {
-  homeImages = [
-    { url: `${r2Base}/home/Ektar100_029.dng.png`, label: 'Kodak Ektar 100' },
-    { url: `${r2Base}/home/Gold200_025.dng.png`,  label: 'Kodak Gold 200'  },
-    { url: `${r2Base}/home/Ektar100_028.dng.png`, label: 'Kodak Ektar 100' },
-  ];
-}
+  const carouselRes = await db.prepare(`
+    SELECT filename, film_name, sort_order
+    FROM carousel_slides
+    ORDER BY sort_order ASC, created_at ASC
+  `).all<CarouselRow>();
+  homeImages = (carouselRes.results ?? []).map((row: CarouselRow) => ({
+    url: `${r2Base}/home/carousel/${row.filename}`,
+    label: row.film_name,
+  }));
+} catch { homeImages = []; }
 
 const featuredRes = await db
   .prepare(`
@@ -206,7 +202,7 @@ function igPhotoUrl(key: string | null) {
     <div class="about-img-a reveal">
       <div class="img-frame gallery-wrap">
         <img
-          src={`${r2Base}/home/Gold200_025.dng.png`}
+          src={`${r2Base}/home/Fuji200_025.png`}
           alt="Film photograph"
           class="about-img-el gallery-img"
           loading="lazy"
@@ -218,7 +214,7 @@ function igPhotoUrl(key: string | null) {
     <div class="about-img-b reveal">
       <div class="img-frame gallery-wrap">
         <img
-          src={`${r2Base}/home/Ektar100_028.dng.png`}
+          src={`${r2Base}/home/Fuji200_003.dng.png`}
           alt="Film photograph"
           class="about-img-el gallery-img"
           loading="lazy"

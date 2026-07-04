@@ -28,9 +28,16 @@ const STOCKS: [RegExp, string][] = [
 
 export function filmLabel(key: string): string {
   const filename = (key.split('/').pop() ?? key).replace(/(\.\w+)+$/, '');
-  const name = filename.split('_')[0];
-  for (const [re, label] of STOCKS) {
-    if (re.test(name)) return label;
+  const parts = filename.split('_');
+
+  // Try each segment against known stocks
+  for (const part of parts) {
+    for (const [re, label] of STOCKS) {
+      if (re.test(part)) return label;
+    }
   }
-  return name.replace(/([A-Za-z])(\d{2,})/, '$1 $2');
+
+  // Fallback: use the first segment that contains digits (skips plain-word prefixes like "home")
+  const filmPart = parts.find((p) => /\d/.test(p)) ?? parts[0];
+  return filmPart.replace(/([A-Za-z])(\d{2,})/, '$1 $2');
 }

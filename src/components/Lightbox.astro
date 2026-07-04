@@ -165,7 +165,7 @@
   (function () {
     const lb = document.getElementById("dr-lb");
     const stage = document.getElementById("dr-lb-stage");
-    const img = document.getElementById("dr-lb-img");
+    const img = /** @type {HTMLImageElement | null} */ (document.getElementById("dr-lb-img"));
     const closeBtn = document.getElementById("dr-lb-close");
     const backdrop = document.getElementById("dr-lb-backdrop");
     const prevBtn = document.getElementById("dr-lb-prev");
@@ -177,7 +177,7 @@
     const DBLTAP_MS = 300;
     const DBLTAP_DIST = 24;
 
-    let images = [];
+    let images = /** @type {{ src: string; alt: string }[]} */ ([]);
     let index = 0;
     let isOpen = false;
 
@@ -241,22 +241,56 @@
       lb.classList.toggle("is-single", images.length <= 1);
     }
 
+    // Derive a hi-res URL from a standard URL by inserting _hr before the extension.
+    // e.g. services/xyz/gallery/abc.jpg → services/xyz/gallery/abc_hr.jpg
+    /** @param {string} src */
+    function deriveHrSrc(src) {
+      try {
+        const url = new URL(src, location.href);
+        url.pathname = url.pathname.replace(/(\.[^./]+)$/, "_hr$1");
+        return url.href;
+      } catch { return null; }
+    }
+
+    // Set img.src to hrSrc if it loads, otherwise fall back to item.src.
+    // Calls onReady() once the visible image is ready (loaded or already cached).
+    function applySrc(targetImg, item, onReady) {
+      const hrSrc = deriveHrSrc(item.src);
+      if (!hrSrc || hrSrc === item.src) {
+        targetImg.src = item.src;
+        targetImg.alt = item.alt || "";
+        if (onReady) {
+          if (targetImg.complete) onReady();
+          else targetImg.onload = onReady;
+        }
+        return;
+      }
+      // Load the visible img at normal res immediately (no flash while probing)
+      targetImg.src = item.src;
+      targetImg.alt = item.alt || "";
+      if (onReady) {
+        if (targetImg.complete) onReady();
+        else targetImg.onload = onReady;
+      }
+      // Silently probe for _hr variant; upgrade if it loads
+      const probe = new Image();
+      probe.onload = () => { targetImg.src = hrSrc; };
+      probe.src = hrSrc;
+    }
+
     function showImage(i, fade) {
       index = ((i % images.length) + images.length) % images.length;
       const item = images[index];
       if (fade) {
         img.classList.add("is-fading");
         setTimeout(() => {
-          img.src = item.src;
-          img.alt = item.alt || "";
           resetZoom();
-          img.onload = () => img.classList.remove("is-fading");
+          applySrc(img, item, () => img.classList.remove("is-fading"));
           if (img.complete) img.classList.remove("is-fading");
         }, 110);
       } else {
-        img.src = item.src;
-        img.alt = item.alt || "";
         resetZoom();
+        applySrc(img, item, null);
       }
       updateCounter();
     }
