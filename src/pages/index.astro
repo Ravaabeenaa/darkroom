@@ -41,7 +41,7 @@ function parseServiceOptions(raw: string | null) {
 const r2Bucket = Astro.locals.runtime.env.darkroom_media as any;
 let homeImages: { url: string; label: string }[] = [];
 try {
-  const listed = await r2Bucket.list({ prefix: 'home/' });
+  const listed = await r2Bucket.list({ prefix: 'home/carousel/' });
   homeImages = ((listed.objects ?? []) as any[])
     .filter((o) => !o.key.endsWith('/'))
     .sort((a, b) => a.key.localeCompare(b.key))
@@ -206,7 +206,7 @@ function igPhotoUrl(key: string | null) {
     <div class="about-img-a reveal">
       <div class="img-frame gallery-wrap">
         <img
-          src={`${r2Base}/home/Gold200_025.dng.png`}
+          src={`${r2Base}/home/Fuji200_025.png`}
           alt="Film photograph"
           class="about-img-el gallery-img"
           loading="lazy"
@@ -218,7 +218,7 @@ function igPhotoUrl(key: string | null) {
     <div class="about-img-b reveal">
       <div class="img-frame gallery-wrap">
         <img
-          src={`${r2Base}/home/Ektar100_028.dng.png`}
+          src={`${r2Base}/home/Fuji200_003.dng.png`}
           alt="Film photograph"
           class="about-img-el gallery-img"
           loading="lazy"
