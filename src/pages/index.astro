@@ -37,15 +37,18 @@ function parseServiceOptions(raw: string | null) {
 }
 
 type CarouselRow = { filename: string; film_name: string; sort_order: number };
-const carouselRes = await db.prepare(`
-  SELECT filename, film_name, sort_order
-  FROM carousel_slides
-  ORDER BY sort_order ASC, created_at ASC
-`).all<CarouselRow>();
-const homeImages = (carouselRes.results ?? []).map((row: CarouselRow) => ({
-  url: `${r2Base}/home/carousel/${row.filename}`,
-  label: row.film_name,
-}));
+let homeImages: { url: string; label: string }[] = [];
+try {
+  const carouselRes = await db.prepare(`
+    SELECT filename, film_name, sort_order
+    FROM carousel_slides
+    ORDER BY sort_order ASC, created_at ASC
+  `).all<CarouselRow>();
+  homeImages = (carouselRes.results ?? []).map((row: CarouselRow) => ({
+    url: `${r2Base}/home/carousel/${row.filename}`,
+    label: row.film_name,
+  }));
+} catch { homeImages = []; }
 
 const featuredRes = await db
   .prepare(`
