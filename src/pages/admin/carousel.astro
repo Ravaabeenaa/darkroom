@@ -1,0 +1,196 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+const db = Astro.locals.runtime.env.darkroom_db as D1Database;
+const r2Base = String(Astro.locals.runtime.env.PUBLIC_R2_BASE_URL ?? "").replace(/\/+$/, "");
+
+type SlideRow = { id: string; filename: string; film_name: string; sort_order: number };
+const res = await db
+  .prepare("SELECT id, filename, film_name, sort_order FROM carousel_slides ORDER BY sort_order ASC, created_at ASC")
+  .all<SlideRow>();
+const slides = res.results ?? [];
+
+const saved  = Astro.url.searchParams.get("saved")  === "1";
+const errorKey = Astro.url.searchParams.get("error") ?? "";
+const errorMessages: Record<string, string> = {
+  missing_fields: "Filename and film name are required.",
+  duplicate: "A slide with that filename already exists.",
+};
+const errorMsg = errorMessages[errorKey] ?? (errorKey ? "An error occurred." : "");
+---
+
+<BaseLayout title="Carousel — Admin">
+  <section class="mx-auto mt-12 max-w-2xl px-6 pb-24">
+    <div>
+      <a href="/admin" class="text-sm hover:opacity-70" style="color: var(--muted);">← Admin</a>
+      <h1 class="mt-2 text-4xl" style="font-family: var(--font-serif);">Hero Carousel</h1>
+      <p class="mt-2 text-sm" style="color: var(--muted);">
+        Manage slides shown in the home page hero. Images must be uploaded to R2 under <code>home/carousel/</code>.
+      </p>
+    </div>
+
+    {saved && (
+      <div class="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-4 text-sm">Saved.</div>
+    )}
+    {errorMsg && (
+      <div class="mt-6 rounded-2xl border border-red-400/40 bg-red-900/20 p-4 text-sm" style="color:#f87171;">{errorMsg}</div>
+    )}
+
+    <!-- Add form -->
+    <form method="post" action="/api/admin/carousel/add" class="mt-8 rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-6">
+      <div class="text-sm font-semibold mb-4">Add slide</div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="block">
+          <span class="text-xs" style="color: var(--muted);">Filename</span>
+          <input
+            type="text"
+            name="filename"
+            placeholder="Fuji200_025.png"
+            required
+            class="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--red)]"
+          />
+          <span class="text-xs" style="color: var(--muted);">File must exist in R2 at <code>home/carousel/</code></span>
+        </label>
+        <label class="block">
+          <span class="text-xs" style="color: var(--muted);">Film name</span>
+          <input
+            type="text"
+            name="film_name"
+            placeholder="Fuji 200"
+            required
+            class="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--red)]"
+          />
+        </label>
+        <label class="block">
+          <span class="text-xs" style="color: var(--muted);">Order</span>
+          <input
+            type="number"
+            name="sort_order"
+            value={slides.length + 1}
+            min="0"
+            class="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none focus:border-[var(--red)]"
+          />
+        </label>
+      </div>
+      <button
+        type="submit"
+        class="mt-4 rounded-[999px] bg-[var(--btn)] px-6 py-2.5 text-sm font-medium text-[var(--btnText)] hover:opacity-90"
+      >
+        Add
+      </button>
+    </form>
+
+    <!-- Slide list -->
+    <div class="mt-8 space-y-3">
+      {slides.length === 0 ? (
+        <div class="rounded-3xl border border-[var(--line)] bg-[var(--panel)] p-8 text-center text-sm" style="color: var(--muted);">
+          No slides yet. Add one above.
+        </div>
+      ) : slides.map((slide: SlideRow, i: number) => (
+        <div class="rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+          <div class="flex items-center gap-4 px-5 py-4">
+
+            <!-- Reorder -->
+            <div class="flex flex-col gap-1 shrink-0">
+              <form method="post" action="/api/admin/carousel/reorder">
+                <input type="hidden" name="id" value={slide.id} />
+                <input type="hidden" name="direction" value="up" />
+                <button type="submit" disabled={i === 0}
+                  class="block rounded p-0.5 hover:bg-[var(--bg)] disabled:opacity-20"
+                  aria-label="Move up">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 11V3M3 7l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+              <form method="post" action="/api/admin/carousel/reorder">
+                <input type="hidden" name="id" value={slide.id} />
+                <input type="hidden" name="direction" value="down" />
+                <button type="submit" disabled={i === slides.length - 1}
+                  class="block rounded p-0.5 hover:bg-[var(--bg)] disabled:opacity-20"
+                  aria-label="Move down">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </form>
+            </div>
+
+            <!-- Thumbnail -->
+            <img
+              src={`${r2Base}/home/carousel/${slide.filename}`}
+              alt={slide.film_name}
+              class="h-12 w-16 shrink-0 rounded-lg object-cover"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+            />
+            <div class="hidden h-12 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--line)] text-xs" style="color:var(--muted);">
+              404
+            </div>
+
+            <!-- Info -->
+            <div class="min-w-0 flex-1">
+              <div class="truncate text-sm font-medium">{slide.film_name}</div>
+              <div class="mt-0.5 truncate text-xs" style="color: var(--muted);">{slide.filename}</div>
+            </div>
+
+            <!-- Order badge -->
+            <div class="shrink-0 text-xs tabular-nums" style="color: var(--muted);">#{slide.sort_order}</div>
+
+            <!-- Edit toggle -->
+            <button
+              type="button"
+              class="edit-toggle-btn shrink-0 cursor-pointer rounded-xl border border-[var(--line)] px-3 py-1.5 text-xs hover:bg-[var(--bg)]"
+              data-target={`editPanel-${slide.id}`}
+            >
+              Edit
+            </button>
+
+            <!-- Delete -->
+            <form method="post" action="/api/admin/carousel/delete">
+              <input type="hidden" name="id" value={slide.id} />
+              <button type="submit"
+                class="rounded-xl border border-[var(--line)] px-3 py-1.5 text-xs hover:border-red-400 hover:text-red-500"
+                onclick="return confirm('Remove this slide?')">
+                Remove
+              </button>
+            </form>
+          </div>
+
+          <!-- Edit panel -->
+          <div id={`editPanel-${slide.id}`} class="hidden border-t border-[var(--line)] px-5 py-4">
+            <form method="post" action="/api/admin/carousel/update" class="grid gap-3 sm:grid-cols-2">
+              <input type="hidden" name="id" value={slide.id} />
+              <label class="block">
+                <span class="text-xs" style="color: var(--muted);">Filename</span>
+                <input type="text" name="filename" value={slide.filename} required
+                  class="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none" />
+              </label>
+              <label class="block">
+                <span class="text-xs" style="color: var(--muted);">Film name</span>
+                <input type="text" name="film_name" value={slide.film_name} required
+                  class="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none" />
+              </label>
+              <label class="block">
+                <span class="text-xs" style="color: var(--muted);">Order</span>
+                <input type="number" name="sort_order" value={slide.sort_order} min="0"
+                  class="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm outline-none" />
+              </label>
+              <div class="flex items-end">
+                <button type="submit" class="rounded-[999px] bg-[var(--btn)] px-5 py-2 text-xs font-medium text-[var(--btnText)] hover:opacity-90">
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <script>
+    document.querySelectorAll(".edit-toggle-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const panel = document.getElementById((btn as HTMLElement).getAttribute("data-target")!);
+        panel?.classList.toggle("hidden");
+      });
+    });
+  </script>
+</BaseLayout>
