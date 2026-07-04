@@ -43,7 +43,7 @@ let homeImages: { url: string; label: string }[] = [];
 try {
   const listed = await r2Bucket.list({ prefix: 'home/carousel/' });
   homeImages = ((listed.objects ?? []) as any[])
-    .filter((o) => !o.key.endsWith('/'))
+    .filter((o) => !o.key.endsWith('/') && !o.key.includes('_hr.'))
     .sort((a, b) => a.key.localeCompare(b.key))
     .map((o) => ({ url: `${r2Base}/${o.key}`, label: filmLabel(o.key) }));
 } catch {
