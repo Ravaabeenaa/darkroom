@@ -110,7 +110,7 @@
     for (var ri = 0; ri < items.length; ri++) {
       var ri_it           = items[ri];
       var ri_isDiscount   = ri_it.line_total_cents < 0;
-      var ri_isCollection = ri_it.service_id == null && ri_it.line_total_cents > 0;
+      var ri_isCollection = ri_it.service_id == null && String(ri_it.service_name || "").indexOf("Collection: ") === 0;
       itemsRowHeight += rowHeightFor(extraLinesFor(ri_it, String(ri_it.service_group || ""), ri_isDiscount, ri_isCollection));
     }
 
@@ -206,7 +206,7 @@
       var name         = String(it.service_name || it.name || "");
       var group        = String(it.service_group || "");
       var isDiscount   = (it.line_total_cents < 0);
-      var isCollection = (it.service_id == null && it.line_total_cents > 0);
+      var isCollection = (it.service_id == null && String(it.service_name || "").indexOf("Collection: ") === 0);
       var qty          = isDiscount ? "" : String(it.quantity || it.qty || 0);
       var absCents   = Math.abs(it.line_total_cents);
       var amt        = isDiscount ? ("−MVR " + mvr(absCents)) : ("MVR " + mvr(it.line_total_cents));

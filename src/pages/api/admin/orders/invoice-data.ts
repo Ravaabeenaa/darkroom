@@ -12,6 +12,8 @@ type OrderRow = {
   total_price_cents: number;
   status: string;
   created_at: string | null;
+  collection_option: string | null;
+  delivery_address: string | null;
 };
 
 type ItemRow = {
@@ -48,7 +50,8 @@ export async function GET({ request, locals }: { request: Request; locals: any }
   const order = await db
     .prepare(
       `SELECT id, order_ref, customer_name, customer_phone, customer_email,
-              contact_method, total_price_cents, status, created_at
+              contact_method, total_price_cents, status, created_at,
+              collection_option, delivery_address
        FROM orders WHERE id = ? LIMIT 1;`
     )
     .bind(id)
@@ -81,10 +84,33 @@ export async function GET({ request, locals }: { request: Request; locals: any }
     line_total_cents: -d.computed_cents,
   }));
 
+  const items = itemsRes.results ?? [];
+
+  // The collection line item is only stored in order_items when it carries a
+  // charge (see orders/create.ts). Free/waived options (Pickup, waived bulk
+  // delivery) have no row, so synthesize one here — the invoice should always
+  // show what the customer chose. The delivery address always comes from
+  // orders.delivery_address (falling back to whatever's on the row for older
+  // orders created before that column existed).
+  const collectionItem = items.find((it) => it.service_id === null && it.service_name.startsWith("Collection: "));
+  if (collectionItem) {
+    collectionItem.service_group = order.delivery_address || collectionItem.service_group || null;
+  } else if (order.collection_option) {
+    items.push({
+      service_id: null,
+      service_name: `Collection: ${order.collection_option}`,
+      service_group: order.delivery_address || null,
+      quantity: 1,
+      unit_price_cents: 0,
+      line_total_cents: 0,
+      selected_options: null,
+    });
+  }
+
   return new Response(JSON.stringify({
     ok: true,
     order,
-    items: [...(itemsRes.results ?? []), ...discountItems],
+    items: [...items, ...discountItems],
     discounts: discountsRes.results ?? [],
   }), {
     headers: { "content-type": "application/json" },
