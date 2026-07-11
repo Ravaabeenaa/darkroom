@@ -23,6 +23,8 @@ type OrderRow = {
   created_at: string | null;
   updated_at: string | null;
   stock_applied: number;
+  collection_option: string | null;
+  delivery_address: string | null;
 };
 
 type ItemRow = {
@@ -51,7 +53,8 @@ const order = await db
     SELECT id, order_ref, customer_name, customer_phone, customer_email, contact_method,
            services_summary, original_services_summary,
            total_price_cents, original_total_price_cents,
-           status, customer_notes, internal_notes, created_at, updated_at, stock_applied
+           status, customer_notes, internal_notes, created_at, updated_at, stock_applied,
+           collection_option, delivery_address
     FROM orders WHERE id = ? LIMIT 1;
   `)
   .bind(id)
@@ -166,6 +169,18 @@ const badgeCls = statusColour[order.status] ?? "bg-gray-100 text-gray-600";
           <dt class="text-xs" style="color: var(--muted);">Email</dt>
           <dd class="mt-1">{order.customer_email ?? "—"}</dd>
         </div>
+        {order.collection_option && (
+          <div>
+            <dt class="text-xs" style="color: var(--muted);">Collection</dt>
+            <dd class="mt-1">{order.collection_option}</dd>
+          </div>
+        )}
+        {order.delivery_address && (
+          <div class="sm:col-span-2">
+            <dt class="text-xs" style="color: var(--muted);">Delivery address</dt>
+            <dd class="mt-1 whitespace-pre-wrap font-medium" style="color: var(--red);">{order.delivery_address}</dd>
+          </div>
+        )}
         {order.customer_notes && (
           <div class="sm:col-span-2">
             <dt class="text-xs" style="color: var(--muted);">Customer notes</dt>

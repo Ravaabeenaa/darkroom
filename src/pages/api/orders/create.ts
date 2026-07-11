@@ -194,7 +194,7 @@ export async function POST({ request, locals }: { request: Request; locals: any 
             unit_price_cents: collection_option_cents,
             quantity: 1,
             line_total_cents: collection_option_cents,
-            service_group: delivery_address,
+            service_group: null,
           });
           total += collection_option_cents;
         }
@@ -227,9 +227,9 @@ export async function POST({ request, locals }: { request: Request; locals: any 
          total_price_cents, status, customer_notes, internal_notes,
          created_at, updated_at, contact_method, customer_email,
          original_services_summary, original_total_price_cents,
-         collection_option, collection_option_cents)
+         collection_option, collection_option_cents, delivery_address)
       VALUES
-        (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?, ?, ?);
+        (?, ?, ?, ?, ?, ?, 'NEW', ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `)
     .bind(
       order_id, order_ref,
@@ -242,7 +242,8 @@ export async function POST({ request, locals }: { request: Request; locals: any 
       services_summary,
       total,
       collection_option_label,
-      collection_option_cents
+      collection_option_cents,
+      delivery_address
     )
     .run();
 
@@ -282,6 +283,7 @@ if (botToken && chatId) {
     `📱 <a href="${telHref}">${phoneDisplay}</a> · ${contact_method}`,
     `📦 ${services_summary}`,
     collection_option_label ? `🚚 ${collection_option_label}` : null,
+    delivery_address ? `📍 ${delivery_address}` : null,
     `💰 MVR ${(total / 100).toFixed(2)}`,
     customer_notes ? `📝 <i>${customer_notes}</i>` : null,
     `🔗 <a href="https://darkroombysmolbo1.shop/admin/orders/${order_id}">View order</a>`,

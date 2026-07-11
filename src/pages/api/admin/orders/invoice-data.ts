@@ -12,6 +12,8 @@ type OrderRow = {
   total_price_cents: number;
   status: string;
   created_at: string | null;
+  collection_option: string | null;
+  delivery_address: string | null;
 };
 
 type ItemRow = {
@@ -48,7 +50,8 @@ export async function GET({ request, locals }: { request: Request; locals: any }
   const order = await db
     .prepare(
       `SELECT id, order_ref, customer_name, customer_phone, customer_email,
-              contact_method, total_price_cents, status, created_at
+              contact_method, total_price_cents, status, created_at,
+              collection_option, delivery_address
        FROM orders WHERE id = ? LIMIT 1;`
     )
     .bind(id)
